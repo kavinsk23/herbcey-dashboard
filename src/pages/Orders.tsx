@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import OrderCard from "../components/OrderCard";
 import FilterSection from "../components/FilterSection";
+import OrderForm from "../components/OrderForm";
 
 type StatusType =
   | "All"
@@ -11,6 +12,24 @@ type StatusType =
   | "Damaged";
 type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
+
+interface Order {
+  name: string;
+  addressLine1: string;
+  addressLine2?: string;
+  addressLine3?: string;
+  contact: string;
+  products: {
+    name: string;
+    quantity: number;
+    price: number;
+  }[];
+  status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
+  orderDate: string;
+  paymentMethod: "COD" | "Bank Transfer";
+  paymentReceived?: boolean;
+  tracking?: string;
+}
 
 const Orders = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,7 +42,12 @@ const Orders = () => {
   const [endDate, setEndDate] = useState<string>("");
   const [showDateFilter, setShowDateFilter] = useState(false);
 
-  const sampleOrders = [
+  // OrderForm state
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [formMode, setFormMode] = useState<"create" | "update">("create");
+
+  const [orders, setOrders] = useState<Order[]>([
     {
       name: "John Doe",
       addressLine1: "123 Main St, Colombo",
@@ -97,9 +121,9 @@ const Orders = () => {
       paymentReceived: false,
       tracking: "LK111222333",
     },
-  ];
+  ]);
 
-  const filteredOrders = sampleOrders.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     const matchesGeneral =
       searchTerm === "" ||
       order.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -156,13 +180,64 @@ const Orders = () => {
     setShowDateFilter(false);
   };
 
+  // Handle creating new order
+  const handleCreateOrder = () => {
+    setFormMode("create");
+    setEditingOrder(null);
+    setShowOrderForm(true);
+  };
+
+  // Handle updating existing order
+  const handleUpdateOrder = (order: Order) => {
+    setFormMode("update");
+    setEditingOrder(order);
+    setShowOrderForm(true);
+  };
+
+  // Handle form submission
+  const handleOrderSubmit = (orderData: Order) => {
+    if (formMode === "create") {
+      // Add new order to the list
+      setOrders((prev) => [...prev, orderData]);
+      console.log("Creating order:", orderData);
+    } else {
+      // Update existing order
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.tracking === editingOrder?.tracking ? orderData : order
+        )
+      );
+      console.log("Updating order:", orderData);
+    }
+  };
+
   const hasDateFilter = startDate || endDate;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Orders Dashboard
-      </h1>
+      {/* Header with New Order Button */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
+        <button
+          onClick={handleCreateOrder}
+          className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2 font-medium"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span>New Order</span>
+        </button>
+      </div>
 
       <FilterSection
         searchTerm={searchTerm}
@@ -183,7 +258,7 @@ const Orders = () => {
         setShowDateFilter={setShowDateFilter}
         clearFilters={clearFilters}
         filteredOrdersLength={filteredOrders.length}
-        totalOrdersLength={sampleOrders.length}
+        totalOrdersLength={orders.length}
       />
 
       <div className="space-y-4">
@@ -206,6 +281,15 @@ const Orders = () => {
             </p>
           </div>
         )}
+
+      {/* Order Form Modal */}
+      <OrderForm
+        isOpen={showOrderForm}
+        onClose={() => setShowOrderForm(false)}
+        onSubmit={handleOrderSubmit}
+        initialOrder={editingOrder}
+        mode={formMode}
+      />
     </div>
   );
 };

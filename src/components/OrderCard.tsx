@@ -14,7 +14,7 @@ interface Order {
   status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
-  paymentReceived?: boolean;
+  paymentReceived?: boolean; // Add this new field
   tracking?: string;
 }
 
@@ -120,9 +120,9 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
         </div>
       </div>
 
-      <div className="px-3 py-3 flex w-full justify-between">
+      <div className="px-3 flex w-full justify-between">
         {/* Customer Info */}
-        <div className="mb-3 min-w-60 flex-shrink-0">
+        <div className="mb-3 min-w-60">
           <div className="flex justify-between items-start">
             <h3 className="font-semibold text-gray-900">{order.name}</h3>
           </div>
@@ -140,33 +140,32 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
             </p>
           </div>
         </div>
-
         {/* Products Table */}
-        <div className="mb-3 flex-1 mx-4">
+        <div className="mb-3 w-full">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="min-w-full divide-y divide-gray-200">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 w-32">
+                <tr>
+                  <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">
                     Product
                   </th>
-                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 w-16">
+                  <th className="px-2 py-1 text-right text-xs font-medium text-gray-500">
                     Qty
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-24">
+                  <th className="px-2 py-1 text-right text-xs font-medium text-gray-500">
                     Price
                   </th>
-                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">
+                  <th className="px-2 py-1 text-right text-xs font-medium text-gray-500">
                     Amount
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {order.products.map((product, index) => (
-                  <tr key={product.name} className="border-b border-gray-100">
-                    <td className="px-3 py-2">
+              <tbody className="divide-y divide-gray-200">
+                {order.products.map((product) => (
+                  <tr key={product.name}>
+                    <td className="px-2 py-1 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs rounded-full ${
+                        className={`px-2 py-0.5 text-xs rounded-full ${
                           productColors[
                             product.name as keyof typeof productColors
                           ] || "bg-gray-100"
@@ -175,24 +174,27 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
                         {product.name}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-center text-sm font-medium">
+                    <td className="px-2 py-1 whitespace-nowrap text-right text-sm">
                       x{product.quantity}
                     </td>
-                    <td className="px-3 py-2 text-right text-sm">
+                    <td className="px-2 py-1 whitespace-nowrap text-right text-sm">
                       {formatCurrency(product.price)}
                     </td>
-                    <td className="px-3 py-2 text-right text-sm font-medium">
+                    <td className="px-2 py-1 whitespace-nowrap text-right text-sm font-medium">
                       {formatCurrency(product.price * product.quantity)}
                     </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-gray-50 font-medium">
-                  <td colSpan={3} className="px-3 py-2 text-right text-sm">
+                <tr className="bg-gray-50">
+                  <td
+                    colSpan={3}
+                    className="px-2 py-1 text-right text-sm font-medium"
+                  >
                     Total:
                   </td>
-                  <td className="px-3 py-2 text-right text-sm font-bold">
+                  <td className="px-2 py-1 text-right text-sm font-medium">
                     {formatCurrency(totalAmount)}
                   </td>
                 </tr>
@@ -200,14 +202,13 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
             </table>
           </div>
         </div>
-
         {/* Action Buttons */}
-        <div className="flex flex-col items-center justify-center gap-2 flex-shrink-0">
-          <button className="px-4 py-2 w-20 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
+        <div className="flex flex-col items-center justify-center gap-2 ml-3">
+          <button className="px-3 py-1 w-16 ml-auto border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
             Print
           </button>
-          <button className="px-4 py-2 w-20 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors">
-            Update
+          <button className="px-3 py-1 w-16 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors">
+            Edit
           </button>
         </div>
       </div>
