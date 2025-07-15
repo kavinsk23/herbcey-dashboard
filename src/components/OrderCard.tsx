@@ -38,14 +38,14 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
   };
 
   const paymentColors = {
-    COD: "bg-orange-100 text-orange-800",
-    "Bank Transfer": "bg-teal-100 text-teal-800",
+    COD: "bg-neutral-800 text-neutral-100",
+    "Bank Transfer": "bg-black-800 text-black-100",
   };
 
   const productColors = {
-    Oil: "bg-emerald-100 text-emerald-800",
-    Shampoo: "bg-sky-100 text-sky-800",
-    Conditioner: "bg-violet-100 text-violet-800",
+    Oil: "bg-emerald-700 text-white",
+    Shampoo: "bg-cyan-700 text-white",
+    Conditioner: "bg-pink-700 text-white",
   };
 
   const totalAmount = order.products.reduce(
@@ -63,9 +63,45 @@ const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
         <div
           className={`${
             paymentColors[order.paymentMethod]
-          } px-3 py-2 flex-1 text-center`}
+          } px-3 py-2 flex-1 text-center flex items-center justify-center space-x-2`}
         >
           <span className="font-medium text-sm">{order.paymentMethod}</span>
+          {order.paymentMethod === "COD" && (
+            <>
+              {/* Green tick for payment received */}
+              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              {/* Red X for payment not received */}
+              <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </div>
+            </>
+          )}
         </div>
         <div className="bg-gray-100 px-3 py-2 flex-1 text-right flex justify-between">
           {" "}
