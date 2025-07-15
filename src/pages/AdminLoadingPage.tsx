@@ -1,54 +1,13 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import logoTp from "../../src/assets/images/logo-tp.png";
 
 const AdminLoadingPage = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLoadingProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setIsLoading(false), 300);
-          return 100;
-        }
-        return prev + Math.random() * 20;
-      });
-    }, 150);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleMenuClick = (menuItem: string) => {
-    alert(`Opening ${menuItem}...`);
+  const handleMenuClick = (menuItem: "orders" | "analytics") => {
+    navigate(`/admin/${menuItem}`);
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center max-w-sm w-full mx-4">
-          <div className="w-16 h-16 mx-auto mb-6 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-2xl text-white">🌿</span>
-          </div>
-          <h1 className="text-2xl font-semibold text-black-800 mb-2">
-            HerbCey Admin
-          </h1>
-          <p className="text-black-500 mb-8">Loading your dashboard...</p>
-
-          <div className="w-full bg-black-100 rounded-full h-2 mb-4">
-            <div
-              className="bg-primary h-2 rounded-full transition-all duration-300"
-              style={{ width: `${loadingProgress}%` }}
-            />
-          </div>
-          <p className="text-sm text-black-400">
-            {Math.round(loadingProgress)}%
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-black-50">
@@ -65,18 +24,19 @@ const AdminLoadingPage = () => {
 
         {/* Menu Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {/* Orders */}
+          {/* Orders Card */}
           <div
-            onClick={() => handleMenuClick("Orders")}
-            className="bg-white rounded-xl border border-black-200 p-8 cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200"
+            onClick={() => handleMenuClick("orders")}
+            className="bg-white rounded-xl border border-black-200 p-8 cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 group"
           >
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
                 <svg
-                  className="w-6 h-6 text-primary"
+                  className="w-6 h-6 text-primary group-hover:text-primary-dark"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
                     strokeLinecap="round"
@@ -87,19 +47,20 @@ const AdminLoadingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-medium text-black-800 mb-2">
+                <h3 className="text-xl font-medium text-black-800 mb-2 group-hover:text-primary transition-colors">
                   Orders
                 </h3>
                 <p className="text-black-600 mb-4">
                   View and manage customer orders and order details.
                 </p>
-                <div className="flex items-center text-sm text-primary font-medium">
+                <div className="flex items-center text-sm text-primary font-medium group-hover:text-primary-dark transition-colors">
                   <span>View more</span>
                   <svg
                     className="w-4 h-4 ml-1"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
                       strokeLinecap="round"
@@ -113,18 +74,19 @@ const AdminLoadingPage = () => {
             </div>
           </div>
 
-          {/* Analytics */}
+          {/* Analytics Card */}
           <div
-            onClick={() => handleMenuClick("Analytics")}
-            className="bg-white rounded-xl border border-black-200 p-8 cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200"
+            onClick={() => handleMenuClick("analytics")}
+            className="bg-white rounded-xl border border-black-200 p-8 cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 group"
           >
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
                 <svg
-                  className="w-6 h-6 text-primary"
+                  className="w-6 h-6 text-primary group-hover:text-primary-dark"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
                     strokeLinecap="round"
@@ -135,19 +97,20 @@ const AdminLoadingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-medium text-black-800 mb-2">
+                <h3 className="text-xl font-medium text-black-800 mb-2 group-hover:text-primary transition-colors">
                   Analytics
                 </h3>
                 <p className="text-black-600 mb-4">
                   Track sales, inventory levels, and business performance
                 </p>
-                <div className="flex items-center text-sm text-primary font-medium">
+                <div className="flex items-center text-sm text-primary font-medium group-hover:text-primary-dark transition-colors">
                   <span>View reports</span>
                   <svg
                     className="w-4 h-4 ml-1"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
                       strokeLinecap="round"
