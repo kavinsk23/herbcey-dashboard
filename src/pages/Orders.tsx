@@ -263,7 +263,11 @@ const Orders = () => {
 
       <div className="space-y-4">
         {filteredOrders.map((order, index) => (
-          <OrderCard key={`${order.tracking}-${index}`} order={order} />
+          <OrderCard
+            key={`${order.tracking}-${index}`}
+            order={order}
+            onUpdateClick={handleUpdateOrder}
+          />
         ))}
       </div>
 
