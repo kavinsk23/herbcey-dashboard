@@ -1,7 +1,93 @@
 import React, { useState } from "react";
 import OrderCard from "../components/OrderCard";
-import FilterSection from "../components/FilterSection";
 import OrderForm from "../components/OrderForm";
+import FilterSection from "../components/FilterSection";
+
+// Mock data for demonstration
+const mockOrders = [
+  {
+    name: "John Doe",
+    addressLine1: "123 Main St, Colombo",
+    addressLine2: "Sri Lanka",
+    addressLine3: "",
+    contact: "0761234567",
+    products: [
+      { name: "Oil", quantity: 2, price: 950 },
+      { name: "Shampoo", quantity: 1, price: 1750 },
+    ],
+    status: "Preparing" as const,
+    orderDate: "2023-05-15",
+    paymentMethod: "COD" as const,
+    paymentReceived: true,
+    tracking: "LK123456789",
+    freeShipping: false,
+  },
+  {
+    name: "Jane Smith",
+    addressLine1: "456 Ocean Ave, Galle",
+    addressLine2: "",
+    addressLine3: "Southern Province",
+    contact: "0779876543",
+    products: [
+      { name: "Conditioner", quantity: 3, price: 1850 },
+      { name: "Shampoo", quantity: 2, price: 1750 },
+    ],
+    status: "Shipped" as const,
+    orderDate: "2023-05-18",
+    paymentMethod: "Bank Transfer" as const,
+    paymentReceived: true,
+    tracking: "LK987654321",
+    freeShipping: true,
+  },
+  {
+    name: "David Johnson",
+    addressLine1: "789 Hill St",
+    addressLine2: "Kandy",
+    addressLine3: "Central Province",
+    contact: "0715551234",
+    products: [
+      { name: "Oil", quantity: 1, price: 950 },
+      { name: "Conditioner", quantity: 2, price: 1850 },
+    ],
+    status: "Delivered" as const,
+    orderDate: "2023-05-10",
+    paymentMethod: "Bank Transfer" as const,
+    paymentReceived: true,
+    tracking: "LK456123789",
+    freeShipping: false,
+  },
+  {
+    name: "Maria Garcia",
+    addressLine1: "321 Beach Rd",
+    addressLine2: "Negombo",
+    addressLine3: "",
+    contact: "0768884567",
+    products: [
+      { name: "Shampoo", quantity: 1, price: 1750 },
+      { name: "Conditioner", quantity: 1, price: 1850 },
+    ],
+    status: "Returned" as const,
+    orderDate: "2023-05-20",
+    paymentMethod: "COD" as const,
+    paymentReceived: false,
+    tracking: "LK789123456",
+    freeShipping: true,
+  },
+  {
+    name: "Raj Patel",
+    addressLine1: "10 Temple Road",
+    addressLine2: "",
+    addressLine3: "Anuradhapura",
+    contact: "0723334444",
+    products: [{ name: "Oil", quantity: 1, price: 950 }],
+    status: "Damaged" as const,
+    orderDate: "2023-06-01",
+    paymentMethod: "COD" as const,
+    paymentReceived: false,
+    tracking: "LK111222333",
+    freeShipping: false,
+  },
+];
 
 type StatusType =
   | "All"
@@ -29,9 +115,10 @@ interface Order {
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
+  freeShipping?: boolean;
 }
 
-const Orders = () => {
+const Orders: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [trackingSearch, setTrackingSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<StatusType>("All");
@@ -47,81 +134,7 @@ const Orders = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [formMode, setFormMode] = useState<"create" | "update">("create");
 
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      name: "John Doe",
-      addressLine1: "123 Main St, Colombo",
-      addressLine2: "Sri Lanka",
-      contact: "0761234567",
-      products: [
-        { name: "Oil", quantity: 2, price: 1200 },
-        { name: "Shampoo", quantity: 1, price: 800 },
-      ],
-      status: "Preparing" as const,
-      orderDate: "2023-05-15",
-      paymentMethod: "COD" as const,
-      paymentReceived: true,
-      tracking: "LK123456789",
-    },
-    {
-      name: "Jane Smith",
-      addressLine1: "456 Ocean Ave, Galle",
-      addressLine3: "Southern Province",
-      contact: "0779876543",
-      products: [
-        { name: "Conditioner", quantity: 3, price: 950 },
-        { name: "Shampoo", quantity: 2, price: 800 },
-      ],
-      status: "Shipped" as const,
-      orderDate: "2023-05-18",
-      paymentMethod: "Bank Transfer" as const,
-      paymentReceived: true,
-      tracking: "LK987654321",
-    },
-    {
-      name: "David Johnson",
-      addressLine1: "789 Hill St",
-      addressLine2: "Kandy",
-      addressLine3: "Central Province",
-      contact: "0715551234",
-      products: [
-        { name: "Oil", quantity: 1, price: 1200 },
-        { name: "Conditioner", quantity: 2, price: 950 },
-      ],
-      status: "Delivered" as const,
-      orderDate: "2023-05-10",
-      paymentMethod: "Bank Transfer" as const,
-      paymentReceived: true,
-      tracking: "LK456123789",
-    },
-    {
-      name: "Maria Garcia",
-      addressLine1: "321 Beach Rd",
-      addressLine2: "Negombo",
-      contact: "0768884567",
-      products: [
-        { name: "Shampoo", quantity: 1, price: 800 },
-        { name: "Conditioner", quantity: 1, price: 950 },
-      ],
-      status: "Returned" as const,
-      orderDate: "2023-05-20",
-      paymentMethod: "COD" as const,
-      paymentReceived: false,
-      tracking: "LK789123456",
-    },
-    {
-      name: "Raj Patel",
-      addressLine1: "10 Temple Road",
-      addressLine3: "Anuradhapura",
-      contact: "0723334444",
-      products: [{ name: "Oil", quantity: 1, price: 1200 }],
-      status: "Damaged" as const,
-      orderDate: "2023-06-01",
-      paymentMethod: "COD" as const,
-      paymentReceived: false,
-      tracking: "LK111222333",
-    },
-  ]);
+  const [orders, setOrders] = useState<Order[]>(mockOrders);
 
   const filteredOrders = orders.filter((order) => {
     const matchesGeneral =
@@ -261,6 +274,7 @@ const Orders = () => {
         totalOrdersLength={orders.length}
       />
 
+      {/* Orders List */}
       <div className="space-y-4">
         {filteredOrders.map((order, index) => (
           <OrderCard

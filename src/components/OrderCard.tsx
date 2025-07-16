@@ -16,6 +16,7 @@ interface Order {
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
+  freeShipping?: boolean;
 }
 
 interface OrderCardProps {
@@ -116,9 +117,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-500">{order.orderDate}</span>
           </div>
-          <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-            Free Shipping
-          </span>
+          {order.freeShipping && (
+            <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
+              Free Shipping
+            </span>
+          )}
           <span className="text-sm font-medium">
             #{order.tracking || "N/A"}
           </span>

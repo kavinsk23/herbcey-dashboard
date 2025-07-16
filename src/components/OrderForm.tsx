@@ -16,6 +16,7 @@ interface Order {
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
+  freeShipping?: boolean;
 }
 
 interface OrderFormProps {
@@ -43,6 +44,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       | "Damaged",
     paymentMethod: "COD" as "COD" | "Bank Transfer",
     paymentReceived: false,
+    freeShipping: false,
     products: {
       Oil: { selected: false, quantity: 1 },
       Shampoo: { selected: false, quantity: 1 },
@@ -84,6 +86,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         status: initialOrder.status,
         paymentMethod: initialOrder.paymentMethod,
         paymentReceived: initialOrder.paymentReceived || false,
+        freeShipping: initialOrder.freeShipping || false,
         products: productState,
       });
     } else if (mode === "create") {
@@ -92,6 +95,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         status: "Preparing",
         paymentMethod: "COD",
         paymentReceived: false,
+        freeShipping: false,
         products: {
           Oil: { selected: false, quantity: 1 },
           Shampoo: { selected: false, quantity: 1 },
@@ -166,6 +170,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         orderDate: new Date().toISOString().split("T")[0],
         paymentMethod: formData.paymentMethod,
         paymentReceived: formData.paymentReceived,
+        freeShipping: formData.freeShipping,
         tracking: initialOrder?.tracking || `LK${Date.now()}`,
       };
 
@@ -208,14 +213,20 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }).format(amount);
   };
 
-  const totalAmount = Object.entries(formData.products)
-    .filter(([_, product]) => product.selected)
-    .reduce((sum, [name, product]) => {
-      return (
-        sum +
-        productPrices[name as keyof typeof productPrices] * product.quantity
-      );
-    }, 0);
+  const calculateTotal = () => {
+    const subtotal = Object.entries(formData.products)
+      .filter(([_, product]) => product.selected)
+      .reduce((sum, [name, product]) => {
+        return (
+          sum +
+          productPrices[name as keyof typeof productPrices] * product.quantity
+        );
+      }, 0);
+
+    return formData.freeShipping ? subtotal : subtotal + 350;
+  };
+
+  const totalAmount = calculateTotal();
 
   if (!isOpen) return null;
 
@@ -459,6 +470,26 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
             {/* Order Summary */}
             <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.freeShipping}
+                    onChange={(e) =>
+                      handleInputChange("freeShipping", e.target.checked)
+                    }
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <span className="text-sm text-gray-700">Free Shipping</span>
+                </label>
+                <span
+                  className={
+                    formData.freeShipping ? "text-gray-400 line-through" : ""
+                  }
+                >
+                  {formatCurrency(350)}
+                </span>
+              </div>
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-gray-800">
                   Total Amount:
