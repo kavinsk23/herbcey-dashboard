@@ -16,6 +16,7 @@ interface Order {
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
+  freeShipping?: boolean;
 }
 
 interface OrderFormProps {
@@ -33,76 +34,110 @@ const OrderForm: React.FC<OrderFormProps> = ({
   initialOrder,
   mode,
 }) => {
-  const [formData, setFormData] = useState<Order>({
-    name: "",
-    addressLine1: "",
-    addressLine2: "",
-    addressLine3: "",
-    contact: "",
-    products: [{ name: "Oil", quantity: 1, price: 1200 }],
-    status: "Preparing",
-    orderDate: new Date().toISOString().split("T")[0],
-    paymentMethod: "COD",
+  const [formData, setFormData] = useState({
+    customerInfo: "",
+    status: "Preparing" as
+      | "Preparing"
+      | "Shipped"
+      | "Delivered"
+      | "Returned"
+      | "Damaged",
+    paymentMethod: "COD" as "COD" | "Bank Transfer",
     paymentReceived: false,
-    tracking: "",
+    freeShipping: false,
+    products: {
+      Oil: { selected: false, quantity: 1 },
+      Shampoo: { selected: false, quantity: 1 },
+      Conditioner: { selected: false, quantity: 1 },
+    },
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const productPrices = {
+    Oil: 950,
+    Shampoo: 1750,
+    Conditioner: 1850,
+  };
+
   useEffect(() => {
     if (initialOrder && mode === "update") {
-      setFormData(initialOrder);
+      // Convert order back to form format
+      const productState = {
+        Oil: { selected: false, quantity: 1 },
+        Shampoo: { selected: false, quantity: 1 },
+        Conditioner: { selected: false, quantity: 1 },
+      };
+
+      initialOrder.products.forEach((product) => {
+        if (product.name in productState) {
+          productState[product.name as keyof typeof productState] = {
+            selected: true,
+            quantity: product.quantity,
+          };
+        }
+      });
+
+      // Combine customer info into single string
+      const customerInfo = `${initialOrder.name}\n${initialOrder.addressLine1}\n${initialOrder.contact}`;
+
+      setFormData({
+        customerInfo,
+        status: initialOrder.status,
+        paymentMethod: initialOrder.paymentMethod,
+        paymentReceived: initialOrder.paymentReceived || false,
+        freeShipping: initialOrder.freeShipping || false,
+        products: productState,
+      });
     } else if (mode === "create") {
       setFormData({
-        name: "",
-        addressLine1: "",
-        addressLine2: "",
-        addressLine3: "",
-        contact: "",
-        products: [{ name: "Oil", quantity: 1, price: 1200 }],
+        customerInfo: "",
         status: "Preparing",
-        orderDate: new Date().toISOString().split("T")[0],
         paymentMethod: "COD",
         paymentReceived: false,
-        tracking: "",
+        freeShipping: false,
+        products: {
+          Oil: { selected: false, quantity: 1 },
+          Shampoo: { selected: false, quantity: 1 },
+          Conditioner: { selected: false, quantity: 1 },
+        },
       });
     }
   }, [initialOrder, mode, isOpen]);
 
-  const productOptions = [
-    { name: "Oil", price: 1200 },
-    { name: "Shampoo", price: 800 },
-    { name: "Conditioner", price: 950 },
-  ];
-
-  const statusOptions = [
-    "Preparing",
-    "Shipped",
-    "Delivered",
-    "Returned",
-    "Damaged",
-  ];
+  const parseCustomerInfo = (customerInfo: string) => {
+    const lines = customerInfo.split("\n").filter((line) => line.trim());
+    return {
+      name: lines[0] || "",
+      address: lines.slice(1, -1).join("\n") || "",
+      contact: lines[lines.length - 1] || "",
+    };
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.addressLine1.trim())
-      newErrors.addressLine1 = "Address is required";
-    if (!formData.contact.trim()) newErrors.contact = "Contact is required";
-    if (!/^\d{10}$/.test(formData.contact.replace(/\D/g, ""))) {
-      newErrors.contact = "Contact must be 10 digits";
-    }
-    if (!formData.orderDate) newErrors.orderDate = "Order date is required";
-    if (formData.products.length === 0)
-      newErrors.products = "At least one product is required";
-
-    formData.products.forEach((product, index) => {
-      if (product.quantity <= 0) {
-        newErrors[`product_${index}_quantity`] =
-          "Quantity must be greater than 0";
+    if (!formData.customerInfo.trim()) {
+      newErrors.customerInfo = "Customer information is required";
+    } else {
+      const { name, address, contact } = parseCustomerInfo(
+        formData.customerInfo
+      );
+      if (!name.trim()) newErrors.customerInfo = "Name is required";
+      if (!address.trim()) newErrors.customerInfo = "Address is required";
+      if (!contact.trim()) newErrors.customerInfo = "Contact is required";
+      if (!/^\d{10}$/.test(contact.replace(/\D/g, ""))) {
+        newErrors.customerInfo = "Contact must be 10 digits";
       }
-    });
+    }
+
+    // Check if at least one product is selected
+    const hasSelectedProduct = Object.values(formData.products).some(
+      (product) => product.selected
+    );
+    if (!hasSelectedProduct) {
+      newErrors.products = "Please select at least one product";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -111,48 +146,63 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const orderData = {
-        ...formData,
-        tracking: formData.tracking || `LK${Date.now()}`,
+      const { name, address, contact } = parseCustomerInfo(
+        formData.customerInfo
+      );
+
+      // Convert form data to Order format
+      const selectedProducts = Object.entries(formData.products)
+        .filter(([_, product]) => product.selected)
+        .map(([name, product]) => ({
+          name,
+          quantity: product.quantity,
+          price: productPrices[name as keyof typeof productPrices],
+        }));
+
+      const orderData: Order = {
+        name,
+        addressLine1: address,
+        addressLine2: "",
+        addressLine3: "",
+        contact,
+        products: selectedProducts,
+        status: formData.status,
+        orderDate: new Date().toISOString().split("T")[0],
+        paymentMethod: formData.paymentMethod,
+        paymentReceived: formData.paymentReceived,
+        freeShipping: formData.freeShipping,
+        tracking: initialOrder?.tracking || `LK${Date.now()}`,
       };
+
       onSubmit(orderData);
       onClose();
     }
   };
 
-  const handleInputChange = (field: keyof Order, value: any) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
-  const handleProductChange = (index: number, field: string, value: any) => {
-    const updatedProducts = [...formData.products];
-    if (field === "name") {
-      const selectedProduct = productOptions.find((p) => p.name === value);
-      updatedProducts[index] = {
-        ...updatedProducts[index],
-        name: value,
-        price: selectedProduct?.price || 0,
-      };
-    } else {
-      updatedProducts[index] = { ...updatedProducts[index], [field]: value };
-    }
-    setFormData((prev) => ({ ...prev, products: updatedProducts }));
-  };
-
-  const addProduct = () => {
+  const handleProductChange = (
+    productName: string,
+    field: string,
+    value: any
+  ) => {
     setFormData((prev) => ({
       ...prev,
-      products: [...prev.products, { name: "Oil", quantity: 1, price: 1200 }],
+      products: {
+        ...prev.products,
+        [productName]: {
+          ...prev.products[productName as keyof typeof prev.products],
+          [field]: value,
+        },
+      },
     }));
-  };
-
-  const removeProduct = (index: number) => {
-    if (formData.products.length > 1) {
-      const updatedProducts = formData.products.filter((_, i) => i !== index);
-      setFormData((prev) => ({ ...prev, products: updatedProducts }));
+    if (errors.products) {
+      setErrors((prev) => ({ ...prev, products: "" }));
     }
   };
 
@@ -163,17 +213,27 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }).format(amount);
   };
 
-  const totalAmount = formData.products.reduce(
-    (sum, product) => sum + product.price * product.quantity,
-    0
-  );
+  const calculateTotal = () => {
+    const subtotal = Object.entries(formData.products)
+      .filter(([_, product]) => product.selected)
+      .reduce((sum, [name, product]) => {
+        return (
+          sum +
+          productPrices[name as keyof typeof productPrices] * product.quantity
+        );
+      }, 0);
+
+    return formData.freeShipping ? subtotal : subtotal + 350;
+  };
+
+  const totalAmount = calculateTotal();
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+      <div className="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col">
+        <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-800">
             {mode === "create" ? "Create New Order" : "Update Order"}
           </h2>
@@ -197,303 +257,239 @@ const OrderForm: React.FC<OrderFormProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Customer Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+        <div className="flex-1 p-6 grid grid-cols-2 gap-8">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Customer Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">
                 Customer Information
               </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
-                      errors.name ? "border-red-500" : "border-gray-300"
-                    }`}
-                    placeholder="Enter customer name"
-                  />
-                  {errors.name && (
-                    <p className="text-red-500 text-xs mt-1">{errors.name}</p>
-                  )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Details *
+                </label>
+                <div className="text-xs text-gray-500 mb-2">
+                  Enter in format: Name, Address, Contact Number (each on new
+                  line)
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address Line 1 *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.addressLine1}
-                    onChange={(e) =>
-                      handleInputChange("addressLine1", e.target.value)
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
-                      errors.addressLine1 ? "border-red-500" : "border-gray-300"
-                    }`}
-                    placeholder="Enter address"
-                  />
-                  {errors.addressLine1 && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.addressLine1}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address Line 2
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.addressLine2}
-                    onChange={(e) =>
-                      handleInputChange("addressLine2", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Enter city/area"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address Line 3
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.addressLine3}
-                    onChange={(e) =>
-                      handleInputChange("addressLine3", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Enter province/state"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Contact Number *
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.contact}
-                    onChange={(e) =>
-                      handleInputChange("contact", e.target.value)
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
-                      errors.contact ? "border-red-500" : "border-gray-300"
-                    }`}
-                    placeholder="0771234567"
-                  />
-                  {errors.contact && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.contact}
-                    </p>
-                  )}
-                </div>
+                <textarea
+                  value={formData.customerInfo}
+                  onChange={(e) =>
+                    handleInputChange("customerInfo", e.target.value)
+                  }
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                    errors.customerInfo ? "border-red-500" : "border-gray-300"
+                  }`}
+                  placeholder="John Doe&#10;123 Main Street, Colombo 01&#10;0771234567"
+                  rows={4}
+                />
+                {errors.customerInfo && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.customerInfo}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Order Details
+            {/* Status */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Order Status
               </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Order Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.orderDate}
-                    onChange={(e) =>
-                      handleInputChange("orderDate", e.target.value)
-                    }
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
-                      errors.orderDate ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
-                  {errors.orderDate && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.orderDate}
-                    </p>
-                  )}
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange("status", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="Preparing">Preparing</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Returned">Returned</option>
+                  <option value="Damaged">Damaged</option>
+                </select>
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      handleInputChange("status", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {/* Payment Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Payment Information
+              </h3>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Method
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Method
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="COD"
+                      checked={formData.paymentMethod === "COD"}
+                      onChange={(e) =>
+                        handleInputChange("paymentMethod", e.target.value)
+                      }
+                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Cash on Delivery
+                    </span>
                   </label>
-                  <select
-                    value={formData.paymentMethod}
-                    onChange={(e) =>
-                      handleInputChange("paymentMethod", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="COD">COD</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                  </select>
-                </div>
-
-                {formData.paymentMethod === "COD" && (
-                  <div>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.paymentReceived}
-                        onChange={(e) =>
-                          handleInputChange("paymentReceived", e.target.checked)
-                        }
-                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
-                      />
-                      <span className="text-sm text-gray-700">
-                        Payment Received
-                      </span>
-                    </label>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tracking Number
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="Bank Transfer"
+                      checked={formData.paymentMethod === "Bank Transfer"}
+                      onChange={(e) =>
+                        handleInputChange("paymentMethod", e.target.value)
+                      }
+                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Bank Transfer
+                    </span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.tracking}
-                    onChange={(e) =>
-                      handleInputChange("tracking", e.target.value)
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Auto-generated if empty"
-                  />
                 </div>
               </div>
+
+              {formData.paymentMethod === "COD" && (
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.paymentReceived}
+                      onChange={(e) =>
+                        handleInputChange("paymentReceived", e.target.checked)
+                      }
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Payment Received
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Products */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Products</h3>
-              <button
-                type="button"
-                onClick={addProduct}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
-              >
-                Add Product
-              </button>
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Products Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Select Products
+              </h3>
+              {errors.products && (
+                <p className="text-red-500 text-sm">{errors.products}</p>
+              )}
+
+              <div className="space-y-3">
+                {Object.entries(formData.products).map(
+                  ([productName, product]) => (
+                    <div
+                      key={productName}
+                      className={`p-4 border rounded-lg transition-all ${
+                        product.selected
+                          ? "border-primary bg-primary/10"
+                          : "border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={product.selected}
+                            onChange={(e) =>
+                              handleProductChange(
+                                productName,
+                                "selected",
+                                e.target.checked
+                              )
+                            }
+                            className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                          />
+                          <div>
+                            <span className="font-medium text-gray-800">
+                              {productName}
+                            </span>
+                            <p className="text-sm text-gray-600">
+                              {formatCurrency(
+                                productPrices[
+                                  productName as keyof typeof productPrices
+                                ]
+                              )}{" "}
+                              each
+                            </p>
+                          </div>
+                        </div>
+
+                        {product.selected && (
+                          <div className="flex items-center space-x-2">
+                            <label className="text-sm text-gray-700">
+                              Qty:
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="99"
+                              value={product.quantity}
+                              onChange={(e) =>
+                                handleProductChange(
+                                  productName,
+                                  "quantity",
+                                  parseInt(e.target.value) || 1
+                                )
+                              }
+                              className="w-16 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                            />
+                            <span className="text-sm font-medium text-gray-800">
+                              ={" "}
+                              {formatCurrency(
+                                productPrices[
+                                  productName as keyof typeof productPrices
+                                ] * product.quantity
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {formData.products.map((product, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg"
+            {/* Order Summary */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.freeShipping}
+                    onChange={(e) =>
+                      handleInputChange("freeShipping", e.target.checked)
+                    }
+                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                  />
+                  <span className="text-sm text-gray-700">Free Shipping</span>
+                </label>
+                <span
+                  className={
+                    formData.freeShipping ? "text-gray-400 line-through" : ""
+                  }
                 >
-                  <div className="flex-1">
-                    <select
-                      value={product.name}
-                      onChange={(e) =>
-                        handleProductChange(index, "name", e.target.value)
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                    >
-                      {productOptions.map((option) => (
-                        <option key={option.name} value={option.name}>
-                          {option.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="w-24">
-                    <input
-                      type="number"
-                      min="1"
-                      value={product.quantity}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "quantity",
-                          parseInt(e.target.value) || 1
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                    />
-                  </div>
-
-                  <div className="w-32">
-                    <input
-                      type="number"
-                      value={product.price}
-                      onChange={(e) =>
-                        handleProductChange(
-                          index,
-                          "price",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                    />
-                  </div>
-
-                  <div className="w-32 text-right text-sm font-medium">
-                    {formatCurrency(product.price * product.quantity)}
-                  </div>
-
-                  {formData.products.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeProduct(index)}
-                      className="text-red-500 hover:text-red-700 p-1"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  {formatCurrency(350)}
+                </span>
+              </div>
               <div className="flex justify-between items-center">
                 <span className="text-lg font-semibold text-gray-800">
                   Total Amount:
@@ -505,23 +501,24 @@ const OrderForm: React.FC<OrderFormProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+          {/* Action Buttons - Full Width at Bottom */}
+          <div className="col-span-2 flex justify-end space-x-3 pt-4 items-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-4 py-1.5 h-10 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
-              type="submit"
-              className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              type="button"
+              onClick={handleSubmit}
+              className="px-4 py-1.5 h-10 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
             >
               {mode === "create" ? "Create Order" : "Update Order"}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
