@@ -15,12 +15,12 @@ interface FilterSectionProps {
   setSearchTerm: (value: string) => void;
   trackingSearch: string;
   setTrackingSearch: (value: string) => void;
-  selectedStatus: StatusType;
-  setSelectedStatus: (status: StatusType) => void;
-  selectedProduct: ProductType;
-  setSelectedProduct: (product: ProductType) => void;
-  selectedPaymentStatus: PaymentStatusType;
-  setSelectedPaymentStatus: (status: PaymentStatusType) => void;
+  selectedStatus: StatusType[];
+  setSelectedStatus: (status: StatusType[]) => void;
+  selectedProduct: ProductType[];
+  setSelectedProduct: (product: ProductType[]) => void;
+  selectedPaymentStatus: PaymentStatusType[];
+  setSelectedPaymentStatus: (status: PaymentStatusType[]) => void;
   startDate: string;
   setStartDate: (date: string) => void;
   endDate: string;
@@ -87,6 +87,47 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   };
 
   const hasDateFilter = startDate || endDate;
+
+  // Handle multiple selection for status
+  const handleStatusToggle = (status: StatusType) => {
+    if (status === "All") {
+      setSelectedStatus(["All"]);
+    } else {
+      const newSelection = selectedStatus.includes(status)
+        ? selectedStatus.filter((s) => s !== status)
+        : [...selectedStatus.filter((s) => s !== "All"), status];
+
+      setSelectedStatus(newSelection.length === 0 ? ["All"] : newSelection);
+    }
+  };
+
+  // Handle multiple selection for product
+  const handleProductToggle = (product: ProductType) => {
+    if (product === "All") {
+      setSelectedProduct(["All"]);
+    } else {
+      const newSelection = selectedProduct.includes(product)
+        ? selectedProduct.filter((p) => p !== product)
+        : [...selectedProduct.filter((p) => p !== "All"), product];
+
+      setSelectedProduct(newSelection.length === 0 ? ["All"] : newSelection);
+    }
+  };
+
+  // Handle multiple selection for payment status
+  const handlePaymentStatusToggle = (paymentStatus: PaymentStatusType) => {
+    if (paymentStatus === "All") {
+      setSelectedPaymentStatus(["All"]);
+    } else {
+      const newSelection = selectedPaymentStatus.includes(paymentStatus)
+        ? selectedPaymentStatus.filter((p) => p !== paymentStatus)
+        : [...selectedPaymentStatus.filter((p) => p !== "All"), paymentStatus];
+
+      setSelectedPaymentStatus(
+        newSelection.length === 0 ? ["All"] : newSelection
+      );
+    }
+  };
 
   return (
     <div>
@@ -178,14 +219,19 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             {(Object.keys(statusColors) as StatusType[]).map((status) => (
               <button
                 key={status}
-                onClick={() => setSelectedStatus(status)}
+                onClick={() => handleStatusToggle(status)}
                 className={`px-2 py-1 text-xs rounded-lg border transition-all duration-200 ${
-                  selectedStatus === status
+                  selectedStatus.includes(status)
                     ? statusColors[status]
                     : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 {status}
+                {selectedStatus.includes(status) &&
+                  selectedStatus.length > 1 &&
+                  status !== "All" && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
+                  )}
               </button>
             ))}
           </div>
@@ -197,14 +243,19 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             {(Object.keys(productColors) as ProductType[]).map((product) => (
               <button
                 key={product}
-                onClick={() => setSelectedProduct(product)}
+                onClick={() => handleProductToggle(product)}
                 className={`px-2 py-1 text-xs rounded-lg transition-all duration-200 ${
-                  selectedProduct === product
+                  selectedProduct.includes(product)
                     ? productColors[product]
                     : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
                 }`}
               >
                 {product}
+                {selectedProduct.includes(product) &&
+                  selectedProduct.length > 1 &&
+                  product !== "All" && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
+                  )}
               </button>
             ))}
           </div>
@@ -217,14 +268,19 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               (paymentStatus) => (
                 <button
                   key={paymentStatus}
-                  onClick={() => setSelectedPaymentStatus(paymentStatus)}
+                  onClick={() => handlePaymentStatusToggle(paymentStatus)}
                   className={`px-2 py-1 text-xs rounded-lg transition-all duration-200 ${
-                    selectedPaymentStatus === paymentStatus
+                    selectedPaymentStatus.includes(paymentStatus)
                       ? paymentStatusColors[paymentStatus]
                       : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
                   }`}
                 >
                   {paymentStatus}
+                  {selectedPaymentStatus.includes(paymentStatus) &&
+                    selectedPaymentStatus.length > 1 &&
+                    paymentStatus !== "All" && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
+                    )}
                 </button>
               )
             )}

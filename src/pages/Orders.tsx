@@ -1,7 +1,7 @@
 import React, { useState } from "react";
+import FilterSection from "../components/FilterSection";
 import OrderCard from "../components/OrderCard";
 import OrderForm from "../components/OrderForm";
-import FilterSection from "../components/FilterSection";
 
 // Mock data for demonstration
 const mockOrders = [
@@ -121,10 +121,13 @@ interface Order {
 const Orders: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [trackingSearch, setTrackingSearch] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<StatusType>("All");
-  const [selectedProduct, setSelectedProduct] = useState<ProductType>("All");
-  const [selectedPaymentStatus, setSelectedPaymentStatus] =
-    useState<PaymentStatusType>("All");
+  const [selectedStatus, setSelectedStatus] = useState<StatusType[]>(["All"]);
+  const [selectedProduct, setSelectedProduct] = useState<ProductType[]>([
+    "All",
+  ]);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<
+    PaymentStatusType[]
+  >(["All"]);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -150,21 +153,23 @@ const Orders: React.FC = () => {
       order.tracking?.toLowerCase().includes(trackingSearch.toLowerCase());
 
     const matchesStatus =
-      selectedStatus === "All" || order.status === selectedStatus;
+      selectedStatus.includes("All") || selectedStatus.includes(order.status);
 
     const matchesProduct =
-      selectedProduct === "All" ||
-      order.products.some((product) => product.name === selectedProduct);
+      selectedProduct.includes("All") ||
+      order.products.some((product) =>
+        selectedProduct.includes(product.name as ProductType)
+      );
 
     const matchesPaymentStatus =
-      selectedPaymentStatus === "All" ||
-      (selectedPaymentStatus === "COD Paid" &&
+      selectedPaymentStatus.includes("All") ||
+      (selectedPaymentStatus.includes("COD Paid") &&
         order.paymentMethod === "COD" &&
         order.paymentReceived) ||
-      (selectedPaymentStatus === "COD Unpaid" &&
+      (selectedPaymentStatus.includes("COD Unpaid") &&
         order.paymentMethod === "COD" &&
         !order.paymentReceived) ||
-      (selectedPaymentStatus === "Bank Transfer" &&
+      (selectedPaymentStatus.includes("Bank Transfer") &&
         order.paymentMethod === "Bank Transfer");
 
     const orderDate = new Date(order.orderDate);
@@ -185,9 +190,9 @@ const Orders: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setTrackingSearch("");
-    setSelectedStatus("All");
-    setSelectedProduct("All");
-    setSelectedPaymentStatus("All");
+    setSelectedStatus(["All"]);
+    setSelectedProduct(["All"]);
+    setSelectedPaymentStatus(["All"]);
     setStartDate("");
     setEndDate("");
     setShowDateFilter(false);
@@ -252,6 +257,7 @@ const Orders: React.FC = () => {
         </button>
       </div>
 
+      {/* Filter Section */}
       <FilterSection
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -289,9 +295,9 @@ const Orders: React.FC = () => {
       {filteredOrders.length === 0 &&
         (searchTerm ||
           trackingSearch ||
-          selectedStatus !== "All" ||
-          selectedProduct !== "All" ||
-          selectedPaymentStatus !== "All" ||
+          !selectedStatus.includes("All") ||
+          !selectedProduct.includes("All") ||
+          !selectedPaymentStatus.includes("All") ||
           hasDateFilter) && (
           <div className="text-center py-8">
             <p className="text-gray-500">
