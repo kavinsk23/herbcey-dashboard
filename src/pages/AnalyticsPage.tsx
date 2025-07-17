@@ -426,7 +426,7 @@ const AnalyticsPage: React.FC = () => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+        <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium">{`${label}`}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} style={{ color: entry.color }}>
@@ -447,7 +447,7 @@ const AnalyticsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
             Sales Analytics Dashboard
@@ -464,13 +464,13 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Advanced Filters */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
           Analytics Filters
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block mb-1 text-sm font-medium text-gray-700">
               Time Period
             </label>
             <select
@@ -487,7 +487,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block mb-1 text-sm font-medium text-gray-700">
               Product Filter
             </label>
             <select
@@ -507,7 +507,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block mb-1 text-sm font-medium text-gray-700">
               Metric View
             </label>
             <select
@@ -526,7 +526,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block mb-1 text-sm font-medium text-gray-700">
               Start Date
             </label>
             <input
@@ -540,7 +540,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block mb-1 text-sm font-medium text-gray-700">
               End Date
             </label>
             <input
@@ -556,8 +556,8 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Enhanced KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Revenue</p>
@@ -568,7 +568,7 @@ const AnalyticsPage: React.FC = () => {
                 +{analyticsData.growthRate.toFixed(1)}% growth
               </p>
             </div>
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
               <svg
                 className="w-6 h-6 text-primary"
                 fill="none"
@@ -586,7 +586,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Orders</p>
@@ -595,7 +595,7 @@ const AnalyticsPage: React.FC = () => {
               </p>
               <p className="text-xs text-gray-500">Delivered orders</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
               <svg
                 className="w-6 h-6 text-blue-600"
                 fill="none"
@@ -613,7 +613,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Avg Order Value</p>
@@ -622,7 +622,7 @@ const AnalyticsPage: React.FC = () => {
               </p>
               <p className="text-xs text-gray-500">Per order</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
               <svg
                 className="w-6 h-6 text-green-600"
                 fill="none"
@@ -640,7 +640,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Shipping Revenue</p>
@@ -651,7 +651,7 @@ const AnalyticsPage: React.FC = () => {
                 {analyticsData.paidShippingCount} paid shipments
               </p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full">
               <svg
                 className="w-6 h-6 text-purple-600"
                 fill="none"
@@ -669,7 +669,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Free Shipping</p>
@@ -678,7 +678,7 @@ const AnalyticsPage: React.FC = () => {
               </p>
               <p className="text-xs text-gray-500">Orders with free shipping</p>
             </div>
-            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+            <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full">
               <svg
                 className="w-6 h-6 text-orange-600"
                 fill="none"
@@ -698,10 +698,10 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Main Charts Row 1 - Revenue & Orders Trends */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Revenue Trend - Line Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Revenue Trend Over Time
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -723,8 +723,8 @@ const AnalyticsPage: React.FC = () => {
         </div>
 
         {/* Orders Count - Area Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Orders Volume Trend
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -746,10 +746,10 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Main Charts Row 2 - Product Sales & Revenue Composition */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Product Sales - Pie Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Product Sales Distribution
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -800,8 +800,8 @@ const AnalyticsPage: React.FC = () => {
         </div>
 
         {/* Revenue Composition - Stacked Bar Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Revenue Composition
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -829,10 +829,10 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Main Charts Row 3 - Combined Metrics & Payment Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Combined Revenue & Orders - Composed Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Revenue vs Orders Correlation
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -865,8 +865,8 @@ const AnalyticsPage: React.FC = () => {
         </div>
 
         {/* Payment Methods - Donut Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Payment Methods Distribution
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -917,10 +917,10 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Order Status Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Order Status - Bar Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Order Status Distribution
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -947,8 +947,8 @@ const AnalyticsPage: React.FC = () => {
         </div>
 
         {/* Average Order Value Trend - Line Chart */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Average Order Value Trend
           </h3>
           <ResponsiveContainer width="100%" height={350}>
@@ -971,9 +971,9 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Detailed Analytics Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Product Performance Table */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white border border-gray-200 rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
               Product Performance Analysis
@@ -983,19 +983,19 @@ const AnalyticsPage: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Product
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Units Sold
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Revenue
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Market Share
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Avg Unit Price
                   </th>
                 </tr>
@@ -1020,13 +1020,13 @@ const AnalyticsPage: React.FC = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {data.quantity}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {formatCurrency(data.revenue)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         <div className="flex items-center">
                           <span>
                             {(
@@ -1037,7 +1037,7 @@ const AnalyticsPage: React.FC = () => {
                             ).toFixed(1)}
                             %
                           </span>
-                          <div className="ml-2 w-16 bg-gray-200 rounded-full h-2">
+                          <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
                             <div
                               className={`h-2 rounded-full ${
                                 product === "Oil"
@@ -1058,7 +1058,7 @@ const AnalyticsPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {formatCurrency(data.revenue / data.quantity)}
                       </td>
                     </tr>
@@ -1070,7 +1070,7 @@ const AnalyticsPage: React.FC = () => {
         </div>
 
         {/* Time Period Performance */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="bg-white border border-gray-200 rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
               Time Period Performance
@@ -1080,19 +1080,19 @@ const AnalyticsPage: React.FC = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Period
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Orders
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Revenue
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Avg Order Value
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Growth
                   </th>
                 </tr>
@@ -1108,19 +1108,19 @@ const AnalyticsPage: React.FC = () => {
 
                   return (
                     <tr key={period.date}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                         {period.date}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {period.orders}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {formatCurrency(period.revenue)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                         {formatCurrency(period.avgOrderValue)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td className="px-6 py-4 text-sm whitespace-nowrap">
                         <span
                           className={`${
                             growth >= 0 ? "text-green-600" : "text-red-600"
@@ -1140,13 +1140,13 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Shipping Analysis Dashboard */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
           Shipping Analysis
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">
+            <div className="mb-2 text-3xl font-bold text-green-600">
               {analyticsData.freeShippingCount}
             </div>
             <div className="text-sm text-gray-600">Free Shipping Orders</div>
@@ -1159,7 +1159,7 @@ const AnalyticsPage: React.FC = () => {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">
+            <div className="mb-2 text-3xl font-bold text-blue-600">
               {analyticsData.paidShippingCount}
             </div>
             <div className="text-sm text-gray-600">Paid Shipping Orders</div>
@@ -1172,7 +1172,7 @@ const AnalyticsPage: React.FC = () => {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-2">
+            <div className="mb-2 text-3xl font-bold text-primary">
               {formatCurrency(analyticsData.shippingRevenue)}
             </div>
             <div className="text-sm text-gray-600">Total Shipping Revenue</div>
@@ -1185,7 +1185,7 @@ const AnalyticsPage: React.FC = () => {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">
+            <div className="mb-2 text-3xl font-bold text-purple-600">
               {formatCurrency(SHIPPING_COST)}
             </div>
             <div className="text-sm text-gray-600">Shipping Cost Per Order</div>
@@ -1195,13 +1195,13 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Business Insights Summary */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
           Business Insights & Recommendations
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">
+            <h4 className="mb-2 font-medium text-gray-900">
               Performance Highlights
             </h4>
             <ul className="space-y-2 text-sm text-gray-600">
@@ -1224,7 +1224,7 @@ const AnalyticsPage: React.FC = () => {
             </ul>
           </div>
           <div>
-            <h4 className="font-medium text-gray-900 mb-2">Recommendations</h4>
+            <h4 className="mb-2 font-medium text-gray-900">Recommendations</h4>
             <ul className="space-y-2 text-sm text-gray-600">
               <li>• Focus on promoting high-revenue products</li>
               <li>• Consider shipping strategy optimization</li>
