@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
 import AdminLoadingPage from "./pages/AdminLoadingPage";
 import Orders from "./pages/Orders";
-// import AnalyticsPage from "./pages/AnalyticsPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 const App = () => {
   return (
@@ -15,7 +15,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<AdminLoadingPage />} />
             <Route path="/admin/orders" element={<Orders />} />
-            {/* <Route path="/analytics" element={<AnalyticsPage />} /> */}
+            <Route path="/admin/analytics" element={<AnalyticsPage />} />
           </Routes>
         </main>
       </div>
