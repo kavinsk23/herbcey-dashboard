@@ -1,6 +1,9 @@
 // Simple Google Sheets Service - Browser Compatible
 // This uses the Google Sheets REST API directly without Node.js dependencies
 
+console.log("API Key:", process.env.REACT_APP_GOOGLE_API_KEY);
+console.log("Sheet ID:", process.env.REACT_APP_GOOGLE_SHEET_ID);
+
 // Types matching your React components
 interface Product {
   name: string;

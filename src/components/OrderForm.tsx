@@ -27,6 +27,20 @@ interface OrderFormProps {
   mode: "create" | "update";
 }
 
+const validateAddress = (customerInfo: string) => {
+  const lines = customerInfo.split("\n").filter((line) => line.trim());
+
+  if (lines.length < 3) {
+    return "Please provide: Name, Address, and Contact Number (each on new line)";
+  }
+
+  if (!/^0\d{9}$/.test(lines[lines.length - 1])) {
+    return "Contact must be a 10-digit Sri Lankan number (071XXXXXXX)";
+  }
+
+  return null;
+};
+
 const OrderForm: React.FC<OrderFormProps> = ({
   isOpen,
   onClose,

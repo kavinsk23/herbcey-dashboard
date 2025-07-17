@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Header from "./components/Header";
 import AdminLoadingPage from "./pages/AdminLoadingPage";
 import Orders from "./pages/Orders";
+import AnalyticsPage from "./pages/AnalyticsPage";
 // import AnalyticsPage from "./pages/AnalyticsPage";
 
 const App = () => {
@@ -11,11 +12,11 @@ const App = () => {
     <Router>
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <main className="container mx-auto px-4 py-6">
+        <main className="container px-4 py-6 mx-auto">
           <Routes>
             <Route path="/" element={<AdminLoadingPage />} />
             <Route path="/admin/orders" element={<Orders />} />
-            {/* <Route path="/analytics" element={<AnalyticsPage />} /> */}
+            <Route path="/admin/analytics" element={<AnalyticsPage />} />
           </Routes>
         </main>
       </div>

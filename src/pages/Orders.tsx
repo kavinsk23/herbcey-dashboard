@@ -6,7 +6,7 @@ import {
   getAllOrders,
   addOrderToSheet,
   updateOrderInSheet,
-} from "../assets/services/googleSheetsService";
+} from "../services/googleSheetsService";
 
 type StatusType =
   | "All"
