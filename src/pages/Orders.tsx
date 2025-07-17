@@ -1,93 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FilterSection from "../components/FilterSection";
 import OrderCard from "../components/OrderCard";
 import OrderForm from "../components/OrderForm";
-
-// Mock data for demonstration
-const mockOrders = [
-  {
-    name: "John Doe",
-    addressLine1: "123 Main St, Colombo",
-    addressLine2: "Sri Lanka",
-    addressLine3: "",
-    contact: "0761234567",
-    products: [
-      { name: "Oil", quantity: 2, price: 950 },
-      { name: "Shampoo", quantity: 1, price: 1750 },
-    ],
-    status: "Preparing" as const,
-    orderDate: "2023-05-15",
-    paymentMethod: "COD" as const,
-    paymentReceived: true,
-    tracking: "LK123456789",
-    freeShipping: false,
-  },
-  {
-    name: "Jane Smith",
-    addressLine1: "456 Ocean Ave, Galle",
-    addressLine2: "",
-    addressLine3: "Southern Province",
-    contact: "0779876543",
-    products: [
-      { name: "Conditioner", quantity: 3, price: 1850 },
-      { name: "Shampoo", quantity: 2, price: 1750 },
-    ],
-    status: "Shipped" as const,
-    orderDate: "2023-05-18",
-    paymentMethod: "Bank Transfer" as const,
-    paymentReceived: true,
-    tracking: "LK987654321",
-    freeShipping: true,
-  },
-  {
-    name: "David Johnson",
-    addressLine1: "789 Hill St",
-    addressLine2: "Kandy",
-    addressLine3: "Central Province",
-    contact: "0715551234",
-    products: [
-      { name: "Oil", quantity: 1, price: 950 },
-      { name: "Conditioner", quantity: 2, price: 1850 },
-    ],
-    status: "Delivered" as const,
-    orderDate: "2023-05-10",
-    paymentMethod: "Bank Transfer" as const,
-    paymentReceived: true,
-    tracking: "LK456123789",
-    freeShipping: false,
-  },
-  {
-    name: "Maria Garcia",
-    addressLine1: "321 Beach Rd",
-    addressLine2: "Negombo",
-    addressLine3: "",
-    contact: "0768884567",
-    products: [
-      { name: "Shampoo", quantity: 1, price: 1750 },
-      { name: "Conditioner", quantity: 1, price: 1850 },
-    ],
-    status: "Returned" as const,
-    orderDate: "2023-05-20",
-    paymentMethod: "COD" as const,
-    paymentReceived: false,
-    tracking: "LK789123456",
-    freeShipping: true,
-  },
-  {
-    name: "Raj Patel",
-    addressLine1: "10 Temple Road",
-    addressLine2: "",
-    addressLine3: "Anuradhapura",
-    contact: "0723334444",
-    products: [{ name: "Oil", quantity: 1, price: 950 }],
-    status: "Damaged" as const,
-    orderDate: "2023-06-01",
-    paymentMethod: "COD" as const,
-    paymentReceived: false,
-    tracking: "LK111222333",
-    freeShipping: false,
-  },
-];
+import {
+  getAllOrders,
+  addOrderToSheet,
+  updateOrderInSheet,
+} from "../assets/services/googleSheetsService";
 
 type StatusType =
   | "All"
@@ -137,7 +56,82 @@ const Orders: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [formMode, setFormMode] = useState<"create" | "update">("create");
 
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load orders from Google Sheets on component mount
+  useEffect(() => {
+    loadOrdersFromSheets();
+  }, []);
+
+  const loadOrdersFromSheets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await getAllOrders();
+
+      if (result.success && result.data) {
+        // Convert sheet data back to Order format
+        const convertedOrders: Order[] = result.data.map((sheetOrder) => {
+          // Parse customer info back to separate fields
+          const customerLines = sheetOrder.customerInfo.split("\n");
+          const name = customerLines[0] || "";
+          const address = customerLines.slice(1, -1).join(", ") || "";
+          const contact = customerLines[customerLines.length - 1] || "";
+
+          // Reconstruct products array
+          const products = [];
+          if (sheetOrder.oilQty > 0) {
+            products.push({
+              name: "Oil",
+              quantity: sheetOrder.oilQty,
+              price: 950,
+            });
+          }
+          if (sheetOrder.shampooQty > 0) {
+            products.push({
+              name: "Shampoo",
+              quantity: sheetOrder.shampooQty,
+              price: 1750,
+            });
+          }
+          if (sheetOrder.conditionerQty > 0) {
+            products.push({
+              name: "Conditioner",
+              quantity: sheetOrder.conditionerQty,
+              price: 1850,
+            });
+          }
+
+          return {
+            name,
+            addressLine1: address,
+            addressLine2: "",
+            addressLine3: "",
+            contact,
+            products,
+            status: sheetOrder.orderStatus as Order["status"],
+            orderDate: sheetOrder.orderDate,
+            paymentMethod: sheetOrder.paymentMethod as Order["paymentMethod"],
+            paymentReceived: sheetOrder.paymentReceived,
+            tracking: sheetOrder.trackingId,
+            freeShipping: sheetOrder.freeShipping,
+          };
+        });
+
+        setOrders(convertedOrders);
+      } else {
+        setError(result.error || "Failed to load orders");
+      }
+    } catch (err) {
+      console.error("Error loading orders:", err);
+      setError("An unexpected error occurred while loading orders");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredOrders = orders.filter((order) => {
     const matchesGeneral =
@@ -213,32 +207,87 @@ const Orders: React.FC = () => {
   };
 
   // Handle form submission
-  const handleOrderSubmit = (orderData: Order) => {
-    if (formMode === "create") {
-      // Add new order to the list
-      setOrders((prev) => [...prev, orderData]);
-      console.log("Creating order:", orderData);
-    } else {
-      // Update existing order
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.tracking === editingOrder?.tracking ? orderData : order
-        )
-      );
-      console.log("Updating order:", orderData);
+  const handleOrderSubmit = async (orderData: Order) => {
+    try {
+      if (formMode === "create") {
+        const result = await addOrderToSheet(orderData);
+
+        if (result.success) {
+          alert(
+            `Order created successfully! Tracking ID: ${result.trackingId}`
+          );
+          // Reload orders from Google Sheets
+          await loadOrdersFromSheets();
+        } else {
+          alert(`Error creating order: ${result.error}`);
+        }
+      } else {
+        if (editingOrder?.tracking) {
+          const result = await updateOrderInSheet(
+            editingOrder.tracking,
+            orderData
+          );
+
+          if (result.success) {
+            alert("Order updated successfully!");
+            // Reload orders from Google Sheets
+            await loadOrdersFromSheets();
+          } else {
+            alert(`Error updating order: ${result.error}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      alert("An unexpected error occurred. Please try again.");
     }
   };
 
   const hasDateFilter = startDate || endDate;
 
+  if (loading) {
+    return (
+      <div className="container px-4 py-8 mx-auto">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto border-b-2 rounded-full animate-spin border-primary"></div>
+            <p className="mt-4 text-gray-600">Loading orders...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container px-4 py-8 mx-auto">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-center">
+            <div className="mb-4 text-xl text-red-500">⚠️</div>
+            <h2 className="mb-2 text-xl font-semibold text-gray-900">
+              Error Loading Orders
+            </h2>
+            <p className="mb-4 text-gray-600">{error}</p>
+            <button
+              onClick={loadOrdersFromSheets}
+              className="px-4 py-2 text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container px-4 py-8 mx-auto">
       {/* Header with New Order Button */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
         <button
           onClick={handleCreateOrder}
-          className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2 font-medium"
+          className="flex items-center px-6 py-3 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
         >
           <svg
             className="w-5 h-5"
@@ -299,12 +348,31 @@ const Orders: React.FC = () => {
           !selectedProduct.includes("All") ||
           !selectedPaymentStatus.includes("All") ||
           hasDateFilter) && (
-          <div className="text-center py-8">
+          <div className="py-8 text-center">
             <p className="text-gray-500">
               No orders found matching your search criteria.
             </p>
           </div>
         )}
+
+      {/* Empty state for no orders */}
+      {orders.length === 0 && !loading && !error && (
+        <div className="py-8 text-center">
+          <div className="mb-4 text-6xl text-gray-400">📦</div>
+          <h2 className="mb-2 text-xl font-semibold text-gray-900">
+            No Orders Found
+          </h2>
+          <p className="mb-6 text-gray-600">
+            Get started by creating your first order
+          </p>
+          <button
+            onClick={handleCreateOrder}
+            className="px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
+          >
+            Create First Order
+          </button>
+        </div>
+      )}
 
       {/* Order Form Modal */}
       <OrderForm

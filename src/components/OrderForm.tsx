@@ -53,6 +53,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const productPrices = {
     Oil: 950,
@@ -143,9 +144,16 @@ const OrderForm: React.FC<OrderFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
       const { name, address, contact } = parseCustomerInfo(
         formData.customerInfo
       );
@@ -174,8 +182,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
         tracking: initialOrder?.tracking || `LK${Date.now()}`,
       };
 
-      onSubmit(orderData);
+      await onSubmit(orderData);
       onClose();
+    } catch (error) {
+      console.error("Error submitting order:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -231,15 +243,16 @@ const OrderForm: React.FC<OrderFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="bg-white rounded-xl w-full max-w-6xl h-[90vh] flex flex-col">
-        <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800">
             {mode === "create" ? "Create New Order" : "Update Order"}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-gray-500 transition-colors hover:text-gray-700"
+            disabled={isSubmitting}
           >
             <svg
               className="w-6 h-6"
@@ -257,7 +270,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 p-6 grid grid-cols-2 gap-8">
+        <div className="grid flex-1 grid-cols-2 gap-8 p-6">
           {/* Left Column */}
           <div className="space-y-6">
             {/* Customer Information */}
@@ -267,10 +280,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
               </h3>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
                   Customer Details *
                 </label>
-                <div className="text-xs text-gray-500 mb-2">
+                <div className="mb-2 text-xs text-gray-500">
                   Enter in format: Name, Address, Contact Number (each on new
                   line)
                 </div>
@@ -284,9 +297,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
                   }`}
                   placeholder="John Doe&#10;123 Main Street, Colombo 01&#10;0771234567"
                   rows={4}
+                  disabled={isSubmitting}
                 />
                 {errors.customerInfo && (
-                  <p className="text-red-500 text-xs mt-1">
+                  <p className="mt-1 text-xs text-red-500">
                     {errors.customerInfo}
                   </p>
                 )}
@@ -300,13 +314,14 @@ const OrderForm: React.FC<OrderFormProps> = ({
               </h3>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
                   Status
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => handleInputChange("status", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={isSubmitting}
                 >
                   <option value="Preparing">Preparing</option>
                   <option value="Shipped">Shipped</option>
@@ -324,7 +339,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
               </h3>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
                   Payment Method
                 </label>
                 <div className="flex space-x-4">
@@ -337,7 +352,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       onChange={(e) =>
                         handleInputChange("paymentMethod", e.target.value)
                       }
-                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      className="w-4 h-4 border-gray-300 text-primary focus:ring-primary"
+                      disabled={isSubmitting}
                     />
                     <span className="ml-2 text-sm text-gray-700">
                       Cash on Delivery
@@ -352,7 +368,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       onChange={(e) =>
                         handleInputChange("paymentMethod", e.target.value)
                       }
-                      className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      className="w-4 h-4 border-gray-300 text-primary focus:ring-primary"
+                      disabled={isSubmitting}
                     />
                     <span className="ml-2 text-sm text-gray-700">
                       Bank Transfer
@@ -370,7 +387,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       onChange={(e) =>
                         handleInputChange("paymentReceived", e.target.checked)
                       }
-                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      className="w-4 h-4 border-gray-300 rounded text-primary focus:ring-primary"
+                      disabled={isSubmitting}
                     />
                     <span className="text-sm text-gray-700">
                       Payment Received
@@ -389,7 +407,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                 Select Products
               </h3>
               {errors.products && (
-                <p className="text-red-500 text-sm">{errors.products}</p>
+                <p className="text-sm text-red-500">{errors.products}</p>
               )}
 
               <div className="space-y-3">
@@ -415,7 +433,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                 e.target.checked
                               )
                             }
-                            className="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary"
+                            className="w-5 h-5 border-gray-300 rounded text-primary focus:ring-primary"
+                            disabled={isSubmitting}
                           />
                           <div>
                             <span className="font-medium text-gray-800">
@@ -449,7 +468,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                   parseInt(e.target.value) || 1
                                 )
                               }
-                              className="w-16 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                              className="w-16 px-2 py-1 text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                              disabled={isSubmitting}
                             />
                             <span className="text-sm font-medium text-gray-800">
                               ={" "}
@@ -469,8 +489,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
             </div>
 
             {/* Order Summary */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
+            <div className="p-4 rounded-lg bg-gray-50">
+              <div className="flex items-center justify-between mb-2">
                 <label className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -478,7 +498,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     onChange={(e) =>
                       handleInputChange("freeShipping", e.target.checked)
                     }
-                    className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    className="w-4 h-4 border-gray-300 rounded text-primary focus:ring-primary"
+                    disabled={isSubmitting}
                   />
                   <span className="text-sm text-gray-700">Free Shipping</span>
                 </label>
@@ -490,7 +511,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                   {formatCurrency(350)}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <span className="text-lg font-semibold text-gray-800">
                   Total Amount:
                 </span>
@@ -502,20 +523,28 @@ const OrderForm: React.FC<OrderFormProps> = ({
           </div>
 
           {/* Action Buttons - Full Width at Bottom */}
-          <div className="col-span-2 flex justify-end space-x-3 pt-4 items-end">
+          <div className="flex items-end justify-end col-span-2 pt-4 space-x-3">
             <button
               type="button"
               onClick={onClose}
               className="px-4 py-1.5 h-10 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              className="px-4 py-1.5 h-10 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              className="px-4 py-1.5 h-10 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
             >
-              {mode === "create" ? "Create Order" : "Update Order"}
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Updating..."
+                : mode === "create"
+                ? "Create Order"
+                : "Update Order"}
             </button>
           </div>
         </div>

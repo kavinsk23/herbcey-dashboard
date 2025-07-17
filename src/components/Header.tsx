@@ -8,10 +8,10 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onNewOrderClick }) => {
   return (
     <header className="bg-white border-b border-black-200">
-      <div className="max-w-6xl mx-auto px-6 py-4">
+      <div className="max-w-6xl px-6 py-4 mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center">
+            <div className="flex items-center justify-center w-10 h-10 rounded-full">
               <img src={logo} className="rounded-full" alt="logo" />
             </div>
             <div>
@@ -29,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({ onNewOrderClick }) => {
           <div className="flex items-center space-x-4">
             <button
               onClick={onNewOrderClick}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2 text-sm font-medium"
+              className="flex items-center px-4 py-2 space-x-2 text-sm font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
             >
               <svg
                 className="w-4 h-4"
@@ -47,8 +47,8 @@ const Header: React.FC<HeaderProps> = ({ onNewOrderClick }) => {
               <span>New Order</span>
             </button>
 
-            <div className="w-8 h-8 bg-black-100 rounded-full flex items-center justify-center">
-              <span className="text-black-600 text-sm">👤</span>
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-black-100">
+              <span className="text-sm text-black-600">👤</span>
             </div>
           </div>
         </div>
