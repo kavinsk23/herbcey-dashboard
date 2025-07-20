@@ -46,28 +46,22 @@ const OrderForm: React.FC<OrderFormProps> = ({
     paymentReceived: false,
     freeShipping: false,
     products: {
-      Oil: { selected: false, quantity: 1 },
-      Shampoo: { selected: false, quantity: 1 },
-      Conditioner: { selected: false, quantity: 1 },
+      Oil: { selected: false, quantity: 1, price: 950 },
+      Shampoo: { selected: false, quantity: 1, price: 1750 },
+      Conditioner: { selected: false, quantity: 1, price: 1850 },
     },
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const productPrices = {
-    Oil: 950,
-    Shampoo: 1750,
-    Conditioner: 1850,
-  };
-
   useEffect(() => {
     if (initialOrder && mode === "update") {
       // Convert order back to form format
       const productState = {
-        Oil: { selected: false, quantity: 1 },
-        Shampoo: { selected: false, quantity: 1 },
-        Conditioner: { selected: false, quantity: 1 },
+        Oil: { selected: false, quantity: 1, price: 950 },
+        Shampoo: { selected: false, quantity: 1, price: 1750 },
+        Conditioner: { selected: false, quantity: 1, price: 1850 },
       };
 
       initialOrder.products.forEach((product) => {
@@ -75,6 +69,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           productState[product.name as keyof typeof productState] = {
             selected: true,
             quantity: product.quantity,
+            price: product.price,
           };
         }
       });
@@ -98,9 +93,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
         paymentReceived: false,
         freeShipping: false,
         products: {
-          Oil: { selected: false, quantity: 1 },
-          Shampoo: { selected: false, quantity: 1 },
-          Conditioner: { selected: false, quantity: 1 },
+          Oil: { selected: false, quantity: 1, price: 950 },
+          Shampoo: { selected: false, quantity: 1, price: 1750 },
+          Conditioner: { selected: false, quantity: 1, price: 1850 },
         },
       });
     }
@@ -164,7 +159,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         .map(([name, product]) => ({
           name,
           quantity: product.quantity,
-          price: productPrices[name as keyof typeof productPrices],
+          price: product.price,
         }));
 
       const orderData: Order = {
@@ -229,10 +224,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     const subtotal = Object.entries(formData.products)
       .filter(([_, product]) => product.selected)
       .reduce((sum, [name, product]) => {
-        return (
-          sum +
-          productPrices[name as keyof typeof productPrices] * product.quantity
-        );
+        return sum + product.price * product.quantity;
       }, 0);
 
     return formData.freeShipping ? subtotal : subtotal + 350;
@@ -444,14 +436,25 @@ const OrderForm: React.FC<OrderFormProps> = ({
                               <span className="font-medium text-gray-800 text-sm">
                                 {productName}
                               </span>
-                              <p className="text-xs text-gray-600">
-                                {formatCurrency(
-                                  productPrices[
-                                    productName as keyof typeof productPrices
-                                  ]
-                                )}{" "}
-                                each
-                              </p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={product.price}
+                                  onChange={(e) =>
+                                    handleProductChange(
+                                      productName,
+                                      "price",
+                                      parseInt(e.target.value) || 0
+                                    )
+                                  }
+                                  className="w-16 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                                  disabled={isSubmitting}
+                                />
+                                <span className="text-xs text-gray-600">
+                                  LKR each
+                                </span>
+                              </div>
                             </div>
                           </div>
 
@@ -478,9 +481,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                               <span className="text-xs font-medium text-gray-800 min-w-20">
                                 ={" "}
                                 {formatCurrency(
-                                  productPrices[
-                                    productName as keyof typeof productPrices
-                                  ] * product.quantity
+                                  product.price * product.quantity
                                 )}
                               </span>
                             </div>
