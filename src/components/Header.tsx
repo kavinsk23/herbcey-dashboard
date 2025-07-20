@@ -27,26 +27,6 @@ const Header: React.FC<HeaderProps> = ({ onNewOrderClick }) => {
 
           {/* New Order Button and User Profile */}
           <div className="flex items-center space-x-4">
-            <button
-              onClick={onNewOrderClick}
-              className="flex items-center px-4 py-2 space-x-2 text-sm font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              <span>New Order</span>
-            </button>
-
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-black-100">
               <span className="text-sm text-black-600">👤</span>
             </div>

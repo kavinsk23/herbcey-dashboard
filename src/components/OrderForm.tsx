@@ -549,10 +549,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
             <button
               type="button"
               onClick={handleDelete}
-              className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm mr-auto bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Deleting..." : "Delete"}
+              {isSubmitting ? "Deleting..." : "Delete Order"}
             </button>
           )}
           <button
