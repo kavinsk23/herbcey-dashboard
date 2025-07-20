@@ -117,29 +117,38 @@ function orderToSheetRow(order: Order): (string | number)[] {
 // Function to add a new order to Google Sheets
 export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
   try {
-    // First, get the current data to find the next empty row
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const accessToken = localStorage.getItem("google_access_token");
+    if (!accessToken) {
+      throw new Error("No access token found. Please sign in first.");
     }
 
-    const data = await response.json();
-    const nextRow = (data.values?.length || 1) + 1;
+    const metaRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-    // Prepare the row data
+    if (!metaRes.ok) {
+      throw new Error(`Failed to read sheet: ${metaRes.status}`);
+    }
+
+    const meta = await metaRes.json();
+    const nextRow = (meta.values?.length || 1) + 1;
+
     const rowData = orderToSheetRow(order);
     const trackingId = rowData[0] as string;
 
-    // Add the new row
-    const appendResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${nextRow}:L${nextRow}?valueInputOption=RAW&key=${GOOGLE_API_KEY}`,
+    // Append new order row
+    const appendRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}:append?valueInputOption=RAW`,
       {
-        method: "PUT",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           values: [rowData],
@@ -147,18 +156,17 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
       }
     );
 
-    if (!appendResponse.ok) {
-      throw new Error(`Failed to add order: ${appendResponse.status}`);
+    if (!appendRes.ok) {
+      throw new Error(`Failed to add order: ${appendRes.status}`);
     }
 
-    console.log("Order added successfully to Google Sheets");
     return {
       success: true,
-      trackingId: trackingId,
+      trackingId,
       data: rowData,
     };
   } catch (error) {
-    console.error("Error adding order to Google Sheets:", error);
+    console.error("Error adding order:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

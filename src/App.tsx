@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import AdminLoadingPage from "./pages/AdminLoadingPage";
 import Orders from "./pages/Orders";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import GoogleLogin from "./pages/googleLogin";
 
 const App = () => {
   return (
@@ -13,7 +14,8 @@ const App = () => {
         <Header />
         <main className="container mx-auto px-4 py-6">
           <Routes>
-            <Route path="/" element={<AdminLoadingPage />} />
+            <Route path="/" element={<GoogleLogin />} />
+            <Route path="/admin" element={<AdminLoadingPage />} />
             <Route path="/admin/orders" element={<Orders />} />
             <Route path="/admin/analytics" element={<AnalyticsPage />} />
           </Routes>
