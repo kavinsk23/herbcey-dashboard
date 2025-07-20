@@ -1,4 +1,4 @@
-// Simple Google Sheets Service - Browser Compatible
+// Fixed Google Sheets Service - Browser Compatible
 // This uses the Google Sheets REST API directly without Node.js dependencies
 
 // Types matching your React components
@@ -136,7 +136,6 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
     }
 
     const meta = await metaRes.json();
-    const nextRow = (meta.values?.length || 1) + 1;
 
     const rowData = orderToSheetRow(order);
     const trackingId = rowData[0] as string;
@@ -174,15 +173,25 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
   }
 }
 
-// Function to update an existing order
+// Function to update an existing order - FIXED VERSION
 export async function updateOrderInSheet(
   trackingId: string,
   updatedOrder: Order
 ): Promise<ApiResponse> {
   try {
-    // Get all data to find the row with the tracking ID
+    const accessToken = localStorage.getItem("google_access_token");
+    if (!accessToken) {
+      throw new Error("No access token found. Please sign in first.");
+    }
+
+    // Get all data to find the row with the tracking ID - USE ACCESS TOKEN
     const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
     );
 
     if (!response.ok) {
@@ -208,13 +217,14 @@ export async function updateOrderInSheet(
     });
     const actualRowNumber = rowIndex + 1; // Convert to 1-based indexing
 
-    // Update the row
+    // Update the row - USE ACCESS TOKEN HERE TOO
     const updateResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:L${actualRowNumber}?valueInputOption=RAW&key=${GOOGLE_API_KEY}`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:L${actualRowNumber}?valueInputOption=RAW`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`, // THIS WAS MISSING!
         },
         body: JSON.stringify({
           values: [updatedRowData],
@@ -223,7 +233,10 @@ export async function updateOrderInSheet(
     );
 
     if (!updateResponse.ok) {
-      throw new Error(`Failed to update order: ${updateResponse.status}`);
+      const errorText = await updateResponse.text();
+      throw new Error(
+        `Failed to update order: ${updateResponse.status} - ${errorText}`
+      );
     }
 
     console.log("Order updated successfully in Google Sheets");
@@ -240,9 +253,25 @@ export async function updateOrderInSheet(
 // Function to get all orders from the sheet
 export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
   try {
-    const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`
-    );
+    // First try with access token (for authenticated requests)
+    const accessToken = localStorage.getItem("google_access_token");
+
+    let response;
+    if (accessToken) {
+      response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+    } else {
+      // Fallback to API key if no access token
+      response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`
+      );
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
