@@ -6,6 +6,7 @@ import {
   getAllOrders,
   addOrderToSheet,
   updateOrderInSheet,
+  deleteOrderFromSheet,
 } from "../assets/services/googleSheetsService";
 
 type StatusType =
@@ -243,6 +244,60 @@ const Orders: React.FC = () => {
     }
   };
 
+  const handleOrderDelete = async () => {
+    if (!editingOrder?.tracking) return;
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete order ${editingOrder.tracking}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await deleteOrderFromSheet(editingOrder.tracking);
+
+      if (result.success) {
+        alert("Order deleted successfully!");
+        setShowOrderForm(false);
+        setEditingOrder(null);
+        await loadOrdersFromSheets();
+      } else {
+        alert(`Error deleting order: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("An unexpected error occurred while deleting the order.");
+    }
+  };
+
+  const handleDeleteOrderFromCard = async (order: Order) => {
+    if (!order.tracking) return;
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete order ${order.tracking}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await deleteOrderFromSheet(order.tracking);
+
+      if (result.success) {
+        alert("Order deleted successfully!");
+        await loadOrdersFromSheets();
+      } else {
+        alert(`Error deleting order: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("An unexpected error occurred while deleting the order.");
+    }
+  };
+
   const hasDateFilter = startDate || endDate;
 
   if (loading) {
@@ -378,6 +433,7 @@ const Orders: React.FC = () => {
       <OrderForm
         isOpen={showOrderForm}
         onClose={() => setShowOrderForm(false)}
+        onDelete={handleOrderDelete}
         onSubmit={handleOrderSubmit}
         initialOrder={editingOrder}
         mode={formMode}

@@ -23,6 +23,7 @@ interface OrderFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (order: Order) => void;
+  onDelete?: () => void;
   initialOrder?: Order | null;
   mode: "create" | "update";
 }
@@ -31,6 +32,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onDelete,
   initialOrder,
   mode,
 }) => {
@@ -57,7 +59,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   useEffect(() => {
     if (initialOrder && mode === "update") {
-      // Convert order back to form format
       const productState = {
         Oil: { selected: false, quantity: 1, price: 950 },
         Shampoo: { selected: false, quantity: 1, price: 1750 },
@@ -74,7 +75,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         }
       });
 
-      // Combine customer info into single string
       const customerInfo = `${initialOrder.name}\n${initialOrder.addressLine1}\n${initialOrder.contact}`;
 
       setFormData({
@@ -127,7 +127,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
       }
     }
 
-    // Check if at least one product is selected
     const hasSelectedProduct = Object.values(formData.products).some(
       (product) => product.selected
     );
@@ -153,7 +152,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         formData.customerInfo
       );
 
-      // Convert form data to Order format
       const selectedProducts = Object.entries(formData.products)
         .filter(([_, product]) => product.selected)
         .map(([name, product]) => ({
@@ -181,6 +179,20 @@ const OrderForm: React.FC<OrderFormProps> = ({
       onClose();
     } catch (error) {
       console.error("Error submitting order:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+
+    try {
+      setIsSubmitting(true);
+      await onDelete();
+      onClose();
+    } catch (error) {
+      console.error("Error deleting order:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -532,7 +544,17 @@ const OrderForm: React.FC<OrderFormProps> = ({
         </div>
 
         {/* Fixed Footer with Action Buttons */}
-        <div className="flex items-center justify-end px-6 py-3 border-t border-gray-200 space-x-3 bg-gray-50">
+        <div className="flex items-center justify-end px-6 py-3 border-t border-gray-200 bg-gray-50 space-x-3">
+          {mode === "update" && onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deleting..." : "Delete"}
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
