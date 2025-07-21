@@ -37,7 +37,7 @@ interface Order {
   freeShipping?: boolean;
 }
 
-// Enhanced mock data with more entries for better analytics
+// Mock data remains the same as in your original code
 const mockOrders: Order[] = [
   {
     name: "John Doe",
@@ -295,7 +295,6 @@ const AnalyticsPage: React.FC = () => {
       0
     );
     const totalOrders = filteredOrders.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Product sales breakdown
     const productSales = filteredOrders.reduce((acc, order) => {
@@ -330,27 +329,16 @@ const AnalyticsPage: React.FC = () => {
           date: key,
           revenue: 0,
           orders: 0,
-          productRevenue: 0,
-          shippingRevenue: 0,
-          avgOrderValue: 0,
         };
       }
 
       const orderTotal = calculateOrderTotal(order);
-      const productTotal = order.products.reduce(
-        (sum, product) => sum + product.price * product.quantity,
-        0
-      );
-      const shippingCost = order.freeShipping ? 0 : SHIPPING_COST;
 
       acc[key].revenue += orderTotal;
       acc[key].orders += 1;
-      acc[key].productRevenue += productTotal;
-      acc[key].shippingRevenue += shippingCost;
-      acc[key].avgOrderValue = acc[key].revenue / acc[key].orders;
 
       return acc;
-    }, {} as Record<string, { date: string; revenue: number; orders: number; productRevenue: number; shippingRevenue: number; avgOrderValue: number }>);
+    }, {} as Record<string, { date: string; revenue: number; orders: number }>);
 
     // Payment method breakdown
     const paymentMethods = filteredOrders.reduce((acc, order) => {
@@ -362,51 +350,14 @@ const AnalyticsPage: React.FC = () => {
       return acc;
     }, {} as Record<string, { count: number; revenue: number }>);
 
-    // Status breakdown (for all orders, not just delivered)
-    const statusBreakdown = mockOrders.reduce((acc, order) => {
-      if (!acc[order.status]) {
-        acc[order.status] = { count: 0, revenue: 0 };
-      }
-      acc[order.status].count += 1;
-      if (order.status === "Delivered") {
-        acc[order.status].revenue += calculateOrderTotal(order);
-      }
-      return acc;
-    }, {} as Record<string, { count: number; revenue: number }>);
-
-    // Free shipping analysis
-    const freeShippingCount = filteredOrders.filter(
-      (order) => order.freeShipping
-    ).length;
-    const paidShippingCount = filteredOrders.filter(
-      (order) => !order.freeShipping
-    ).length;
-    const shippingRevenue = paidShippingCount * SHIPPING_COST;
-
-    // Growth rate calculation
-    const sortedTimeData = Object.values(timeData).sort((a, b) =>
-      a.date.localeCompare(b.date)
-    );
-    const growthRate =
-      sortedTimeData.length > 1
-        ? ((sortedTimeData[sortedTimeData.length - 1].revenue -
-            sortedTimeData[0].revenue) /
-            sortedTimeData[0].revenue) *
-          100
-        : 0;
-
     return {
       totalRevenue,
       totalOrders,
-      avgOrderValue,
       productSales,
-      timeData: sortedTimeData,
+      timeData: Object.values(timeData).sort((a, b) =>
+        a.date.localeCompare(b.date)
+      ),
       paymentMethods,
-      statusBreakdown,
-      freeShippingCount,
-      paidShippingCount,
-      shippingRevenue,
-      growthRate,
     };
   }, [filteredOrders, timePeriod]);
 
@@ -555,17 +506,14 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Enhanced KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+      {/* KPI Cards - Simplified */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-primary">
                 {formatCurrency(analyticsData.totalRevenue)}
-              </p>
-              <p className="text-xs text-green-600">
-                +{analyticsData.growthRate.toFixed(1)}% growth
               </p>
             </div>
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
@@ -593,7 +541,6 @@ const AnalyticsPage: React.FC = () => {
               <p className="text-2xl font-bold text-blue-600">
                 {analyticsData.totalOrders}
               </p>
-              <p className="text-xs text-gray-500">Delivered orders</p>
             </div>
             <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
               <svg
@@ -607,89 +554,6 @@ const AnalyticsPage: React.FC = () => {
                   strokeLinejoin="round"
                   strokeWidth={2}
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Avg Order Value</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(analyticsData.avgOrderValue)}
-              </p>
-              <p className="text-xs text-gray-500">Per order</p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Shipping Revenue</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {formatCurrency(analyticsData.shippingRevenue)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {analyticsData.paidShippingCount} paid shipments
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-full">
-              <svg
-                className="w-6 h-6 text-purple-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Free Shipping</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {analyticsData.freeShippingCount}
-              </p>
-              <p className="text-xs text-gray-500">Orders with free shipping</p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full">
-              <svg
-                className="w-6 h-6 text-orange-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v13m0-13V6a2 2 0 112 0v1m-2 0V6a2 2 0 00-2 0v1m2 0V9.5m0 0v-2A2 2 0 108 7.5v2m4 0h-4"
                 />
               </svg>
             </div>
@@ -745,8 +609,8 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Charts Row 2 - Product Sales & Revenue Composition */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Main Charts Row 2 - Product Sales */}
+      <div className="grid grid-cols-1 gap-6">
         {/* Product Sales - Pie Chart */}
         <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">
@@ -798,440 +662,138 @@ const AnalyticsPage: React.FC = () => {
             </PieChart>
           </ResponsiveContainer>
         </div>
-
-        {/* Revenue Composition - Stacked Bar Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Revenue Composition
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={analyticsData.timeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar
-                dataKey="productRevenue"
-                stackId="a"
-                fill={chartColors.primary}
-                name="Product Revenue"
-              />
-              <Bar
-                dataKey="shippingRevenue"
-                stackId="a"
-                fill={chartColors.warning}
-                name="Shipping Revenue"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
       </div>
 
-      {/* Main Charts Row 3 - Combined Metrics & Payment Analysis */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Combined Revenue & Orders - Composed Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Revenue vs Orders Correlation
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <ComposedChart data={analyticsData.timeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis
-                yAxisId="left"
-                tickFormatter={(value: number) => formatCurrency(value)}
-              />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar
-                yAxisId="left"
-                dataKey="revenue"
-                fill={chartColors.primary}
-                name="Revenue"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="orders"
-                stroke={chartColors.error}
-                strokeWidth={3}
-                name="Orders"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Payment Methods - Donut Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Payment Methods Distribution
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <PieChart>
-              <Pie
-                data={Object.entries(analyticsData.paymentMethods).map(
-                  ([method, data]) => ({
-                    method,
-                    value: data.revenue,
-                    count: data.count,
-                  })
-                )}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ method, percent }: any) =>
-                  `${method} ${(percent * 100).toFixed(0)}%`
-                }
-                outerRadius={100}
-                innerRadius={60}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {Object.entries(analyticsData.paymentMethods).map(
-                  ([method], index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={
-                        method === "COD"
-                          ? chartColors.warning
-                          : chartColors.info
-                      }
-                    />
-                  )
-                )}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => [
-                  formatCurrency(value),
-                  "Revenue",
-                ]}
-                labelFormatter={(label) => `Payment Method: ${label}`}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Order Status Analysis */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Order Status - Bar Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Order Status Distribution
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart
-              data={Object.entries(analyticsData.statusBreakdown).map(
-                ([status, data]) => ({
-                  status,
+      {/* Payment Methods - Donut Chart */}
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          Payment Methods Distribution
+        </h3>
+        <ResponsiveContainer width="100%" height={350}>
+          <PieChart>
+            <Pie
+              data={Object.entries(analyticsData.paymentMethods).map(
+                ([method, data]) => ({
+                  method,
+                  value: data.revenue,
                   count: data.count,
-                  revenue: data.revenue,
                 })
               )}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ method, percent }: any) =>
+                `${method} ${(percent * 100).toFixed(0)}%`
+              }
+              outerRadius={100}
+              innerRadius={60}
+              fill="#8884d8"
+              dataKey="value"
             >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="status" />
-              <YAxis />
-              <Tooltip />
-              <Bar
-                dataKey="count"
-                fill={chartColors.secondary}
-                name="Order Count"
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Average Order Value Trend - Line Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Average Order Value Trend
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={analyticsData.timeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="avgOrderValue"
-                stroke={chartColors.success}
-                strokeWidth={3}
-                dot={{ fill: chartColors.success, strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+              {Object.entries(analyticsData.paymentMethods).map(
+                ([method], index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={
+                      method === "COD" ? chartColors.warning : chartColors.info
+                    }
+                  />
+                )
+              )}
+            </Pie>
+            <Tooltip
+              formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+              labelFormatter={(label) => `Payment Method: ${label}`}
+            />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* Detailed Analytics Tables */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Product Performance Table */}
-        <div className="bg-white border border-gray-200 rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Product Performance Analysis
-            </h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Product
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Units Sold
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Revenue
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Market Share
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Avg Unit Price
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {Object.entries(analyticsData.productSales).map(
-                  ([product, data]) => (
-                    <tr key={product}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
+      {/* Product Performance Table */}
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Product Performance Analysis
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Units Sold
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Revenue
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Market Share
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {Object.entries(analyticsData.productSales).map(
+                ([product, data]) => (
+                  <tr key={product}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div
+                          className={`w-3 h-3 rounded-full mr-3 ${
+                            product === "Oil"
+                              ? "bg-emerald-600"
+                              : product === "Shampoo"
+                              ? "bg-cyan-600"
+                              : "bg-pink-600"
+                          }`}
+                        ></div>
+                        <span className="text-sm font-medium text-gray-900">
+                          {product}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {data.quantity}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {formatCurrency(data.revenue)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span>
+                          {(
+                            (data.revenue / analyticsData.totalRevenue) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </span>
+                        <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
                           <div
-                            className={`w-3 h-3 rounded-full mr-3 ${
+                            className={`h-2 rounded-full ${
                               product === "Oil"
                                 ? "bg-emerald-600"
                                 : product === "Shampoo"
                                 ? "bg-cyan-600"
                                 : "bg-pink-600"
                             }`}
+                            style={{
+                              width: `${
+                                (data.revenue / analyticsData.totalRevenue) *
+                                100
+                              }%`,
+                            }}
                           ></div>
-                          <span className="text-sm font-medium text-gray-900">
-                            {product}
-                          </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {data.quantity}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {formatCurrency(data.revenue)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span>
-                            {(
-                              (data.revenue /
-                                (analyticsData.totalRevenue -
-                                  analyticsData.shippingRevenue)) *
-                              100
-                            ).toFixed(1)}
-                            %
-                          </span>
-                          <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
-                            <div
-                              className={`h-2 rounded-full ${
-                                product === "Oil"
-                                  ? "bg-emerald-600"
-                                  : product === "Shampoo"
-                                  ? "bg-cyan-600"
-                                  : "bg-pink-600"
-                              }`}
-                              style={{
-                                width: `${
-                                  (data.revenue /
-                                    (analyticsData.totalRevenue -
-                                      analyticsData.shippingRevenue)) *
-                                  100
-                                }%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {formatCurrency(data.revenue / data.quantity)}
-                      </td>
-                    </tr>
-                  )
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Time Period Performance */}
-        <div className="bg-white border border-gray-200 rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Time Period Performance
-            </h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Period
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Orders
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Revenue
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Avg Order Value
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Growth
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {analyticsData.timeData.map((period, index) => {
-                  const prevPeriod = analyticsData.timeData[index - 1];
-                  const growth = prevPeriod
-                    ? ((period.revenue - prevPeriod.revenue) /
-                        prevPeriod.revenue) *
-                      100
-                    : 0;
-
-                  return (
-                    <tr key={period.date}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                        {period.date}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {period.orders}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {formatCurrency(period.revenue)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {formatCurrency(period.avgOrderValue)}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap">
-                        <span
-                          className={`${
-                            growth >= 0 ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {growth >= 0 ? "+" : ""}
-                          {growth.toFixed(1)}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Shipping Analysis Dashboard */}
-      <div className="p-6 bg-white border border-gray-200 rounded-lg">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
-          Shipping Analysis
-        </h3>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-          <div className="text-center">
-            <div className="mb-2 text-3xl font-bold text-green-600">
-              {analyticsData.freeShippingCount}
-            </div>
-            <div className="text-sm text-gray-600">Free Shipping Orders</div>
-            <div className="text-xs text-gray-500">
-              {(
-                (analyticsData.freeShippingCount / analyticsData.totalOrders) *
-                100
-              ).toFixed(1)}
-              % of total
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="mb-2 text-3xl font-bold text-blue-600">
-              {analyticsData.paidShippingCount}
-            </div>
-            <div className="text-sm text-gray-600">Paid Shipping Orders</div>
-            <div className="text-xs text-gray-500">
-              {(
-                (analyticsData.paidShippingCount / analyticsData.totalOrders) *
-                100
-              ).toFixed(1)}
-              % of total
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="mb-2 text-3xl font-bold text-primary">
-              {formatCurrency(analyticsData.shippingRevenue)}
-            </div>
-            <div className="text-sm text-gray-600">Total Shipping Revenue</div>
-            <div className="text-xs text-gray-500">
-              {(
-                (analyticsData.shippingRevenue / analyticsData.totalRevenue) *
-                100
-              ).toFixed(1)}
-              % of total revenue
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="mb-2 text-3xl font-bold text-purple-600">
-              {formatCurrency(SHIPPING_COST)}
-            </div>
-            <div className="text-sm text-gray-600">Shipping Cost Per Order</div>
-            <div className="text-xs text-gray-500">Standard rate</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Business Insights Summary */}
-      <div className="p-6 bg-white border border-gray-200 rounded-lg">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
-          Business Insights & Recommendations
-        </h3>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <h4 className="mb-2 font-medium text-gray-900">
-              Performance Highlights
-            </h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>
-                • Total revenue: {formatCurrency(analyticsData.totalRevenue)}
-              </li>
-              <li>
-                • Average order value:{" "}
-                {formatCurrency(analyticsData.avgOrderValue)}
-              </li>
-              <li>• Growth rate: {analyticsData.growthRate.toFixed(1)}%</li>
-              <li>
-                • Best performing product:{" "}
-                {
-                  Object.entries(analyticsData.productSales).reduce((a, b) =>
-                    a[1].revenue > b[1].revenue ? a : b
-                  )[0]
-                }
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="mb-2 font-medium text-gray-900">Recommendations</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li>• Focus on promoting high-revenue products</li>
-              <li>• Consider shipping strategy optimization</li>
-              <li>• Analyze seasonal trends for inventory planning</li>
-              <li>• Monitor customer payment preferences</li>
-            </ul>
-          </div>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
