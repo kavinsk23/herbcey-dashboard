@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -14,6 +14,7 @@ import {
   Area,
   Legend,
 } from "recharts";
+import { getAllOrders } from "../assets/services/googleSheetsService";
 
 interface Order {
   name: string;
@@ -34,207 +35,6 @@ interface Order {
   freeShipping?: boolean;
 }
 
-// Mock data remains the same as in your original code
-const mockOrders: Order[] = [
-  {
-    name: "John Doe",
-    addressLine1: "123 Main St, Colombo",
-    addressLine2: "Sri Lanka",
-    addressLine3: "",
-    contact: "0761234567",
-    products: [
-      { name: "Oil", quantity: 2, price: 950 },
-      { name: "Shampoo", quantity: 1, price: 1750 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-01-15",
-    paymentMethod: "COD",
-    paymentReceived: true,
-    tracking: "LK123456789",
-    freeShipping: false,
-  },
-  {
-    name: "Jane Smith",
-    addressLine1: "456 Ocean Ave, Galle",
-    addressLine2: "",
-    addressLine3: "Southern Province",
-    contact: "0779876543",
-    products: [
-      { name: "Conditioner", quantity: 3, price: 1850 },
-      { name: "Shampoo", quantity: 2, price: 1750 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-01-18",
-    paymentMethod: "Bank Transfer",
-    paymentReceived: true,
-    tracking: "LK987654321",
-    freeShipping: true,
-  },
-  {
-    name: "David Johnson",
-    addressLine1: "789 Hill St",
-    addressLine2: "Kandy",
-    addressLine3: "Central Province",
-    contact: "0715551234",
-    products: [
-      { name: "Oil", quantity: 1, price: 950 },
-      { name: "Conditioner", quantity: 2, price: 1850 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-02-10",
-    paymentMethod: "Bank Transfer",
-    paymentReceived: true,
-    tracking: "LK456123789",
-    freeShipping: false,
-  },
-  {
-    name: "Maria Garcia",
-    addressLine1: "321 Beach Rd",
-    addressLine2: "Negombo",
-    addressLine3: "",
-    contact: "0768884567",
-    products: [
-      { name: "Shampoo", quantity: 1, price: 1750 },
-      { name: "Conditioner", quantity: 1, price: 1850 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-02-20",
-    paymentMethod: "COD",
-    paymentReceived: true,
-    tracking: "LK789123456",
-    freeShipping: true,
-  },
-  {
-    name: "Raj Patel",
-    addressLine1: "10 Temple Road",
-    addressLine2: "",
-    addressLine3: "Anuradhapura",
-    contact: "0723334444",
-    products: [{ name: "Oil", quantity: 1, price: 950 }],
-    status: "Delivered",
-    orderDate: "2024-03-01",
-    paymentMethod: "COD",
-    paymentReceived: true,
-    tracking: "LK111222333",
-    freeShipping: false,
-  },
-  {
-    name: "Sarah Wilson",
-    addressLine1: "555 Park Ave",
-    addressLine2: "Colombo 03",
-    addressLine3: "",
-    contact: "0771111222",
-    products: [
-      { name: "Oil", quantity: 2, price: 950 },
-      { name: "Shampoo", quantity: 1, price: 1750 },
-      { name: "Conditioner", quantity: 1, price: 1850 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-03-15",
-    paymentMethod: "Bank Transfer",
-    paymentReceived: true,
-    tracking: "LK222333444",
-    freeShipping: false,
-  },
-  {
-    name: "Michael Brown",
-    addressLine1: "777 Lake Road",
-    addressLine2: "Kandy",
-    addressLine3: "",
-    contact: "0762223333",
-    products: [{ name: "Shampoo", quantity: 2, price: 1750 }],
-    status: "Delivered",
-    orderDate: "2024-03-20",
-    paymentMethod: "COD",
-    paymentReceived: true,
-    tracking: "LK333444555",
-    freeShipping: true,
-  },
-  {
-    name: "Emily Davis",
-    addressLine1: "999 Garden St",
-    addressLine2: "Galle",
-    addressLine3: "",
-    contact: "0753334444",
-    products: [
-      { name: "Oil", quantity: 3, price: 950 },
-      { name: "Conditioner", quantity: 2, price: 1850 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-04-05",
-    paymentMethod: "Bank Transfer",
-    paymentReceived: true,
-    tracking: "LK444555666",
-    freeShipping: false,
-  },
-  {
-    name: "Alex Johnson",
-    addressLine1: "111 River Road",
-    addressLine2: "Matara",
-    addressLine3: "",
-    contact: "0744445555",
-    products: [
-      { name: "Shampoo", quantity: 1, price: 1750 },
-      { name: "Oil", quantity: 1, price: 950 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-04-12",
-    paymentMethod: "COD",
-    paymentReceived: true,
-    tracking: "LK555666777",
-    freeShipping: true,
-  },
-  {
-    name: "Lisa Wong",
-    addressLine1: "222 Mountain View",
-    addressLine2: "Nuwara Eliya",
-    addressLine3: "",
-    contact: "0735556666",
-    products: [{ name: "Conditioner", quantity: 4, price: 1850 }],
-    status: "Delivered",
-    orderDate: "2024-04-25",
-    paymentMethod: "Bank Transfer",
-    paymentReceived: true,
-    tracking: "LK666777888",
-    freeShipping: false,
-  },
-  {
-    name: "Robert Taylor",
-    addressLine1: "333 Sunset Blvd",
-    addressLine2: "Colombo 07",
-    addressLine3: "",
-    contact: "0726667777",
-    products: [
-      { name: "Oil", quantity: 1, price: 950 },
-      { name: "Shampoo", quantity: 2, price: 1750 },
-      { name: "Conditioner", quantity: 1, price: 1850 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-05-03",
-    paymentMethod: "COD",
-    paymentReceived: true,
-    tracking: "LK777888999",
-    freeShipping: true,
-  },
-  {
-    name: "Jennifer Lee",
-    addressLine1: "444 Palm Street",
-    addressLine2: "Panadura",
-    addressLine3: "",
-    contact: "0717778888",
-    products: [
-      { name: "Shampoo", quantity: 3, price: 1750 },
-      { name: "Oil", quantity: 2, price: 950 },
-    ],
-    status: "Delivered",
-    orderDate: "2024-05-15",
-    paymentMethod: "Bank Transfer",
-    paymentReceived: true,
-    tracking: "LK888999000",
-    freeShipping: false,
-  },
-];
-
 const AnalyticsPage: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<"daily" | "monthly" | "yearly">(
     "monthly"
@@ -250,7 +50,85 @@ const AnalyticsPage: React.FC = () => {
     "revenue" | "orders" | "both"
   >("both");
 
+  // Real data from Google Sheets
+  const [realOrders, setRealOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const SHIPPING_COST = 350;
+
+  // Load real orders from Google Sheets
+  useEffect(() => {
+    const loadRealOrders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const result = await getAllOrders();
+
+        if (result.success && result.data) {
+          // Convert sheet data back to Order format
+          const convertedOrders: Order[] = result.data.map((sheetOrder) => {
+            // Parse customer info back to separate fields
+            const customerLines = sheetOrder.customerInfo.split("\n");
+            const name = customerLines[0] || "";
+            const address = customerLines.slice(1, -1).join(", ") || "";
+            const contact = customerLines[customerLines.length - 1] || "";
+
+            // Reconstruct products array
+            const products = [];
+            if (sheetOrder.oilQty > 0) {
+              products.push({
+                name: "Oil",
+                quantity: sheetOrder.oilQty,
+                price: 950,
+              });
+            }
+            if (sheetOrder.shampooQty > 0) {
+              products.push({
+                name: "Shampoo",
+                quantity: sheetOrder.shampooQty,
+                price: 1750,
+              });
+            }
+            if (sheetOrder.conditionerQty > 0) {
+              products.push({
+                name: "Conditioner",
+                quantity: sheetOrder.conditionerQty,
+                price: 1850,
+              });
+            }
+
+            return {
+              name,
+              addressLine1: address,
+              addressLine2: "",
+              addressLine3: "",
+              contact,
+              products,
+              status: sheetOrder.orderStatus as Order["status"],
+              orderDate: sheetOrder.orderDate,
+              paymentMethod: sheetOrder.paymentMethod as Order["paymentMethod"],
+              paymentReceived: sheetOrder.paymentReceived,
+              tracking: sheetOrder.trackingId,
+              freeShipping: sheetOrder.freeShipping,
+            };
+          });
+
+          setRealOrders(convertedOrders);
+        } else {
+          setError(result.error || "Failed to load orders");
+        }
+      } catch (err) {
+        console.error("Error loading orders for analytics:", err);
+        setError("An unexpected error occurred while loading orders");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRealOrders();
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-LK", {
@@ -271,7 +149,7 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const filteredOrders = useMemo(() => {
-    return mockOrders.filter((order) => {
+    return realOrders.filter((order) => {
       const orderDate = new Date(order.orderDate);
       const startDate = new Date(dateRange.startDate);
       const endDate = new Date(dateRange.endDate);
@@ -284,7 +162,7 @@ const AnalyticsPage: React.FC = () => {
 
       return dateMatch && statusMatch && productMatch;
     });
-  }, [dateRange, selectedProduct]);
+  }, [realOrders, dateRange, selectedProduct]);
 
   const analyticsData = useMemo(() => {
     const totalRevenue = filteredOrders.reduce(
@@ -392,6 +270,56 @@ const AnalyticsPage: React.FC = () => {
     return null;
   };
 
+  // Loading and error states
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto border-b-2 rounded-full animate-spin border-primary"></div>
+          <p className="mt-4 text-gray-600">Loading analytics data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="mb-4 text-xl text-red-500">⚠️</div>
+          <h2 className="mb-2 text-xl font-semibold text-gray-900">
+            Error Loading Analytics Data
+          </h2>
+          <p className="mb-4 text-gray-600">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // No data state
+  if (realOrders.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="mb-4 text-6xl text-gray-400">📊</div>
+          <h2 className="mb-2 text-xl font-semibold text-gray-900">
+            No Data Available
+          </h2>
+          <p className="mb-6 text-gray-600">
+            No orders found in your Google Sheet. Add some orders to see
+            analytics.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -401,7 +329,8 @@ const AnalyticsPage: React.FC = () => {
             Sales Analytics Dashboard
           </h1>
           <p className="text-gray-600">
-            Comprehensive business performance analysis
+            Real-time data from your Google Sheets ({realOrders.length} total
+            orders)
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -761,10 +690,12 @@ const AnalyticsPage: React.FC = () => {
                     <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                       <div className="flex items-center">
                         <span>
-                          {(
-                            (data.revenue / analyticsData.totalRevenue) *
-                            100
-                          ).toFixed(1)}
+                          {analyticsData.totalRevenue > 0
+                            ? (
+                                (data.revenue / analyticsData.totalRevenue) *
+                                100
+                              ).toFixed(1)
+                            : 0}
                           %
                         </span>
                         <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
@@ -778,8 +709,11 @@ const AnalyticsPage: React.FC = () => {
                             }`}
                             style={{
                               width: `${
-                                (data.revenue / analyticsData.totalRevenue) *
-                                100
+                                analyticsData.totalRevenue > 0
+                                  ? (data.revenue /
+                                      analyticsData.totalRevenue) *
+                                    100
+                                  : 0
                               }%`,
                             }}
                           ></div>
