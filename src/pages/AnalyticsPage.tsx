@@ -42,9 +42,20 @@ const AnalyticsPage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<
     "all" | "Oil" | "Shampoo" | "Conditioner"
   >("all");
-  const [dateRange, setDateRange] = useState({
-    startDate: "2024-01-01",
-    endDate: "2024-12-31",
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-based (0 = January)
+
+    // First day of current month
+    const startDate = new Date(currentYear, currentMonth, 1);
+    // Last day of current month
+    const endDate = new Date(currentYear, currentMonth + 1, 0);
+
+    return {
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+    };
   });
   const [selectedMetric, setSelectedMetric] = useState<
     "revenue" | "orders" | "both"
@@ -155,7 +166,8 @@ const AnalyticsPage: React.FC = () => {
       const endDate = new Date(dateRange.endDate);
 
       const dateMatch = orderDate >= startDate && orderDate <= endDate;
-      const statusMatch = order.status === "Delivered";
+      // Include all orders except "Damaged" and "Returned" for revenue calculation
+      const statusMatch = !["Damaged", "Returned"].includes(order.status);
       const productMatch =
         selectedProduct === "all" ||
         order.products.some((p) => p.name === selectedProduct);
@@ -328,10 +340,6 @@ const AnalyticsPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             Sales Analytics Dashboard
           </h1>
-          <p className="text-gray-600">
-            Real-time data from your Google Sheets ({realOrders.length} total
-            orders)
-          </p>
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">

@@ -38,6 +38,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     customerInfo: "",
+    trackingId: "",
     status: "Preparing" as
       | "Preparing"
       | "Shipped"
@@ -75,10 +76,20 @@ const OrderForm: React.FC<OrderFormProps> = ({
         }
       });
 
-      const customerInfo = `${initialOrder.name}\n${initialOrder.addressLine1}\n${initialOrder.contact}`;
+      // Reconstruct customer info with both address lines
+      const addressParts = [];
+      if (initialOrder.addressLine1)
+        addressParts.push(initialOrder.addressLine1);
+      if (initialOrder.addressLine2)
+        addressParts.push(initialOrder.addressLine2);
+
+      const customerInfo = `${initialOrder.name}\n${addressParts.join("\n")}\n${
+        initialOrder.contact
+      }`;
 
       setFormData({
         customerInfo,
+        trackingId: initialOrder.tracking || "",
         status: initialOrder.status,
         paymentMethod: initialOrder.paymentMethod,
         paymentReceived: initialOrder.paymentReceived || false,
@@ -88,6 +99,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     } else if (mode === "create") {
       setFormData({
         customerInfo: "",
+        trackingId: "",
         status: "Preparing",
         paymentMethod: "COD",
         paymentReceived: false,
@@ -103,10 +115,25 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   const parseCustomerInfo = (customerInfo: string) => {
     const lines = customerInfo.split("\n").filter((line) => line.trim());
+
+    if (lines.length < 4) {
+      return {
+        name: lines[0] || "",
+        addressLine1: "",
+        addressLine2: "",
+        contact: lines[lines.length - 1] || "",
+      };
+    }
+
+    const name = lines[0];
+    const contact = lines[lines.length - 1];
+    const addressLines = lines.slice(1, -1);
+
     return {
-      name: lines[0] || "",
-      address: lines.slice(1, -1).join("\n") || "",
-      contact: lines[lines.length - 1] || "",
+      name,
+      addressLine1: addressLines[0] || "",
+      addressLine2: addressLines[1] || "",
+      contact,
     };
   };
 
@@ -116,15 +143,35 @@ const OrderForm: React.FC<OrderFormProps> = ({
     if (!formData.customerInfo.trim()) {
       newErrors.customerInfo = "Customer information is required";
     } else {
-      const { name, address, contact } = parseCustomerInfo(
+      const { name, addressLine1, addressLine2, contact } = parseCustomerInfo(
         formData.customerInfo
       );
       if (!name.trim()) newErrors.customerInfo = "Name is required";
-      if (!address.trim()) newErrors.customerInfo = "Address is required";
-      if (!contact.trim()) newErrors.customerInfo = "Contact is required";
-      if (!/^\d{10}$/.test(contact.replace(/\D/g, ""))) {
-        newErrors.customerInfo = "Contact must be 10 digits";
+      if (!addressLine1.trim())
+        newErrors.customerInfo = "Address Line 1 is required";
+      if (!addressLine2.trim())
+        newErrors.customerInfo = "Address Line 2 is required";
+      if (!contact.trim())
+        newErrors.customerInfo = "At least one contact is required";
+
+      // Validate contact numbers (can be multiple, separated by comma, space, or new line)
+      if (contact.trim()) {
+        const contacts = contact
+          .split(/[,\s\n]+/)
+          .map((c) => c.trim())
+          .filter((c) => c);
+        const invalidContacts = contacts.filter(
+          (c) => !/^\d{10}$/.test(c.replace(/\D/g, ""))
+        );
+        if (invalidContacts.length > 0) {
+          newErrors.customerInfo = "All contact numbers must be 10 digits";
+        }
       }
+    }
+
+    // Validate tracking ID
+    if (!formData.trackingId.trim()) {
+      newErrors.trackingId = "Tracking ID is required";
     }
 
     const hasSelectedProduct = Object.values(formData.products).some(
@@ -148,7 +195,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      const { name, address, contact } = parseCustomerInfo(
+      const { name, addressLine1, addressLine2, contact } = parseCustomerInfo(
         formData.customerInfo
       );
 
@@ -162,17 +209,17 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
       const orderData: Order = {
         name,
-        addressLine1: address,
-        addressLine2: "",
+        addressLine1,
+        addressLine2,
         addressLine3: "",
-        contact,
+        contact: contact,
         products: selectedProducts,
         status: formData.status,
         orderDate: new Date().toISOString().split("T")[0],
         paymentMethod: formData.paymentMethod,
         paymentReceived: formData.paymentReceived,
         freeShipping: formData.freeShipping,
-        tracking: initialOrder?.tracking || `LK${Date.now()}`,
+        tracking: formData.trackingId,
       };
 
       await onSubmit(orderData);
@@ -291,23 +338,55 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     Customer Details *
                   </label>
                   <div className="mb-1 text-xs text-gray-500">
-                    Format: Name, Address, Contact (each on new line)
+                    Format: Name, Address Line 1, Address Line 2, Contact(s) -
+                    separate multiple contacts with space, comma, or new line
                   </div>
                   <textarea
                     value={formData.customerInfo}
                     onChange={(e) =>
                       handleInputChange("customerInfo", e.target.value)
                     }
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm ${
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${
                       errors.customerInfo ? "border-red-500" : "border-gray-300"
                     }`}
-                    placeholder="John Doe&#10;123 Main Street, Colombo 01&#10;0771234567"
-                    rows={3}
+                    placeholder="John Doe&#10;123 Main Street&#10;Colombo 01&#10;0771234567 0779876543"
+                    rows={5}
                     disabled={isSubmitting}
                   />
                   {errors.customerInfo && (
                     <p className="mt-1 text-xs text-red-500">
                       {errors.customerInfo}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Tracking Information */}
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Tracking Information
+                </h3>
+
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    Tracking ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.trackingId}
+                    onChange={(e) =>
+                      handleInputChange("trackingId", e.target.value)
+                    }
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.trackingId ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="CCP123456"
+                    disabled={isSubmitting}
+                  />
+
+                  {errors.trackingId && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.trackingId}
                     </p>
                   )}
                 </div>
@@ -328,7 +407,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     onChange={(e) =>
                       handleInputChange("status", e.target.value)
                     }
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={isSubmitting}
                   >
                     <option value="Preparing">Preparing</option>
@@ -360,7 +439,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("paymentMethod", e.target.value)
                         }
-                        className="w-4 h-4 border-gray-300 text-primary focus:ring-primary"
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                         disabled={isSubmitting}
                       />
                       <span className="ml-2 text-sm text-gray-700">
@@ -376,7 +455,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("paymentMethod", e.target.value)
                         }
-                        className="w-4 h-4 border-gray-300 text-primary focus:ring-primary"
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                         disabled={isSubmitting}
                       />
                       <span className="ml-2 text-sm text-gray-700">
@@ -395,7 +474,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("paymentReceived", e.target.checked)
                         }
-                        className="w-4 h-4 border-gray-300 rounded text-primary focus:ring-primary"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         disabled={isSubmitting}
                       />
                       <span className="text-sm text-gray-700">
@@ -425,7 +504,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         key={productName}
                         className={`p-3 border rounded-lg transition-all ${
                           product.selected
-                            ? "border-primary bg-primary/10"
+                            ? "border-blue-500 bg-blue-50"
                             : "border-gray-200"
                         }`}
                       >
@@ -441,14 +520,14 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                   e.target.checked
                                 )
                               }
-                              className="w-4 h-4 border-gray-300 rounded text-primary focus:ring-primary"
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                               disabled={isSubmitting}
                             />
                             <div>
-                              <span className="font-medium text-gray-800 text-sm">
+                              <span className="text-sm font-medium text-gray-800">
                                 {productName}
                               </span>
-                              <div className="flex items-center space-x-2 mt-1">
+                              <div className="flex items-center mt-1 space-x-2">
                                 <input
                                   type="number"
                                   min="0"
@@ -460,7 +539,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                       parseInt(e.target.value) || 0
                                     )
                                   }
-                                  className="w-16 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                                  className="w-16 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                   disabled={isSubmitting}
                                 />
                                 <span className="text-xs text-gray-600">
@@ -487,7 +566,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                     parseInt(e.target.value) || 1
                                   )
                                 }
-                                className="w-14 px-2 py-1 text-xs text-center border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="px-2 py-1 text-xs text-center border border-gray-300 rounded w-14 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 disabled={isSubmitting}
                               />
                               <span className="text-xs font-medium text-gray-800 min-w-20">
@@ -515,7 +594,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       onChange={(e) =>
                         handleInputChange("freeShipping", e.target.checked)
                       }
-                      className="w-4 h-4 border-gray-300 rounded text-primary focus:ring-primary"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       disabled={isSubmitting}
                     />
                     <span className="text-sm text-gray-700">Free Shipping</span>
@@ -534,7 +613,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                   <span className="font-semibold text-gray-800">
                     Total Amount:
                   </span>
-                  <span className="text-lg font-bold text-primary">
+                  <span className="text-lg font-bold text-blue-600">
                     {formatCurrency(totalAmount)}
                   </span>
                 </div>
@@ -544,12 +623,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
         </div>
 
         {/* Fixed Footer with Action Buttons */}
-        <div className="flex items-center justify-end px-6 py-3 border-t border-gray-200 bg-gray-50 space-x-3">
+        <div className="flex items-center justify-end px-6 py-3 space-x-3 border-t border-gray-200 bg-gray-50">
           {mode === "update" && onDelete && (
             <button
               type="button"
               onClick={handleDelete}
-              className="px-4 py-2 text-sm mr-auto bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 mr-auto text-sm text-white transition-colors bg-red-500 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Deleting..." : "Delete Order"}
@@ -558,7 +637,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
             disabled={isSubmitting}
           >
             Cancel
@@ -566,7 +645,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isSubmitting}
           >
             {isSubmitting
