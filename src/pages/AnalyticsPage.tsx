@@ -15,6 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
+import ExpenseForm from "../components/ExpenseForm";
 
 interface Order {
   name: string;
@@ -33,6 +34,25 @@ interface Order {
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
+}
+
+interface Expense {
+  id: string;
+  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
+  amount: number;
+  note: string;
+  date: string;
+}
+
+interface KPICard {
+  id: string;
+  title: string;
+  value: string;
+  textColor: string;
+  bgColor: string;
+  iconColor: string;
+  subtitle?: string;
+  icon: React.ReactNode;
 }
 
 const AnalyticsPage: React.FC = () => {
@@ -60,6 +80,8 @@ const AnalyticsPage: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<
     "revenue" | "orders" | "both"
   >("both");
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
 
   // Real data from Google Sheets
   const [realOrders, setRealOrders] = useState<Order[]>([]);
@@ -156,13 +178,10 @@ const AnalyticsPage: React.FC = () => {
       0
     );
 
-    // For revenue calculation:
-    // - Don't add shipping if customer didn't pay for it
-    // - Subtract shipping cost if we offered free shipping (we still pay courier)
     if (order.freeShipping) {
       return productTotal - SHIPPING_COST;
     } else {
-      return productTotal; // Customer pays shipping, but we don't count it as revenue
+      return productTotal;
     }
   };
 
@@ -173,7 +192,6 @@ const AnalyticsPage: React.FC = () => {
       const endDate = new Date(dateRange.endDate);
 
       const dateMatch = orderDate >= startDate && orderDate <= endDate;
-      // Include all orders except "Damaged" and "Returned" for revenue calculation
       const statusMatch = !["Damaged", "Returned"].includes(order.status);
       const productMatch =
         selectedProduct === "all" ||
@@ -189,12 +207,10 @@ const AnalyticsPage: React.FC = () => {
       0
     );
 
-    // Calculate COD received amount
     const codReceivedAmount = filteredOrders
       .filter((order) => order.paymentMethod === "COD" && order.paymentReceived)
       .reduce((sum, order) => sum + calculateOrderRevenue(order), 0);
 
-    // Calculate Bank Transfer received amount
     const bankTransferAmount = filteredOrders
       .filter(
         (order) =>
@@ -202,10 +218,8 @@ const AnalyticsPage: React.FC = () => {
       )
       .reduce((sum, order) => sum + calculateOrderRevenue(order), 0);
 
-    // Calculate total received funds (COD + Bank Transfer)
     const totalReceivedFunds = codReceivedAmount + bankTransferAmount;
 
-    // Calculate total units sold
     const totalUnitsSold = filteredOrders.reduce((sum, order) => {
       return (
         sum +
@@ -217,7 +231,6 @@ const AnalyticsPage: React.FC = () => {
 
     const totalOrders = filteredOrders.length;
 
-    // Product sales breakdown
     const productSales = filteredOrders.reduce((acc, order) => {
       order.products.forEach((product) => {
         if (!acc[product.name]) {
@@ -229,7 +242,6 @@ const AnalyticsPage: React.FC = () => {
       return acc;
     }, {} as Record<string, { quantity: number; revenue: number }>);
 
-    // Time-based data
     const timeData = filteredOrders.reduce((acc, order) => {
       const date = new Date(order.orderDate);
       let key = "";
@@ -261,7 +273,6 @@ const AnalyticsPage: React.FC = () => {
       return acc;
     }, {} as Record<string, { date: string; revenue: number; orders: number }>);
 
-    // Payment method breakdown
     const paymentMethods = filteredOrders.reduce((acc, order) => {
       if (!acc[order.paymentMethod]) {
         acc[order.paymentMethod] = { count: 0, revenue: 0 };
@@ -282,7 +293,100 @@ const AnalyticsPage: React.FC = () => {
       ),
       paymentMethods,
     };
-  }, [filteredOrders, timePeriod]);
+  }, [filteredOrders, timePeriod, calculateOrderRevenue]);
+
+  // Dynamic KPI Cards Configuration
+  const kpiCards = useMemo((): KPICard[] => {
+    const receivedFundsPercentage =
+      analyticsData.totalRevenue > 0
+        ? (
+            (analyticsData.totalReceivedFunds / analyticsData.totalRevenue) *
+            100
+          ).toFixed(1)
+        : "0";
+
+    return [
+      {
+        id: "total-revenue",
+        title: "Total Revenue",
+        value: formatCurrency(analyticsData.totalRevenue),
+        textColor: "text-primary",
+        bgColor: "bg-primary/10",
+        iconColor: "text-primary",
+        icon: "රු",
+      },
+      {
+        id: "received-funds",
+        title: "Received Funds",
+        value: formatCurrency(analyticsData.totalReceivedFunds),
+        textColor: "text-green-600",
+        bgColor: "bg-green-100",
+        iconColor: "text-green-600",
+        subtitle: `${receivedFundsPercentage}% of total`,
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+      },
+      {
+        id: "total-units",
+        title: "Total Units Sold",
+        value: analyticsData.totalUnitsSold.toString(),
+        textColor: "text-orange-600",
+        bgColor: "bg-orange-100",
+        iconColor: "text-orange-600",
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+            />
+          </svg>
+        ),
+      },
+      {
+        id: "total-orders",
+        title: "Total Orders",
+        value: analyticsData.totalOrders.toString(),
+        textColor: "text-blue-600",
+        bgColor: "bg-blue-100",
+        iconColor: "text-blue-600",
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+            />
+          </svg>
+        ),
+      },
+    ];
+  }, [analyticsData, formatCurrency]);
 
   const chartColors = {
     primary: "#7cb342",
@@ -296,6 +400,80 @@ const AnalyticsPage: React.FC = () => {
     shampoo: "#06b6d4",
     conditioner: "#ec4899",
   };
+
+  const handleAddExpense = (expense: Omit<Expense, "id">) => {
+    const expenseToAdd = {
+      ...expense,
+      id: Date.now().toString(),
+    };
+    setExpenses([...expenses, expenseToAdd]);
+    setShowExpenseForm(false);
+  };
+
+  const ExpenseSection = () => (
+    <div className="bg-white border border-gray-200 rounded-lg">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-900">Expenses</h3>
+        <button
+          onClick={() => setShowExpenseForm(true)}
+          className="px-4 py-2 text-white rounded bg-primary hover:bg-primary-dark"
+        >
+          Add Expense
+        </button>
+      </div>
+
+      {expenses.length === 0 ? (
+        <div className="px-6 py-8 text-center">
+          <p className="text-gray-500">No expenses recorded yet.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="overflow-y-auto max-h-96">
+            <table className="w-full">
+              <thead className="sticky top-0 z-10 bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Note
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {expenses.map((expense) => (
+                  <tr key={expense.id}>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {new Date(expense.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-900">
+                          {expense.type}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {formatCurrency(expense.amount)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {expense.note || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -318,7 +496,6 @@ const AnalyticsPage: React.FC = () => {
     return null;
   };
 
-  // Loading and error states
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -350,7 +527,6 @@ const AnalyticsPage: React.FC = () => {
     );
   }
 
-  // No data state
   if (realOrders.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -369,7 +545,7 @@ const AnalyticsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -385,211 +561,131 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Advanced Filters */}
-      <div className="p-6 bg-white border border-gray-200 rounded-lg">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
-          Analytics Filters
-        </h3>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">
-              Time Period
-            </label>
-            <select
-              value={timePeriod}
-              onChange={(e) =>
-                setTimePeriod(e.target.value as "daily" | "monthly" | "yearly")
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="daily">Daily</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </div>
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Analytics Filters
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Time Period
+              </label>
+              <select
+                value={timePeriod}
+                onChange={(e) =>
+                  setTimePeriod(
+                    e.target.value as "daily" | "monthly" | "yearly"
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="daily">Daily</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">
-              Product Filter
-            </label>
-            <select
-              value={selectedProduct}
-              onChange={(e) =>
-                setSelectedProduct(
-                  e.target.value as "all" | "Oil" | "Shampoo" | "Conditioner"
-                )
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="all">All Products</option>
-              <option value="Oil">Oil</option>
-              <option value="Shampoo">Shampoo</option>
-              <option value="Conditioner">Conditioner</option>
-            </select>
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Product Filter
+              </label>
+              <select
+                value={selectedProduct}
+                onChange={(e) =>
+                  setSelectedProduct(
+                    e.target.value as "all" | "Oil" | "Shampoo" | "Conditioner"
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="all">All Products</option>
+                <option value="Oil">Oil</option>
+                <option value="Shampoo">Shampoo</option>
+                <option value="Conditioner">Conditioner</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">
-              Metric View
-            </label>
-            <select
-              value={selectedMetric}
-              onChange={(e) =>
-                setSelectedMetric(
-                  e.target.value as "revenue" | "orders" | "both"
-                )
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="both">Revenue & Orders</option>
-              <option value="revenue">Revenue Only</option>
-              <option value="orders">Orders Only</option>
-            </select>
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Metric View
+              </label>
+              <select
+                value={selectedMetric}
+                onChange={(e) =>
+                  setSelectedMetric(
+                    e.target.value as "revenue" | "orders" | "both"
+                  )
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="both">Revenue & Orders</option>
+                <option value="revenue">Revenue Only</option>
+                <option value="orders">Orders Only</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">
-              Start Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.startDate}
-              onChange={(e) =>
-                setDateRange((prev) => ({ ...prev, startDate: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.startDate}
+                onChange={(e) =>
+                  setDateRange((prev) => ({
+                    ...prev,
+                    startDate: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">
-              End Date
-            </label>
-            <input
-              type="date"
-              value={dateRange.endDate}
-              onChange={(e) =>
-                setDateRange((prev) => ({ ...prev, endDate: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.endDate}
+                onChange={(e) =>
+                  setDateRange((prev) => ({ ...prev, endDate: e.target.value }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* KPI Cards - Enhanced */}
+      {/* Dynamic KPI Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-primary">
-                {formatCurrency(analyticsData.totalRevenue)}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-              <svg
-                className="w-6 h-6 text-primary"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        {kpiCards.map((card) => (
+          <div
+            key={card.id}
+            className="p-6 bg-white border border-gray-200 rounded-lg"
+          >
+            <div className="flex items-center justify-between h-full">
+              <div>
+                <p className="text-sm text-gray-600">{card.title}</p>
+                <p className={`text-2xl font-bold ${card.textColor}`}>
+                  {card.value}
+                </p>
+                {card.subtitle && (
+                  <p className="mt-1 text-xs text-gray-500">{card.subtitle}</p>
+                )}
+              </div>
+              <div
+                className={`flex items-center justify-center w-12 h-12 rounded-full ${card.bgColor}`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                />
-              </svg>
+                <div className={card.iconColor}>{card.icon}</div>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Received Funds</p>
-              <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(analyticsData.totalReceivedFunds)}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {analyticsData.totalRevenue > 0
-                  ? `${(
-                      (analyticsData.totalReceivedFunds /
-                        analyticsData.totalRevenue) *
-                      100
-                    ).toFixed(1)}% of total`
-                  : "0% of total"}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full">
-              <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Units Sold</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {analyticsData.totalUnitsSold}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full">
-              <svg
-                className="w-6 h-6 text-orange-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {analyticsData.totalOrders}
-              </p>
-            </div>
-            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full">
-              <svg
-                className="w-6 h-6 text-blue-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                />
-              </svg>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Main Charts Row 1 - Revenue & Orders Trends */}
@@ -832,6 +928,23 @@ const AnalyticsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Expense Section */}
+      <ExpenseSection />
+
+      {/* Expense Form Modal */}
+      {showExpenseForm && (
+        <ExpenseForm
+          initialExpense={{
+            type: "Shampoo",
+            amount: 0,
+            note: "",
+            date: new Date().toISOString().split("T")[0],
+          }}
+          onSave={handleAddExpense}
+          onClose={() => setShowExpenseForm(false)}
+        />
+      )}
     </div>
   );
 };
