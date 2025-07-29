@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import logo from "../../src/assets/images/logo.jpg";
 
 interface HeaderProps {
@@ -12,6 +14,14 @@ const Header: React.FC<HeaderProps> = ({
   currentPage = "orders",
   onNavigate,
 }) => {
+  const { userName, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
       <div className="max-w-6xl px-6 py-4 mx-auto">
@@ -112,10 +122,41 @@ const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* User Profile */}
+          {/* User Profile with Auth */}
           <div className="flex items-center space-x-4">
-            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full">
-              <span className="text-sm text-gray-600">👤</span>
+            {/* User Name */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">{userName}</span>
+            </div>
+
+            {/* User Avatar with Logout */}
+            <div className="relative group">
+              <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full cursor-pointer">
+                <span className="text-sm text-gray-600">👤</span>
+              </div>
+
+              {/* Logout Dropdown */}
+              <div className="absolute right-0 z-10 hidden w-32 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg group-hover:block">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         </div>

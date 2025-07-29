@@ -1,15 +1,17 @@
+// AnalyticsFilters.tsx
 import React from "react";
 
 interface AnalyticsFiltersProps {
   timePeriod: "daily" | "monthly" | "yearly";
-  selectedProduct: "all" | "Oil" | "Shampoo" | "Conditioner";
+  selectedProduct: string; // Changed from union type to string
   selectedMetric: "revenue" | "orders" | "both";
   dateRange: {
     startDate: string;
     endDate: string;
   };
+  availableProducts?: string[]; // Added this prop
   onTimePeriodChange: (period: "daily" | "monthly" | "yearly") => void;
-  onProductChange: (product: "all" | "Oil" | "Shampoo" | "Conditioner") => void;
+  onProductChange: (product: string) => void; // Changed from union type to string
   onMetricChange: (metric: "revenue" | "orders" | "both") => void;
   onDateRangeChange: (dateRange: {
     startDate: string;
@@ -22,6 +24,7 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
   selectedProduct,
   selectedMetric,
   dateRange,
+  availableProducts = ["all", "Oil", "Shampoo", "Conditioner"], // Default fallback
   onTimePeriodChange,
   onProductChange,
   onMetricChange,
@@ -98,6 +101,9 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
             <h3 className="text-lg font-semibold text-gray-900">
               Analytics Filters
             </h3>
+            <p className="text-sm text-gray-500">
+              Customize your analytics view with filters and date ranges
+            </p>
           </div>
           <div className="flex items-center space-x-2">
             <button
@@ -165,24 +171,21 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
             </select>
           </div>
 
-          {/* Product Filter */}
+          {/* Product Filter - UPDATED */}
           <div>
             <label className="block mb-1 text-sm font-medium text-gray-700">
               Product Filter
             </label>
             <select
               value={selectedProduct}
-              onChange={(e) =>
-                onProductChange(
-                  e.target.value as "all" | "Oil" | "Shampoo" | "Conditioner"
-                )
-              }
+              onChange={(e) => onProductChange(e.target.value)} // Removed type assertion
               className="w-full px-3 py-2 transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             >
-              <option value="all">All Products</option>
-              <option value="Oil">Oil</option>
-              <option value="Shampoo">Shampoo</option>
-              <option value="Conditioner">Conditioner</option>
+              {availableProducts.map((product) => (
+                <option key={product} value={product}>
+                  {product === "all" ? "All Products" : product}
+                </option>
+              ))}
             </select>
           </div>
 

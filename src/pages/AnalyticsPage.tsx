@@ -16,7 +16,9 @@ import {
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
 import { getExpenseSummary } from "../assets/services/expenseService";
+import { getAllProductsFromSheet } from "../assets/services/productService";
 import AnalyticsFilters from "../components/AnalyticsFilters";
+import ExpenseManager from "../components/ExpenseManager";
 
 interface Order {
   name: string;
@@ -48,13 +50,19 @@ interface KPICard {
   icon: React.ReactNode;
 }
 
+interface ProductData {
+  id: string;
+  name: string;
+  cost: number;
+  price: number;
+  lastUpdated: string;
+}
+
 const AnalyticsPage: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<"daily" | "monthly" | "yearly">(
     "monthly"
   );
-  const [selectedProduct, setSelectedProduct] = useState<
-    "all" | "Oil" | "Shampoo" | "Conditioner"
-  >("all");
+  const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [dateRange, setDateRange] = useState(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -84,7 +92,97 @@ const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Product data
+  const [products, setProducts] = useState<ProductData[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<string[]>(["all"]);
+  const [productPrices, setProductPrices] = useState<Record<string, number>>(
+    {}
+  );
+  const [productColors, setProductColors] = useState<Record<string, string>>(
+    {}
+  );
+
   const SHIPPING_COST = 350;
+
+  // Load products from ProductManager
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const result = await getAllProductsFromSheet();
+
+        if (result.success && result.data && result.data.length > 0) {
+          setProducts(result.data);
+
+          const productNames = result.data.map((p) => p.name);
+          setAvailableProducts(["all", ...productNames]);
+
+          const prices: Record<string, number> = {};
+          const colors: Record<string, string> = {};
+          const colorOptions = [
+            "#10b981", // emerald-600 (Oil)
+            "#06b6d4", // cyan-600 (Shampoo)
+            "#ec4899", // pink-600 (Conditioner)
+            "#8b5cf6", // purple-600
+            "#f97316", // orange-600
+            "#3b82f6", // blue-600
+            "#6366f1", // indigo-600
+            "#ef4444", // red-600
+          ];
+
+          result.data.forEach((product, index) => {
+            prices[product.name] = product.price;
+            colors[product.name] = colorOptions[index % colorOptions.length];
+          });
+
+          setProductPrices(prices);
+          setProductColors(colors);
+        } else {
+          // Fallback to localStorage
+          const savedProducts = localStorage.getItem("all_products");
+          if (savedProducts) {
+            const parsedProducts = JSON.parse(savedProducts);
+            setProducts(parsedProducts);
+
+            const productNames = parsedProducts.map((p: any) => p.name);
+            setAvailableProducts(["all", ...productNames]);
+
+            const prices: Record<string, number> = {};
+            const colors: Record<string, string> = {};
+            const colorOptions = [
+              "#10b981",
+              "#06b6d4",
+              "#ec4899",
+              "#8b5cf6",
+              "#f97316",
+              "#3b82f6",
+              "#6366f1",
+              "#ef4444",
+            ];
+
+            parsedProducts.forEach((product: any, index: number) => {
+              prices[product.name] = product.price;
+              colors[product.name] = colorOptions[index % colorOptions.length];
+            });
+
+            setProductPrices(prices);
+            setProductColors(colors);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load products:", error);
+        // Keep defaults
+        setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
+        setProductPrices({ Oil: 950, Shampoo: 1750, Conditioner: 1850 });
+        setProductColors({
+          Oil: "#10b981",
+          Shampoo: "#06b6d4",
+          Conditioner: "#ec4899",
+        });
+      }
+    };
+
+    loadProducts();
+  }, []);
 
   // Load real orders from Google Sheets
   useEffect(() => {
@@ -96,7 +194,7 @@ const AnalyticsPage: React.FC = () => {
         const result = await getAllOrders();
 
         if (result.success && result.data) {
-          // Convert sheet data back to Order format
+          // Convert sheet data back to Order format using dynamic product data
           const convertedOrders: Order[] = result.data.map((sheetOrder) => {
             // Parse customer info back to separate fields
             const customerLines = sheetOrder.customerInfo.split("\n");
@@ -104,27 +202,29 @@ const AnalyticsPage: React.FC = () => {
             const address = customerLines.slice(1, -1).join(", ") || "";
             const contact = customerLines[customerLines.length - 1] || "";
 
-            // Reconstruct products array
+            // Reconstruct products array dynamically
             const products = [];
+
+            // Handle legacy column-based products
             if (sheetOrder.oilQty > 0) {
               products.push({
                 name: "Oil",
                 quantity: sheetOrder.oilQty,
-                price: 950,
+                price: productPrices["Oil"] || 950,
               });
             }
             if (sheetOrder.shampooQty > 0) {
               products.push({
                 name: "Shampoo",
                 quantity: sheetOrder.shampooQty,
-                price: 1750,
+                price: productPrices["Shampoo"] || 1750,
               });
             }
             if (sheetOrder.conditionerQty > 0) {
               products.push({
                 name: "Conditioner",
                 quantity: sheetOrder.conditionerQty,
-                price: 1850,
+                price: productPrices["Conditioner"] || 1850,
               });
             }
 
@@ -156,8 +256,11 @@ const AnalyticsPage: React.FC = () => {
       }
     };
 
-    loadRealOrders();
-  }, []);
+    // Only load orders after products are loaded
+    if (Object.keys(productPrices).length > 0 || availableProducts.length > 1) {
+      loadRealOrders();
+    }
+  }, [productPrices, availableProducts]);
 
   // Load expense summary
   useEffect(() => {
@@ -424,6 +527,23 @@ const AnalyticsPage: React.FC = () => {
     conditioner: "#ec4899",
   };
 
+  const getProductDisplayColor = (productName: string) => {
+    // For chart display, convert hex to Tailwind classes
+    const colorMap: Record<string, string> = {
+      "#10b981": "bg-emerald-600",
+      "#06b6d4": "bg-cyan-600",
+      "#ec4899": "bg-pink-600",
+      "#8b5cf6": "bg-purple-600",
+      "#f97316": "bg-orange-600",
+      "#3b82f6": "bg-blue-600",
+      "#6366f1": "bg-indigo-600",
+      "#ef4444": "bg-red-600",
+    };
+
+    const hexColor = productColors[productName];
+    return colorMap[hexColor] || "bg-gray-600";
+  };
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -518,6 +638,7 @@ const AnalyticsPage: React.FC = () => {
         selectedProduct={selectedProduct}
         selectedMetric={selectedMetric}
         dateRange={dateRange}
+        availableProducts={availableProducts}
         onTimePeriodChange={setTimePeriod}
         onProductChange={setSelectedProduct}
         onMetricChange={setSelectedMetric}
@@ -632,13 +753,7 @@ const AnalyticsPage: React.FC = () => {
                   ([name], index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={
-                        name === "Oil"
-                          ? chartColors.oil
-                          : name === "Shampoo"
-                          ? chartColors.shampoo
-                          : chartColors.conditioner
-                      }
+                      fill={productColors[name] || chartColors.oil}
                     />
                   )
                 )}
@@ -734,13 +849,9 @@ const AnalyticsPage: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div
-                          className={`w-3 h-3 rounded-full mr-3 ${
-                            product === "Oil"
-                              ? "bg-emerald-600"
-                              : product === "Shampoo"
-                              ? "bg-cyan-600"
-                              : "bg-pink-600"
-                          }`}
+                          className={`w-3 h-3 rounded-full mr-3 ${getProductDisplayColor(
+                            product
+                          )}`}
                         ></div>
                         <span className="text-sm font-medium text-gray-900">
                           {product}
@@ -766,13 +877,9 @@ const AnalyticsPage: React.FC = () => {
                         </span>
                         <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
                           <div
-                            className={`h-2 rounded-full ${
-                              product === "Oil"
-                                ? "bg-emerald-600"
-                                : product === "Shampoo"
-                                ? "bg-cyan-600"
-                                : "bg-pink-600"
-                            }`}
+                            className={`h-2 rounded-full ${getProductDisplayColor(
+                              product
+                            )}`}
                             style={{
                               width: `${
                                 analyticsData.totalRevenue > 0
@@ -793,6 +900,12 @@ const AnalyticsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Expense Manager */}
+      <ExpenseManager
+        dateRange={dateRange}
+        onExpensesUpdate={setExpenseSummary}
+      />
     </div>
   );
 };
