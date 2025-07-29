@@ -15,6 +15,12 @@ import {
   Legend,
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
+import {
+  addExpenseToSheet,
+  getAllExpensesFromSheet,
+  deleteExpenseFromSheet,
+  getExpenseSummary,
+} from "../assets/services/expenseService";
 import ExpenseForm from "../components/ExpenseForm";
 
 interface Order {
@@ -82,6 +88,13 @@ const AnalyticsPage: React.FC = () => {
   >("both");
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expensesLoading, setExpensesLoading] = useState(true);
+  const [expensesError, setExpensesError] = useState<string | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<{
+    totalExpenses: number;
+    expensesByType: Record<string, number>;
+    monthlyExpenses: Record<string, number>;
+  } | null>(null);
 
   // Real data from Google Sheets
   const [realOrders, setRealOrders] = useState<Order[]>([]);
@@ -162,6 +175,55 @@ const AnalyticsPage: React.FC = () => {
 
     loadRealOrders();
   }, []);
+
+  // Load expenses from Google Sheets using separate service
+  useEffect(() => {
+    const loadExpenses = async () => {
+      try {
+        setExpensesLoading(true);
+        setExpensesError(null);
+
+        const result = await getAllExpensesFromSheet();
+
+        if (result.success && result.data) {
+          // Convert SheetExpense to Expense format
+          const convertedExpenses: Expense[] = result.data.map(
+            (sheetExpense) => ({
+              id: sheetExpense.id,
+              type: sheetExpense.type as
+                | "Shampoo"
+                | "Conditioner"
+                | "Oil"
+                | "Other",
+              amount: sheetExpense.amount,
+              note: sheetExpense.note,
+              date: sheetExpense.date,
+            })
+          );
+
+          setExpenses(convertedExpenses);
+
+          // Also load expense summary
+          const summaryResult = await getExpenseSummary(
+            dateRange.startDate,
+            dateRange.endDate
+          );
+          if (summaryResult.success && summaryResult.data) {
+            setExpenseSummary(summaryResult.data);
+          }
+        } else {
+          setExpensesError(result.error || "Failed to load expenses");
+        }
+      } catch (err) {
+        console.error("Error loading expenses:", err);
+        setExpensesError("An unexpected error occurred while loading expenses");
+      } finally {
+        setExpensesLoading(false);
+      }
+    };
+
+    loadExpenses();
+  }, [dateRange.startDate, dateRange.endDate]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-LK", {
@@ -295,7 +357,7 @@ const AnalyticsPage: React.FC = () => {
     };
   }, [filteredOrders, timePeriod, calculateOrderRevenue]);
 
-  // Dynamic KPI Cards Configuration
+  // Dynamic KPI Cards Configuration - Enhanced with expense data
   const kpiCards = useMemo((): KPICard[] => {
     const receivedFundsPercentage =
       analyticsData.totalRevenue > 0
@@ -305,6 +367,9 @@ const AnalyticsPage: React.FC = () => {
           ).toFixed(1)
         : "0";
 
+    const totalExpenses = expenseSummary?.totalExpenses || 0;
+    const netProfit = analyticsData.totalReceivedFunds - totalExpenses;
+
     return [
       {
         id: "total-revenue",
@@ -313,7 +378,21 @@ const AnalyticsPage: React.FC = () => {
         textColor: "text-primary",
         bgColor: "bg-primary/10",
         iconColor: "text-primary",
-        icon: "රු",
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+            />
+          </svg>
+        ),
       },
       {
         id: "received-funds",
@@ -322,7 +401,6 @@ const AnalyticsPage: React.FC = () => {
         textColor: "text-green-600",
         bgColor: "bg-green-100",
         iconColor: "text-green-600",
-        subtitle: `${receivedFundsPercentage}% of total`,
         icon: (
           <svg
             className="w-6 h-6"
@@ -340,12 +418,12 @@ const AnalyticsPage: React.FC = () => {
         ),
       },
       {
-        id: "total-units",
-        title: "Total Units Sold",
-        value: analyticsData.totalUnitsSold.toString(),
-        textColor: "text-orange-600",
-        bgColor: "bg-orange-100",
-        iconColor: "text-orange-600",
+        id: "total-expenses",
+        title: "Total Expenses",
+        value: formatCurrency(totalExpenses),
+        textColor: "text-red-600",
+        bgColor: "bg-red-100",
+        iconColor: "text-red-600",
         icon: (
           <svg
             className="w-6 h-6"
@@ -357,11 +435,12 @@ const AnalyticsPage: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
             />
           </svg>
         ),
       },
+
       {
         id: "total-orders",
         title: "Total Orders",
@@ -369,6 +448,7 @@ const AnalyticsPage: React.FC = () => {
         textColor: "text-blue-600",
         bgColor: "bg-blue-100",
         iconColor: "text-blue-600",
+        subtitle: `${analyticsData.totalUnitsSold} Units sold`,
         icon: (
           <svg
             className="w-6 h-6"
@@ -386,7 +466,7 @@ const AnalyticsPage: React.FC = () => {
         ),
       },
     ];
-  }, [analyticsData, formatCurrency]);
+  }, [analyticsData, formatCurrency, expenseSummary]);
 
   const chartColors = {
     primary: "#7cb342",
@@ -401,30 +481,132 @@ const AnalyticsPage: React.FC = () => {
     conditioner: "#ec4899",
   };
 
-  const handleAddExpense = (expense: Omit<Expense, "id">) => {
-    const expenseToAdd = {
-      ...expense,
-      id: Date.now().toString(),
-    };
-    setExpenses([...expenses, expenseToAdd]);
-    setShowExpenseForm(false);
+  // Update handleAddExpense to save to Google Sheets using separate service
+  const handleAddExpense = async (expense: Omit<Expense, "id">) => {
+    try {
+      const expenseToAdd = {
+        ...expense,
+        id: Date.now().toString(),
+      };
+
+      // Save to Google Sheets using separate service
+      const result = await addExpenseToSheet(expenseToAdd);
+
+      if (result.success) {
+        // Update local state
+        setExpenses([...expenses, expenseToAdd]);
+        setShowExpenseForm(false);
+
+        // Refresh expense summary
+        const summaryResult = await getExpenseSummary(
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        if (summaryResult.success && summaryResult.data) {
+          setExpenseSummary(summaryResult.data);
+        }
+
+        console.log("Expense saved successfully!");
+      } else {
+        console.error("Failed to save expense:", result.error);
+        alert(`Failed to save expense: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error saving expense:", error);
+      alert("An unexpected error occurred while saving the expense");
+    }
   };
 
+  // Delete expense function using separate service
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!window.confirm("Are you sure you want to delete this expense?")) {
+      return;
+    }
+
+    try {
+      const result = await deleteExpenseFromSheet(expenseId);
+
+      if (result.success) {
+        // Update local state
+        setExpenses(expenses.filter((expense) => expense.id !== expenseId));
+
+        // Refresh expense summary
+        const summaryResult = await getExpenseSummary(
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        if (summaryResult.success && summaryResult.data) {
+          setExpenseSummary(summaryResult.data);
+        }
+
+        console.log("Expense deleted successfully!");
+      } else {
+        console.error("Failed to delete expense:", result.error);
+        alert(`Failed to delete expense: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      alert("An unexpected error occurred while deleting the expense");
+    }
+  };
+
+  // Enhanced ExpenseSection with Google Sheets integration
   const ExpenseSection = () => (
     <div className="bg-white border border-gray-200 rounded-lg">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">Expenses</h3>
-        <button
-          onClick={() => setShowExpenseForm(true)}
-          className="px-4 py-2 text-white rounded bg-primary hover:bg-primary-dark"
-        >
-          Add Expense
-        </button>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Expenses Management
+        </h3>
+        <div className="flex items-center space-x-4">
+          {expenseSummary && (
+            <div className="text-sm text-gray-600">
+              Total:{" "}
+              <span className="font-semibold text-red-600">
+                {formatCurrency(expenseSummary.totalExpenses)}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={() => setShowExpenseForm(true)}
+            className="px-4 py-2 text-white rounded bg-primary hover:bg-primary-dark"
+            disabled={expensesLoading}
+          >
+            Add Expense
+          </button>
+        </div>
       </div>
 
-      {expenses.length === 0 ? (
+      {expensesLoading ? (
         <div className="px-6 py-8 text-center">
-          <p className="text-gray-500">No expenses recorded yet.</p>
+          <div className="w-8 h-8 mx-auto border-b-2 rounded-full animate-spin border-primary"></div>
+          <p className="mt-2 text-gray-500">Loading expenses...</p>
+        </div>
+      ) : expensesError ? (
+        <div className="px-6 py-8 text-center">
+          <p className="text-red-500">{expensesError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 mt-2 text-white rounded bg-primary hover:bg-primary-dark"
+          >
+            Retry
+          </button>
+        </div>
+      ) : expenses.length === 0 ? (
+        <div className="px-6 py-8 text-center">
+          <div className="mb-4 text-4xl text-gray-400">💰</div>
+          <h3 className="mb-2 text-lg font-medium text-gray-900">
+            No expenses recorded yet
+          </h3>
+          <p className="mb-4 text-gray-500">
+            Start tracking your business expenses to get better insights into
+            your profitability.
+          </p>
+          <button
+            onClick={() => setShowExpenseForm(true)}
+            className="px-4 py-2 text-white rounded bg-primary hover:bg-primary-dark"
+          >
+            Add Your First Expense
+          </button>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -444,11 +626,14 @@ const AnalyticsPage: React.FC = () => {
                   <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                     Note
                   </th>
+                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {expenses.map((expense) => (
-                  <tr key={expense.id}>
+                  <tr key={expense.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
                       {new Date(expense.date).toLocaleDateString()}
                     </td>
@@ -459,11 +644,32 @@ const AnalyticsPage: React.FC = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
                       {formatCurrency(expense.amount)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                    <td className="max-w-xs px-6 py-4 text-sm text-gray-500 truncate">
                       {expense.note || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      <button
+                        onClick={() => handleDeleteExpense(expense.id)}
+                        className="text-red-600 transition-colors hover:text-red-800"
+                        title="Delete expense"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -552,6 +758,9 @@ const AnalyticsPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             Sales Analytics Dashboard
           </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Track your revenue, expenses, and profitability in real-time
+          </p>
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-500">
@@ -661,12 +870,12 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Dynamic KPI Cards */}
+      {/* Enhanced KPI Cards with Profit Tracking */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {kpiCards.map((card) => (
           <div
             key={card.id}
-            className="p-6 bg-white border border-gray-200 rounded-lg"
+            className="p-6 transition-shadow bg-white border border-gray-200 rounded-lg hover:shadow-md"
           >
             <div className="flex items-center justify-between h-full">
               <div>
@@ -675,7 +884,9 @@ const AnalyticsPage: React.FC = () => {
                   {card.value}
                 </p>
                 {card.subtitle && (
-                  <p className="mt-1 text-xs text-gray-500">{card.subtitle}</p>
+                  <p className="mt-1 text-sm font-semibold text-blue-500">
+                    {card.subtitle}
+                  </p>
                 )}
               </div>
               <div
