@@ -22,6 +22,8 @@ import {
   getExpenseSummary,
 } from "../assets/services/expenseService";
 import ExpenseForm from "../components/ExpenseForm";
+import ProductCostManager from "../components/ProductManager";
+import ProductManager from "../components/ProductManager";
 
 interface Order {
   name: string;
@@ -1142,6 +1144,7 @@ const AnalyticsPage: React.FC = () => {
 
       {/* Expense Section */}
       <ExpenseSection />
+      <ProductManager />
 
       {/* Expense Form Modal */}
       {showExpenseForm && (
