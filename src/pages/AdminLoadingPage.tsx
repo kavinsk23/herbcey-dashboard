@@ -5,32 +5,34 @@ import logoTp from "../../src/assets/images/logo-tp.png";
 const AdminLoadingPage = () => {
   const navigate = useNavigate();
 
-  const handleMenuClick = (menuItem: "orders" | "analytics") => {
+  const handleMenuClick = (menuItem: "orders" | "analytics" | "management") => {
     navigate(`/admin/${menuItem}`);
   };
 
   return (
     <div className="min-h-screen bg-black-50">
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-6xl px-6 py-12 mx-auto">
         {/* Welcome */}
-        <div className="text-center mb-12">
-          <img src={logoTp} alt="logo" className="w-52 mx-auto" />
-          <h2 className="text-3xl font-semibold text-black-800 mb-3">
+        <div className="mb-12 text-center">
+          <img src={logoTp} alt="logo" className="mx-auto w-52" />
+          <h2 className="mb-3 text-3xl font-semibold text-black-800">
             Welcome Back
           </h2>
-          <p className="text-black-600">Manage orders and see analytics</p>
+          <p className="text-black-600">
+            Manage orders, products, and see analytics
+          </p>
         </div>
 
         {/* Menu Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 gap-6 mb-12 md:grid-cols-3">
           {/* Orders Card */}
           <div
             onClick={() => handleMenuClick("orders")}
-            className="bg-white rounded-xl border border-black-200 p-8 cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 group"
+            className="p-8 transition-all duration-200 bg-white border cursor-pointer rounded-xl border-black-200 hover:border-primary hover:shadow-lg group"
           >
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+              <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 transition-colors rounded-lg bg-primary/10 group-hover:bg-primary/20">
                 <svg
                   className="w-6 h-6 text-primary group-hover:text-primary-dark"
                   fill="none"
@@ -47,14 +49,64 @@ const AdminLoadingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-medium text-black-800 mb-2 group-hover:text-primary transition-colors">
+                <h3 className="mb-2 text-xl font-medium transition-colors text-black-800 group-hover:text-primary">
                   Orders
                 </h3>
-                <p className="text-black-600 mb-4">
+                <p className="mb-4 text-black-600">
                   View and manage customer orders and order details.
                 </p>
-                <div className="flex items-center text-sm text-primary font-medium group-hover:text-primary-dark transition-colors">
+                <div className="flex items-center text-sm font-medium transition-colors text-primary group-hover:text-primary-dark">
                   <span>View more</span>
+                  <svg
+                    className="w-4 h-4 ml-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Products Card */}
+          <div
+            onClick={() => handleMenuClick("management")}
+            className="p-8 transition-all duration-200 bg-white border cursor-pointer rounded-xl border-black-200 hover:border-primary hover:shadow-lg group"
+          >
+            <div className="flex items-start space-x-4">
+              <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 transition-colors rounded-lg bg-primary/10 group-hover:bg-primary/20">
+                <svg
+                  className="w-6 h-6 text-primary group-hover:text-primary-dark"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="mb-2 text-xl font-medium transition-colors text-black-800 group-hover:text-primary">
+                  Products
+                </h3>
+                <p className="mb-4 text-black-600">
+                  Manage product costs, prices, and profit margins.
+                </p>
+                <div className="flex items-center text-sm font-medium transition-colors text-primary group-hover:text-primary-dark">
+                  <span>Manage products</span>
                   <svg
                     className="w-4 h-4 ml-1"
                     fill="none"
@@ -77,10 +129,10 @@ const AdminLoadingPage = () => {
           {/* Analytics Card */}
           <div
             onClick={() => handleMenuClick("analytics")}
-            className="bg-white rounded-xl border border-black-200 p-8 cursor-pointer hover:border-primary hover:shadow-lg transition-all duration-200 group"
+            className="p-8 transition-all duration-200 bg-white border cursor-pointer rounded-xl border-black-200 hover:border-primary hover:shadow-lg group"
           >
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+              <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 transition-colors rounded-lg bg-primary/10 group-hover:bg-primary/20">
                 <svg
                   className="w-6 h-6 text-primary group-hover:text-primary-dark"
                   fill="none"
@@ -97,13 +149,13 @@ const AdminLoadingPage = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-medium text-black-800 mb-2 group-hover:text-primary transition-colors">
+                <h3 className="mb-2 text-xl font-medium transition-colors text-black-800 group-hover:text-primary">
                   Analytics
                 </h3>
-                <p className="text-black-600 mb-4">
+                <p className="mb-4 text-black-600">
                   Track sales, inventory levels, and business performance
                 </p>
-                <div className="flex items-center text-sm text-primary font-medium group-hover:text-primary-dark transition-colors">
+                <div className="flex items-center text-sm font-medium transition-colors text-primary group-hover:text-primary-dark">
                   <span>View reports</span>
                   <svg
                     className="w-4 h-4 ml-1"

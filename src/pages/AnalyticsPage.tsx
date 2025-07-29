@@ -15,15 +15,8 @@ import {
   Legend,
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
-import {
-  addExpenseToSheet,
-  getAllExpensesFromSheet,
-  deleteExpenseFromSheet,
-  getExpenseSummary,
-} from "../assets/services/expenseService";
-import ExpenseForm from "../components/ExpenseForm";
-import ProductCostManager from "../components/ProductManager";
-import ProductManager from "../components/ProductManager";
+import { getExpenseSummary } from "../assets/services/expenseService";
+import AnalyticsFilters from "../components/AnalyticsFilters";
 
 interface Order {
   name: string;
@@ -42,14 +35,6 @@ interface Order {
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
-}
-
-interface Expense {
-  id: string;
-  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
-  amount: number;
-  note: string;
-  date: string;
 }
 
 interface KPICard {
@@ -88,10 +73,6 @@ const AnalyticsPage: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<
     "revenue" | "orders" | "both"
   >("both");
-  const [showExpenseForm, setShowExpenseForm] = useState(false);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [expensesLoading, setExpensesLoading] = useState(true);
-  const [expensesError, setExpensesError] = useState<string | null>(null);
   const [expenseSummary, setExpenseSummary] = useState<{
     totalExpenses: number;
     expensesByType: Record<string, number>;
@@ -178,53 +159,23 @@ const AnalyticsPage: React.FC = () => {
     loadRealOrders();
   }, []);
 
-  // Load expenses from Google Sheets using separate service
+  // Load expense summary
   useEffect(() => {
-    const loadExpenses = async () => {
+    const loadExpenseSummary = async () => {
       try {
-        setExpensesLoading(true);
-        setExpensesError(null);
-
-        const result = await getAllExpensesFromSheet();
-
-        if (result.success && result.data) {
-          // Convert SheetExpense to Expense format
-          const convertedExpenses: Expense[] = result.data.map(
-            (sheetExpense) => ({
-              id: sheetExpense.id,
-              type: sheetExpense.type as
-                | "Shampoo"
-                | "Conditioner"
-                | "Oil"
-                | "Other",
-              amount: sheetExpense.amount,
-              note: sheetExpense.note,
-              date: sheetExpense.date,
-            })
-          );
-
-          setExpenses(convertedExpenses);
-
-          // Also load expense summary
-          const summaryResult = await getExpenseSummary(
-            dateRange.startDate,
-            dateRange.endDate
-          );
-          if (summaryResult.success && summaryResult.data) {
-            setExpenseSummary(summaryResult.data);
-          }
-        } else {
-          setExpensesError(result.error || "Failed to load expenses");
+        const summaryResult = await getExpenseSummary(
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        if (summaryResult.success && summaryResult.data) {
+          setExpenseSummary(summaryResult.data);
         }
       } catch (err) {
-        console.error("Error loading expenses:", err);
-        setExpensesError("An unexpected error occurred while loading expenses");
-      } finally {
-        setExpensesLoading(false);
+        console.error("Error loading expense summary:", err);
       }
     };
 
-    loadExpenses();
+    loadExpenseSummary();
   }, [dateRange.startDate, dateRange.endDate]);
 
   const formatCurrency = (amount: number) => {
@@ -359,18 +310,9 @@ const AnalyticsPage: React.FC = () => {
     };
   }, [filteredOrders, timePeriod, calculateOrderRevenue]);
 
-  // Dynamic KPI Cards Configuration - Enhanced with expense data
+  // Dynamic KPI Cards Configuration
   const kpiCards = useMemo((): KPICard[] => {
-    const receivedFundsPercentage =
-      analyticsData.totalRevenue > 0
-        ? (
-            (analyticsData.totalReceivedFunds / analyticsData.totalRevenue) *
-            100
-          ).toFixed(1)
-        : "0";
-
     const totalExpenses = expenseSummary?.totalExpenses || 0;
-    const netProfit = analyticsData.totalReceivedFunds - totalExpenses;
 
     return [
       {
@@ -442,7 +384,6 @@ const AnalyticsPage: React.FC = () => {
           </svg>
         ),
       },
-
       {
         id: "total-orders",
         title: "Total Orders",
@@ -482,206 +423,6 @@ const AnalyticsPage: React.FC = () => {
     shampoo: "#06b6d4",
     conditioner: "#ec4899",
   };
-
-  // Update handleAddExpense to save to Google Sheets using separate service
-  const handleAddExpense = async (expense: Omit<Expense, "id">) => {
-    try {
-      const expenseToAdd = {
-        ...expense,
-        id: Date.now().toString(),
-      };
-
-      // Save to Google Sheets using separate service
-      const result = await addExpenseToSheet(expenseToAdd);
-
-      if (result.success) {
-        // Update local state
-        setExpenses([...expenses, expenseToAdd]);
-        setShowExpenseForm(false);
-
-        // Refresh expense summary
-        const summaryResult = await getExpenseSummary(
-          dateRange.startDate,
-          dateRange.endDate
-        );
-        if (summaryResult.success && summaryResult.data) {
-          setExpenseSummary(summaryResult.data);
-        }
-
-        console.log("Expense saved successfully!");
-      } else {
-        console.error("Failed to save expense:", result.error);
-        alert(`Failed to save expense: ${result.error}`);
-      }
-    } catch (error) {
-      console.error("Error saving expense:", error);
-      alert("An unexpected error occurred while saving the expense");
-    }
-  };
-
-  // Delete expense function using separate service
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (!window.confirm("Are you sure you want to delete this expense?")) {
-      return;
-    }
-
-    try {
-      const result = await deleteExpenseFromSheet(expenseId);
-
-      if (result.success) {
-        // Update local state
-        setExpenses(expenses.filter((expense) => expense.id !== expenseId));
-
-        // Refresh expense summary
-        const summaryResult = await getExpenseSummary(
-          dateRange.startDate,
-          dateRange.endDate
-        );
-        if (summaryResult.success && summaryResult.data) {
-          setExpenseSummary(summaryResult.data);
-        }
-
-        console.log("Expense deleted successfully!");
-      } else {
-        console.error("Failed to delete expense:", result.error);
-        alert(`Failed to delete expense: ${result.error}`);
-      }
-    } catch (error) {
-      console.error("Error deleting expense:", error);
-      alert("An unexpected error occurred while deleting the expense");
-    }
-  };
-
-  // Enhanced ExpenseSection with Google Sheets integration
-  const ExpenseSection = () => (
-    <div className="bg-white border border-gray-200 rounded-lg">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Expenses Management
-        </h3>
-        <div className="flex items-center space-x-4">
-          {expenseSummary && (
-            <div className="text-sm text-gray-600">
-              Total:{" "}
-              <span className="font-semibold text-red-600">
-                {formatCurrency(expenseSummary.totalExpenses)}
-              </span>
-            </div>
-          )}
-          <button
-            onClick={() => setShowExpenseForm(true)}
-            className="px-4 py-2 text-white rounded bg-primary hover:bg-primary-dark"
-            disabled={expensesLoading}
-          >
-            Add Expense
-          </button>
-        </div>
-      </div>
-
-      {expensesLoading ? (
-        <div className="px-6 py-8 text-center">
-          <div className="w-8 h-8 mx-auto border-b-2 rounded-full animate-spin border-primary"></div>
-          <p className="mt-2 text-gray-500">Loading expenses...</p>
-        </div>
-      ) : expensesError ? (
-        <div className="px-6 py-8 text-center">
-          <p className="text-red-500">{expensesError}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 mt-2 text-white rounded bg-primary hover:bg-primary-dark"
-          >
-            Retry
-          </button>
-        </div>
-      ) : expenses.length === 0 ? (
-        <div className="px-6 py-8 text-center">
-          <div className="mb-4 text-4xl text-gray-400">💰</div>
-          <h3 className="mb-2 text-lg font-medium text-gray-900">
-            No expenses recorded yet
-          </h3>
-          <p className="mb-4 text-gray-500">
-            Start tracking your business expenses to get better insights into
-            your profitability.
-          </p>
-          <button
-            onClick={() => setShowExpenseForm(true)}
-            className="px-4 py-2 text-white rounded bg-primary hover:bg-primary-dark"
-          >
-            Add Your First Expense
-          </button>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <div className="overflow-y-auto max-h-96">
-            <table className="w-full">
-              <thead className="sticky top-0 z-10 bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Note
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {expenses.map((expense) => (
-                  <tr key={expense.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      {new Date(expense.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">
-                          {expense.type}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">
-                      {formatCurrency(expense.amount)}
-                    </td>
-                    <td className="max-w-xs px-6 py-4 text-sm text-gray-500 truncate">
-                      {expense.note || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      <button
-                        onClick={() => handleDeleteExpense(expense.id)}
-                        className="text-red-600 transition-colors hover:text-red-800"
-                        title="Delete expense"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -771,108 +512,19 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Advanced Filters */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Analytics Filters
-          </h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Time Period
-              </label>
-              <select
-                value={timePeriod}
-                onChange={(e) =>
-                  setTimePeriod(
-                    e.target.value as "daily" | "monthly" | "yearly"
-                  )
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="daily">Daily</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-            </div>
+      {/* Analytics Filters */}
+      <AnalyticsFilters
+        timePeriod={timePeriod}
+        selectedProduct={selectedProduct}
+        selectedMetric={selectedMetric}
+        dateRange={dateRange}
+        onTimePeriodChange={setTimePeriod}
+        onProductChange={setSelectedProduct}
+        onMetricChange={setSelectedMetric}
+        onDateRangeChange={setDateRange}
+      />
 
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Product Filter
-              </label>
-              <select
-                value={selectedProduct}
-                onChange={(e) =>
-                  setSelectedProduct(
-                    e.target.value as "all" | "Oil" | "Shampoo" | "Conditioner"
-                  )
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">All Products</option>
-                <option value="Oil">Oil</option>
-                <option value="Shampoo">Shampoo</option>
-                <option value="Conditioner">Conditioner</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Metric View
-              </label>
-              <select
-                value={selectedMetric}
-                onChange={(e) =>
-                  setSelectedMetric(
-                    e.target.value as "revenue" | "orders" | "both"
-                  )
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="both">Revenue & Orders</option>
-                <option value="revenue">Revenue Only</option>
-                <option value="orders">Orders Only</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) =>
-                  setDateRange((prev) => ({
-                    ...prev,
-                    startDate: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) =>
-                  setDateRange((prev) => ({ ...prev, endDate: e.target.value }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced KPI Cards with Profit Tracking */}
+      {/* Enhanced KPI Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {kpiCards.map((card) => (
           <div
@@ -1141,24 +793,6 @@ const AnalyticsPage: React.FC = () => {
           </table>
         </div>
       </div>
-
-      {/* Expense Section */}
-      <ExpenseSection />
-      <ProductManager />
-
-      {/* Expense Form Modal */}
-      {showExpenseForm && (
-        <ExpenseForm
-          initialExpense={{
-            type: "Shampoo",
-            amount: 0,
-            note: "",
-            date: new Date().toISOString().split("T")[0],
-          }}
-          onSave={handleAddExpense}
-          onClose={() => setShowExpenseForm(false)}
-        />
-      )}
     </div>
   );
 };
