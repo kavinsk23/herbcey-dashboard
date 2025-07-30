@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   getAllProductsFromSheet,
   syncAllProductsToSheet,
+  addProductToSheet,
+  updateProductInSheet,
+  deleteProductFromSheet,
 } from "../assets/services/productService";
 
 interface ProductCost {
@@ -17,30 +20,7 @@ interface ProductManagerProps {
 }
 
 const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
-  const [products, setProducts] = useState<ProductCost[]>([
-    {
-      id: "oil",
-      name: "Oil",
-      cost: 350, // Default cost
-      price: 950, // Selling price
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: "shampoo",
-      name: "Shampoo",
-      cost: 800, // Default cost
-      price: 1350, // Selling price
-      lastUpdated: new Date().toISOString(),
-    },
-    {
-      id: "conditioner",
-      name: "Conditioner",
-      cost: 850, // Default cost
-      price: 1350, // Selling price
-      lastUpdated: new Date().toISOString(),
-    },
-  ]);
-
+  const [products, setProducts] = useState<ProductCost[]>([]);
   const [isEditingCost, setIsEditingCost] = useState<string | null>(null);
   const [isEditingPrice, setIsEditingPrice] = useState<string | null>(null);
   const [tempCost, setTempCost] = useState<number>(0);
@@ -52,73 +32,140 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     price: 0,
   });
   const [loading, setLoading] = useState<boolean>(false);
-  const [syncStatus, setSyncStatus] = useState<string>("Auto-saved");
+  const [syncStatus, setSyncStatus] = useState<string>("Loading...");
+
+  // Default products to initialize if sheet is empty
+  const defaultProducts: ProductCost[] = [
+    {
+      id: "oil",
+      name: "Oil",
+      cost: 350,
+      price: 950,
+      lastUpdated: new Date().toISOString(),
+    },
+    {
+      id: "shampoo",
+      name: "Shampoo",
+      cost: 800,
+      price: 1350,
+      lastUpdated: new Date().toISOString(),
+    },
+    {
+      id: "conditioner",
+      name: "Conditioner",
+      cost: 850,
+      price: 1350,
+      lastUpdated: new Date().toISOString(),
+    },
+  ];
 
   // Load products from Google Sheets on component mount
   useEffect(() => {
     loadProductsFromSheet();
   }, []);
 
+  // Update parent component when products change
+  useEffect(() => {
+    if (products.length > 0) {
+      const costMap = products.reduce((acc, product) => {
+        acc[product.name] = product.cost;
+        return acc;
+      }, {} as Record<string, number>);
+      onCostsUpdate?.(costMap);
+    }
+  }, [products, onCostsUpdate]);
+
   // Load products from Google Sheets
   const loadProductsFromSheet = async () => {
     setLoading(true);
+    setSyncStatus("Loading...");
+
     try {
       const result = await getAllProductsFromSheet();
+
       if (result.success && result.data && result.data.length > 0) {
+        // Use data from Google Sheets
         setProducts(result.data);
         setSyncStatus("Synced");
       } else {
-        // Fallback to localStorage if sheet is empty
-        const savedProducts = localStorage.getItem("all_products");
-        if (savedProducts) {
-          const parsedProducts = JSON.parse(savedProducts);
-          setProducts(parsedProducts);
-          // Sync to sheet
-          await syncAllProductsToSheet(parsedProducts);
-        }
+        // Initialize with default products if sheet is empty
+        setProducts(defaultProducts);
+        // Sync default products to sheet
+        await syncAllProductsToSheet(defaultProducts);
+        setSyncStatus("Initialized");
       }
     } catch (error) {
-      console.error("Failed to load from sheet, using localStorage:", error);
-      // Fallback to localStorage
-      const savedProducts = localStorage.getItem("all_products");
-      if (savedProducts) {
-        const parsedProducts = JSON.parse(savedProducts);
-        setProducts(parsedProducts);
-      }
+      console.error("Failed to load from sheet:", error);
+      // Use default products as fallback
+      setProducts(defaultProducts);
       setSyncStatus("Offline");
     }
+
     setLoading(false);
   };
 
-  // Save to both localStorage and Google Sheets
-  const saveProducts = async (updatedProducts: ProductCost[]) => {
-    // Save to localStorage immediately
-    localStorage.setItem("all_products", JSON.stringify(updatedProducts));
-
-    // Update parent component
-    const costMap = updatedProducts.reduce((acc, product) => {
-      acc[product.name] = product.cost;
-      return acc;
-    }, {} as Record<string, number>);
-    onCostsUpdate?.(costMap);
-
-    // Sync to Google Sheets
+  // Update individual product in Google Sheets
+  const updateProductInSheets = async (updatedProduct: ProductCost) => {
     try {
       setSyncStatus("Syncing...");
-      await syncAllProductsToSheet(updatedProducts);
-      setSyncStatus("Synced");
+      const result = await updateProductInSheet(
+        updatedProduct.id,
+        updatedProduct
+      );
+
+      if (result.success) {
+        setSyncStatus("Synced");
+        return true;
+      } else {
+        setSyncStatus("Sync failed");
+        return false;
+      }
     } catch (error) {
-      console.error("Failed to sync to sheet:", error);
+      console.error("Failed to update product in sheet:", error);
       setSyncStatus("Sync failed");
+      return false;
     }
   };
 
-  // Update save products to localStorage whenever products change
-  useEffect(() => {
-    if (products.length > 0) {
-      saveProducts(products);
+  // Add new product to Google Sheets
+  const addProductToSheets = async (newProduct: ProductCost) => {
+    try {
+      setSyncStatus("Syncing...");
+      const result = await addProductToSheet(newProduct);
+
+      if (result.success) {
+        setSyncStatus("Synced");
+        return true;
+      } else {
+        setSyncStatus("Sync failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Failed to add product to sheet:", error);
+      setSyncStatus("Sync failed");
+      return false;
     }
-  }, [products, onCostsUpdate]);
+  };
+
+  // Delete product from Google Sheets
+  const deleteProductFromSheets = async (productId: string) => {
+    try {
+      setSyncStatus("Syncing...");
+      const result = await deleteProductFromSheet(productId);
+
+      if (result.success) {
+        setSyncStatus("Synced");
+        return true;
+      } else {
+        setSyncStatus("Sync failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("Failed to delete product from sheet:", error);
+      setSyncStatus("Sync failed");
+      return false;
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-LK", {
@@ -164,23 +211,34 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     setTempCost(0);
   };
 
-  const handleCostEditSave = (productId: string) => {
+  const handleCostEditSave = async (productId: string) => {
     if (tempCost < 0) {
       alert("Cost cannot be negative");
       return;
     }
 
-    setProducts((prevProducts) =>
-      prevProducts.map((product) =>
-        product.id === productId
-          ? {
-              ...product,
-              cost: tempCost,
-              lastUpdated: new Date().toISOString(),
-            }
-          : product
-      )
-    );
+    const updatedProduct = products.find((p) => p.id === productId);
+    if (!updatedProduct) return;
+
+    const newProduct = {
+      ...updatedProduct,
+      cost: tempCost,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    // Update in Google Sheets first
+    const success = await updateProductInSheets(newProduct);
+
+    if (success) {
+      // Update local state only if Google Sheets update was successful
+      setProducts((prevProducts) =>
+        prevProducts.map((product) =>
+          product.id === productId ? newProduct : product
+        )
+      );
+    } else {
+      alert("Failed to update cost in Google Sheets");
+    }
 
     setIsEditingCost(null);
     setTempCost(0);
@@ -197,23 +255,34 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     setTempPrice(0);
   };
 
-  const handlePriceEditSave = (productId: string) => {
+  const handlePriceEditSave = async (productId: string) => {
     if (tempPrice < 0) {
       alert("Price cannot be negative");
       return;
     }
 
-    setProducts((prevProducts) =>
-      prevProducts.map((product) =>
-        product.id === productId
-          ? {
-              ...product,
-              price: tempPrice,
-              lastUpdated: new Date().toISOString(),
-            }
-          : product
-      )
-    );
+    const updatedProduct = products.find((p) => p.id === productId);
+    if (!updatedProduct) return;
+
+    const newProduct = {
+      ...updatedProduct,
+      price: tempPrice,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    // Update in Google Sheets first
+    const success = await updateProductInSheets(newProduct);
+
+    if (success) {
+      // Update local state only if Google Sheets update was successful
+      setProducts((prevProducts) =>
+        prevProducts.map((product) =>
+          product.id === productId ? newProduct : product
+        )
+      );
+    } else {
+      alert("Failed to update price in Google Sheets");
+    }
 
     setIsEditingPrice(null);
     setTempPrice(0);
@@ -248,14 +317,32 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
       lastUpdated: new Date().toISOString(),
     };
 
-    setProducts((prev) => [...prev, productToAdd]);
-    setNewProduct({ name: "", cost: 0, price: 0 });
-    setShowAddProduct(false);
+    // Add to Google Sheets first
+    const success = await addProductToSheets(productToAdd);
+
+    if (success) {
+      // Update local state only if Google Sheets update was successful
+      setProducts((prev) => [...prev, productToAdd]);
+      setNewProduct({ name: "", cost: 0, price: 0 });
+      setShowAddProduct(false);
+    } else {
+      alert("Failed to add product to Google Sheets");
+    }
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
+    if (!window.confirm("Are you sure you want to delete this product?")) {
+      return;
+    }
+
+    // Delete from Google Sheets first
+    const success = await deleteProductFromSheets(productId);
+
+    if (success) {
+      // Update local state only if Google Sheets delete was successful
       setProducts((prev) => prev.filter((p) => p.id !== productId));
+    } else {
+      alert("Failed to delete product from Google Sheets");
     }
   };
 
@@ -283,12 +370,24 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
             <button
               onClick={() => setShowAddProduct(!showAddProduct)}
               className="px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
+              disabled={loading}
             >
               {showAddProduct ? "Cancel" : "Add Product"}
             </button>
-            <div className="px-3 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
+
+            {/* <div
+              className={`px-3 py-1 text-xs font-medium rounded-full ${
+                syncStatus === "Synced"
+                  ? "text-green-700 bg-green-100"
+                  : syncStatus === "Syncing..."
+                  ? "text-blue-700 bg-blue-100"
+                  : syncStatus === "Sync failed"
+                  ? "text-red-700 bg-red-100"
+                  : "text-gray-700 bg-gray-100"
+              }`}
+            >
               {loading ? "Loading..." : syncStatus}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
@@ -353,6 +452,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                 <button
                   onClick={handleAddProduct}
                   className="w-full px-4 py-2 text-sm font-medium text-white transition-colors bg-green-600 rounded-md hover:bg-green-700"
+                  disabled={loading}
                 >
                   Add Product
                 </button>
@@ -398,6 +498,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                         onClick={() => handleDeleteProduct(product.id)}
                         className="p-1 text-red-400 hover:text-red-600"
                         title="Delete product"
+                        disabled={loading}
                       >
                         <svg
                           className="w-4 h-4"
@@ -438,6 +539,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                           onClick={() => handlePriceEditSave(product.id)}
                           className="p-1 text-green-600 hover:text-green-800"
                           title="Save"
+                          disabled={loading}
                         >
                           <svg
                             className="w-4 h-4"
@@ -481,6 +583,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                           }
                           className="p-1 text-gray-400 hover:text-gray-600"
                           title="Edit price"
+                          disabled={loading}
                         >
                           <svg
                             className="w-4 h-4"
@@ -520,6 +623,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                           onClick={() => handleCostEditSave(product.id)}
                           className="p-1 text-green-600 hover:text-green-800"
                           title="Save"
+                          disabled={loading}
                         >
                           <svg
                             className="w-4 h-4"
@@ -563,6 +667,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                           }
                           className="p-1 text-gray-400 hover:text-gray-600"
                           title="Edit cost"
+                          disabled={loading}
                         >
                           <svg
                             className="w-4 h-4"

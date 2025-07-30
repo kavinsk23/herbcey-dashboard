@@ -3,6 +3,7 @@ import {
   addExpenseToSheet,
   getAllExpensesFromSheet,
   deleteExpenseFromSheet,
+  updateExpenseInSheet,
   getExpenseSummary,
 } from "../assets/services/expenseService";
 import ExpenseForm from "./ExpenseForm";
@@ -32,6 +33,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   onExpensesUpdate,
 }) => {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +138,52 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     }
   };
 
+  const handleEditExpense = async (expense: Omit<Expense, "id">) => {
+    if (!editingExpense) return;
+
+    try {
+      const updatedExpense = {
+        ...expense,
+        id: editingExpense.id,
+      };
+
+      // Update in Google Sheets
+      const result = await updateExpenseInSheet(
+        editingExpense.id,
+        updatedExpense
+      );
+
+      if (result.success) {
+        // Update local state
+        setExpenses(
+          expenses.map((exp) =>
+            exp.id === editingExpense.id ? updatedExpense : exp
+          )
+        );
+        setShowExpenseForm(false);
+        setEditingExpense(null);
+
+        // Refresh expense summary
+        const summaryResult = await getExpenseSummary(
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        if (summaryResult.success && summaryResult.data) {
+          setExpenseSummary(summaryResult.data);
+          onExpensesUpdate?.(summaryResult.data);
+        }
+
+        console.log("Expense updated successfully!");
+      } else {
+        console.error("Failed to update expense:", result.error);
+        alert(`Failed to update expense: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      alert("An unexpected error occurred while updating the expense");
+    }
+  };
+
   const handleDeleteExpense = async (expenseId: string) => {
     if (!window.confirm("Are you sure you want to delete this expense?")) {
       return;
@@ -167,6 +215,21 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       console.error("Error deleting expense:", error);
       alert("An unexpected error occurred while deleting the expense");
     }
+  };
+
+  const openEditForm = (expense: Expense) => {
+    setEditingExpense(expense);
+    setShowExpenseForm(true);
+  };
+
+  const openAddForm = () => {
+    setEditingExpense(null);
+    setShowExpenseForm(true);
+  };
+
+  const closeForm = () => {
+    setShowExpenseForm(false);
+    setEditingExpense(null);
   };
 
   // Filter expenses by date range
@@ -211,7 +274,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             </div>
           )}
           <button
-            onClick={() => setShowExpenseForm(true)}
+            onClick={openAddForm}
             className="px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
             disabled={loading}
           >
@@ -250,7 +313,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             your profitability.
           </p>
           <button
-            onClick={() => setShowExpenseForm(true)}
+            onClick={openAddForm}
             className="px-4 py-2 text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
           >
             Add Your First Expense
@@ -267,7 +330,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             date range or add expenses for this period.
           </p>
           <button
-            onClick={() => setShowExpenseForm(true)}
+            onClick={openAddForm}
             className="px-4 py-2 text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
           >
             Add Expense
@@ -336,25 +399,46 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                           {expense.note || "-"}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                          <button
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            className="text-red-600 transition-colors hover:text-red-800"
-                            title="Delete expense"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => openEditForm(expense)}
+                              className="text-blue-600 transition-colors hover:text-blue-800"
+                              title="Edit expense"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              className="text-red-600 transition-colors hover:text-red-800"
+                              title="Delete expense"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -368,14 +452,16 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       {/* Expense Form Modal */}
       {showExpenseForm && (
         <ExpenseForm
-          initialExpense={{
-            type: "Shampoo",
-            amount: 0,
-            note: "",
-            date: new Date().toISOString().split("T")[0],
-          }}
-          onSave={handleAddExpense}
-          onClose={() => setShowExpenseForm(false)}
+          initialExpense={
+            editingExpense || {
+              type: "Shampoo",
+              amount: 0,
+              note: "",
+              date: new Date().toISOString().split("T")[0],
+            }
+          }
+          onSave={editingExpense ? handleEditExpense : handleAddExpense}
+          onClose={closeForm}
         />
       )}
     </div>

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getCityForTrackingId } from "../assets/services/trackingCityService";
 
 interface Order {
   name: string;
@@ -25,6 +26,9 @@ interface OrderCardProps {
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
+  const [customerCity, setCustomerCity] = useState<string | null>(null);
+  const [cityLoading, setCityLoading] = useState(false);
+
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
   };
@@ -70,6 +74,48 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const contacts = parseContacts(order.contact);
 
+  // Fetch city using the real tracking ID from your Google Sheets
+  useEffect(() => {
+    const fetchCity = async () => {
+      if (order.tracking && order.tracking.trim() !== "") {
+        setCityLoading(true);
+        console.log(
+          `🔍 OrderCard: Fetching city for tracking ${order.tracking}`
+        );
+
+        try {
+          // Use the new service that works with your Google Sheets tracking IDs
+          const city = await getCityForTrackingId(order.tracking);
+
+          if (city) {
+            setCustomerCity(city);
+            console.log(
+              `✅ OrderCard: Found city ${city} for ${order.tracking}`
+            );
+          } else {
+            console.log(`❌ OrderCard: No city found for ${order.tracking}`);
+            setCustomerCity(null);
+          }
+        } catch (error) {
+          console.error(
+            `💥 OrderCard: Error fetching city for ${order.tracking}:`,
+            error
+          );
+          setCustomerCity(null);
+        } finally {
+          setCityLoading(false);
+        }
+      } else {
+        console.log(
+          `⚠️ OrderCard: No tracking ID provided for order ${order.name}`
+        );
+        setCustomerCity(null);
+      }
+    };
+
+    fetchCity();
+  }, [order.tracking]);
+
   return (
     <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 hover:shadow-md">
       {/* Header with status and payment */}
@@ -86,7 +132,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           {order.paymentMethod === "COD" && (
             <>
               {order.paymentReceived ? (
-                /* Green tick for payment received */
                 <div className="flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
                   <svg
                     className="w-3 h-3 text-white"
@@ -103,7 +148,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                   </svg>
                 </div>
               ) : (
-                /* Red X for payment not received */
                 <div className="flex items-center justify-center w-4 h-4 bg-red-500 rounded-full">
                   <svg
                     className="w-3 h-3 text-white"
@@ -132,9 +176,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               Free Shipping
             </span>
           )}
-          <span className="text-sm font-medium">
-            CCP{order.tracking || "N/A"}
-          </span>
+          <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
         </div>
       </div>
 
@@ -142,7 +184,27 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         {/* Customer Info */}
         <div className="flex-shrink-0 mb-3 w-80">
           <div className="flex items-start justify-between">
-            <h3 className="font-semibold text-gray-900">{order.name}</h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold text-gray-900">{order.name}</h3>
+              {/* City display with enhanced states */}
+              {cityLoading ? (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full animate-pulse">
+                  Loading city...
+                </span>
+              ) : customerCity ? (
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                  📍 {customerCity}
+                </span>
+              ) : order.tracking ? (
+                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                  City not found
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                  No tracking
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-1 space-y-1">
@@ -154,7 +216,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               <p className="text-sm text-gray-700">{order.addressLine3}</p>
             )}
 
-            {/* Display each contact number on separate lines */}
             <div className="space-y-0.5">
               {contacts.map((contact, index) => (
                 <p key={index} className="text-sm font-medium text-indigo-600">
