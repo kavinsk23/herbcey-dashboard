@@ -95,17 +95,10 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Analytics Filters
-            </h3>
-            <p className="text-sm text-gray-500">
-              Customize your analytics view with filters and date ranges
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
+      <div className="p-6">
+        {/* Quick Date Range Buttons */}
+        <div className="relative mb-6">
+          <div className="absolute right-0 flex items-center space-x-2 top-1">
             <button
               onClick={() => {
                 onTimePeriodChange("monthly");
@@ -118,12 +111,6 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
               Reset Filters
             </button>
           </div>
-        </div>
-      </div>
-
-      <div className="p-6">
-        {/* Quick Date Range Buttons */}
-        <div className="mb-6">
           <label className="block mb-2 text-sm font-medium text-gray-700">
             Quick Date Ranges
           </label>

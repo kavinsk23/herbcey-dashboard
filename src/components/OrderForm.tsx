@@ -519,7 +519,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary uppercase ${
                         errors.trackingId ? "border-red-500" : "border-gray-300"
                       }`}
-                      placeholder="CCP123456"
+                      placeholder="123456"
                       disabled={isSubmitting}
                     />
 
