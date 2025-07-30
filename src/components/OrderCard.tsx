@@ -140,7 +140,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
       <div className="flex justify-between w-full px-3 py-2">
         {/* Customer Info */}
-        <div className="flex-shrink-0 mb-3 min-w-60">
+        <div className="flex-shrink-0 mb-3 w-72">
           <div className="flex items-start justify-between">
             <h3 className="font-semibold text-gray-900">{order.name}</h3>
           </div>

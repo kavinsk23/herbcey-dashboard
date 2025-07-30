@@ -211,10 +211,7 @@ export async function updateOrderInSheet(
     }
 
     // Prepare updated row data
-    const updatedRowData = orderToSheetRow({
-      ...updatedOrder,
-      tracking: trackingId,
-    });
+    const updatedRowData = orderToSheetRow(updatedOrder);
     const actualRowNumber = rowIndex + 1; // Convert to 1-based indexing
 
     // Update the row - USE ACCESS TOKEN HERE TOO
