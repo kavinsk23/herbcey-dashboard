@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface Order {
   name: string;
@@ -25,6 +25,9 @@ interface OrderCardProps {
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
+  const [customerCity, setCustomerCity] = useState<string | null>(null);
+  const [cityLoading, setCityLoading] = useState(false);
+
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
   };
@@ -71,7 +74,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   const contacts = parseContacts(order.contact);
 
   return (
-    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
+    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 hover:shadow-md">
       {/* Header with status and payment */}
       <div className="flex items-center justify-between border-b">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
@@ -86,7 +89,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           {order.paymentMethod === "COD" && (
             <>
               {order.paymentReceived ? (
-                /* Green tick for payment received */
                 <div className="flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
                   <svg
                     className="w-3 h-3 text-white"
@@ -103,7 +105,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                   </svg>
                 </div>
               ) : (
-                /* Red X for payment not received */
                 <div className="flex items-center justify-center w-4 h-4 bg-red-500 rounded-full">
                   <svg
                     className="w-3 h-3 text-white"
@@ -132,17 +133,17 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               Free Shipping
             </span>
           )}
-          <span className="text-sm font-medium">
-            #{order.tracking || "N/A"}
-          </span>
+          <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
         </div>
       </div>
 
       <div className="flex justify-between w-full px-3 py-2">
         {/* Customer Info */}
-        <div className="flex-shrink-0 mb-3 min-w-60">
+        <div className="flex-shrink-0 mb-3 w-80">
           <div className="flex items-start justify-between">
-            <h3 className="font-semibold text-gray-900">{order.name}</h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-semibold text-gray-900">{order.name}</h3>
+            </div>
           </div>
 
           <div className="mt-1 space-y-1">
@@ -154,7 +155,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               <p className="text-sm text-gray-700">{order.addressLine3}</p>
             )}
 
-            {/* Display each contact number on separate lines */}
             <div className="space-y-0.5">
               {contacts.map((contact, index) => (
                 <p key={index} className="text-sm font-medium text-indigo-600">

@@ -53,7 +53,7 @@ const GOOGLE_API_KEY =
   process.env.REACT_APP_GOOGLE_API_KEY || "YOUR_GOOGLE_API_KEY";
 const SPREADSHEET_ID =
   process.env.REACT_APP_GOOGLE_SHEET_ID || "YOUR_GOOGLE_SHEET_ID";
-const SHEET_NAME = "Sheet1"; // Change this to your sheet name
+const SHEET_NAME = "Orders"; // Change this to your sheet name
 
 // Product prices (as defined in your React code)
 const PRODUCT_PRICES: Record<string, number> = {
@@ -211,10 +211,7 @@ export async function updateOrderInSheet(
     }
 
     // Prepare updated row data
-    const updatedRowData = orderToSheetRow({
-      ...updatedOrder,
-      tracking: trackingId,
-    });
+    const updatedRowData = orderToSheetRow(updatedOrder);
     const actualRowNumber = rowIndex + 1; // Convert to 1-based indexing
 
     // Update the row - USE ACCESS TOKEN HERE TOO
