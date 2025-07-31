@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { getCityForTrackingId } from "../assets/services/trackingCityService";
 
 interface Order {
   name: string;
@@ -74,48 +73,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const contacts = parseContacts(order.contact);
 
-  // Fetch city using the real tracking ID from your Google Sheets
-  useEffect(() => {
-    const fetchCity = async () => {
-      if (order.tracking && order.tracking.trim() !== "") {
-        setCityLoading(true);
-        console.log(
-          `🔍 OrderCard: Fetching city for tracking ${order.tracking}`
-        );
-
-        try {
-          // Use the new service that works with your Google Sheets tracking IDs
-          const city = await getCityForTrackingId(order.tracking);
-
-          if (city) {
-            setCustomerCity(city);
-            console.log(
-              `✅ OrderCard: Found city ${city} for ${order.tracking}`
-            );
-          } else {
-            console.log(`❌ OrderCard: No city found for ${order.tracking}`);
-            setCustomerCity(null);
-          }
-        } catch (error) {
-          console.error(
-            `💥 OrderCard: Error fetching city for ${order.tracking}:`,
-            error
-          );
-          setCustomerCity(null);
-        } finally {
-          setCityLoading(false);
-        }
-      } else {
-        console.log(
-          `⚠️ OrderCard: No tracking ID provided for order ${order.name}`
-        );
-        setCustomerCity(null);
-      }
-    };
-
-    fetchCity();
-  }, [order.tracking]);
-
   return (
     <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 hover:shadow-md">
       {/* Header with status and payment */}
@@ -186,24 +143,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-2">
               <h3 className="font-semibold text-gray-900">{order.name}</h3>
-              {/* City display with enhanced states */}
-              {cityLoading ? (
-                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full animate-pulse">
-                  Loading city...
-                </span>
-              ) : customerCity ? (
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
-                  📍 {customerCity}
-                </span>
-              ) : order.tracking ? (
-                <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                  City not found
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-                  No tracking
-                </span>
-              )}
             </div>
           </div>
 
