@@ -15,8 +15,10 @@ import {
   Legend,
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
-import { getExpenseSummary } from "../assets/services/expenseService";
-import { getAllProductsFromSheet } from "../assets/services/productService";
+import {
+  getAllExpensesFromSheet,
+  getExpenseSummary,
+} from "../assets/services/expenseService";
 import AnalyticsFilters from "../components/AnalyticsFilters";
 import ExpenseManager from "../components/ExpenseManager";
 
@@ -58,6 +60,72 @@ interface ProductData {
   lastUpdated: string;
 }
 
+interface ExpenseData {
+  id: string;
+  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
+  amount: number;
+  note: string;
+  date: string;
+  timestamp: string;
+}
+
+// Google Sheets Products Service
+const getAllProductsFromSheet = async (): Promise<{
+  success: boolean;
+  data?: ProductData[];
+  error?: string;
+}> => {
+  try {
+    const accessToken = localStorage.getItem("google_access_token");
+    const GOOGLE_API_KEY =
+      process.env.REACT_APP_GOOGLE_API_KEY || "YOUR_GOOGLE_API_KEY";
+    const SPREADSHEET_ID =
+      process.env.REACT_APP_GOOGLE_SHEET_ID || "YOUR_GOOGLE_SHEET_ID";
+    const PRODUCTS_SHEET_NAME = "Products";
+
+    let response;
+    if (accessToken) {
+      response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${PRODUCTS_SHEET_NAME}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+    } else {
+      response = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${PRODUCTS_SHEET_NAME}?key=${GOOGLE_API_KEY}`
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rows = data.values || [];
+
+    // Skip header row and convert to ProductData format
+    const products: ProductData[] = rows.slice(1).map((row: any[]) => ({
+      id: row[0] || "",
+      name: row[1] || "",
+      cost: parseFloat(row[2]) || 0,
+      price: parseFloat(row[3]) || 0,
+      lastUpdated: row[4] || "",
+    }));
+
+    console.log("Products fetched successfully from Google Sheets");
+    return { success: true, data: products };
+  } catch (error) {
+    console.error("Error fetching products from Google Sheets:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
+
 const AnalyticsPage: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<"daily" | "monthly" | "yearly">(
     "monthly"
@@ -89,34 +157,42 @@ const AnalyticsPage: React.FC = () => {
 
   // Real data from Google Sheets
   const [realOrders, setRealOrders] = useState<Order[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Product data
+  // Product data from Google Sheets
   const [products, setProducts] = useState<ProductData[]>([]);
   const [availableProducts, setAvailableProducts] = useState<string[]>(["all"]);
   const [productPrices, setProductPrices] = useState<Record<string, number>>(
     {}
   );
+  const [productCosts, setProductCosts] = useState<Record<string, number>>({});
   const [productColors, setProductColors] = useState<Record<string, string>>(
     {}
   );
 
   const SHIPPING_COST = 350;
 
-  // Load products from ProductManager
+  // Auto-refresh interval (every 30 seconds)
+  const REFRESH_INTERVAL = 30000;
+
+  // Load products from Google Sheets Products sheet
   useEffect(() => {
     const loadProducts = async () => {
       try {
+        console.log("🔄 Loading products from Google Sheets...");
         const result = await getAllProductsFromSheet();
 
         if (result.success && result.data && result.data.length > 0) {
+          console.log("✅ Products loaded:", result.data);
           setProducts(result.data);
 
           const productNames = result.data.map((p) => p.name);
           setAvailableProducts(["all", ...productNames]);
 
           const prices: Record<string, number> = {};
+          const costs: Record<string, number> = {};
           const colors: Record<string, string> = {};
           const colorOptions = [
             "#10b981", // emerald-600 (Oil)
@@ -131,48 +207,31 @@ const AnalyticsPage: React.FC = () => {
 
           result.data.forEach((product, index) => {
             prices[product.name] = product.price;
+            costs[product.name] = product.cost;
             colors[product.name] = colorOptions[index % colorOptions.length];
           });
 
           setProductPrices(prices);
+          setProductCosts(costs);
           setProductColors(colors);
         } else {
-          // Fallback to localStorage
-          const savedProducts = localStorage.getItem("all_products");
-          if (savedProducts) {
-            const parsedProducts = JSON.parse(savedProducts);
-            setProducts(parsedProducts);
-
-            const productNames = parsedProducts.map((p: any) => p.name);
-            setAvailableProducts(["all", ...productNames]);
-
-            const prices: Record<string, number> = {};
-            const colors: Record<string, string> = {};
-            const colorOptions = [
-              "#10b981",
-              "#06b6d4",
-              "#ec4899",
-              "#8b5cf6",
-              "#f97316",
-              "#3b82f6",
-              "#6366f1",
-              "#ef4444",
-            ];
-
-            parsedProducts.forEach((product: any, index: number) => {
-              prices[product.name] = product.price;
-              colors[product.name] = colorOptions[index % colorOptions.length];
-            });
-
-            setProductPrices(prices);
-            setProductColors(colors);
-          }
+          console.warn("⚠️ No products found, using defaults");
+          // Fallback defaults
+          setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
+          setProductPrices({ Oil: 950, Shampoo: 1750, Conditioner: 1850 });
+          setProductCosts({ Oil: 500, Shampoo: 800, Conditioner: 900 });
+          setProductColors({
+            Oil: "#10b981",
+            Shampoo: "#06b6d4",
+            Conditioner: "#ec4899",
+          });
         }
       } catch (error) {
-        console.error("Failed to load products:", error);
+        console.error("❌ Failed to load products:", error);
         // Keep defaults
         setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
         setProductPrices({ Oil: 950, Shampoo: 1750, Conditioner: 1850 });
+        setProductCosts({ Oil: 500, Shampoo: 800, Conditioner: 900 });
         setProductColors({
           Oil: "#10b981",
           Shampoo: "#06b6d4",
@@ -184,17 +243,20 @@ const AnalyticsPage: React.FC = () => {
     loadProducts();
   }, []);
 
-  // Load real orders from Google Sheets
+  // Load real orders from Google Sheets Orders sheet
   useEffect(() => {
     const loadRealOrders = async () => {
       try {
+        console.log("🔄 Loading orders from Google Sheets...");
         setLoading(true);
         setError(null);
 
         const result = await getAllOrders();
 
         if (result.success && result.data) {
-          // Convert sheet data back to Order format using dynamic product data
+          console.log("✅ Orders loaded:", result.data.length, "orders");
+
+          // Convert sheet data back to Order format using real product data
           const convertedOrders: Order[] = result.data.map((sheetOrder) => {
             // Parse customer info back to separate fields
             const customerLines = sheetOrder.customerInfo.split("\n");
@@ -202,7 +264,7 @@ const AnalyticsPage: React.FC = () => {
             const address = customerLines.slice(1, -1).join(", ") || "";
             const contact = customerLines[customerLines.length - 1] || "";
 
-            // Reconstruct products array dynamically
+            // Reconstruct products array using real product prices
             const products = [];
 
             // Handle legacy column-based products
@@ -246,10 +308,11 @@ const AnalyticsPage: React.FC = () => {
 
           setRealOrders(convertedOrders);
         } else {
+          console.error("❌ Failed to load orders:", result.error);
           setError(result.error || "Failed to load orders");
         }
       } catch (err) {
-        console.error("Error loading orders for analytics:", err);
+        console.error("❌ Error loading orders for analytics:", err);
         setError("An unexpected error occurred while loading orders");
       } finally {
         setLoading(false);
@@ -257,29 +320,162 @@ const AnalyticsPage: React.FC = () => {
     };
 
     // Only load orders after products are loaded
-    if (Object.keys(productPrices).length > 0 || availableProducts.length > 1) {
+    if (Object.keys(productPrices).length > 0) {
       loadRealOrders();
     }
-  }, [productPrices, availableProducts]);
+  }, [productPrices]);
+
+  // Load expenses from Google Sheets Expenses sheet
+  useEffect(() => {
+    const loadExpenses = async () => {
+      try {
+        console.log("🔄 Loading expenses from Google Sheets...");
+        const result = await getAllExpensesFromSheet();
+
+        if (result.success && result.data) {
+          console.log("✅ Expenses loaded:", result.data.length, "expenses");
+          const convertedExpenses: ExpenseData[] = result.data.map(
+            (sheetExpense) => ({
+              id: sheetExpense.id,
+              type: sheetExpense.type as
+                | "Shampoo"
+                | "Conditioner"
+                | "Oil"
+                | "Other",
+              amount: sheetExpense.amount,
+              note: sheetExpense.note,
+              date: sheetExpense.date,
+              timestamp: sheetExpense.timestamp,
+            })
+          );
+          setExpenses(convertedExpenses);
+        } else {
+          console.warn("⚠️ No expenses found");
+          setExpenses([]);
+        }
+      } catch (err) {
+        console.error("❌ Error loading expenses:", err);
+        setExpenses([]);
+      }
+    };
+
+    loadExpenses();
+  }, []);
 
   // Load expense summary
   useEffect(() => {
     const loadExpenseSummary = async () => {
       try {
+        console.log("🔄 Loading expense summary...");
         const summaryResult = await getExpenseSummary(
           dateRange.startDate,
           dateRange.endDate
         );
         if (summaryResult.success && summaryResult.data) {
+          console.log("✅ Expense summary loaded");
           setExpenseSummary(summaryResult.data);
         }
       } catch (err) {
-        console.error("Error loading expense summary:", err);
+        console.error("❌ Error loading expense summary:", err);
       }
     };
 
     loadExpenseSummary();
   }, [dateRange.startDate, dateRange.endDate]);
+
+  // Auto-refresh data every 30 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log("🔄 Auto-refreshing data...");
+
+      // Reload all data
+      if (Object.keys(productPrices).length > 0) {
+        // Reload orders
+        getAllOrders().then((result) => {
+          if (result.success && result.data) {
+            const convertedOrders: Order[] = result.data.map((sheetOrder) => {
+              const customerLines = sheetOrder.customerInfo.split("\n");
+              const name = customerLines[0] || "";
+              const address = customerLines.slice(1, -1).join(", ") || "";
+              const contact = customerLines[customerLines.length - 1] || "";
+
+              const products = [];
+              if (sheetOrder.oilQty > 0) {
+                products.push({
+                  name: "Oil",
+                  quantity: sheetOrder.oilQty,
+                  price: productPrices["Oil"] || 950,
+                });
+              }
+              if (sheetOrder.shampooQty > 0) {
+                products.push({
+                  name: "Shampoo",
+                  quantity: sheetOrder.shampooQty,
+                  price: productPrices["Shampoo"] || 1750,
+                });
+              }
+              if (sheetOrder.conditionerQty > 0) {
+                products.push({
+                  name: "Conditioner",
+                  quantity: sheetOrder.conditionerQty,
+                  price: productPrices["Conditioner"] || 1850,
+                });
+              }
+
+              return {
+                name,
+                addressLine1: address,
+                addressLine2: "",
+                addressLine3: "",
+                contact,
+                products,
+                status: sheetOrder.orderStatus as Order["status"],
+                orderDate: sheetOrder.orderDate,
+                paymentMethod:
+                  sheetOrder.paymentMethod as Order["paymentMethod"],
+                paymentReceived: sheetOrder.paymentReceived,
+                tracking: sheetOrder.trackingId,
+                freeShipping: sheetOrder.freeShipping,
+              };
+            });
+            setRealOrders(convertedOrders);
+          }
+        });
+
+        // Reload expenses
+        getAllExpensesFromSheet().then((result) => {
+          if (result.success && result.data) {
+            const convertedExpenses: ExpenseData[] = result.data.map(
+              (sheetExpense) => ({
+                id: sheetExpense.id,
+                type: sheetExpense.type as
+                  | "Shampoo"
+                  | "Conditioner"
+                  | "Oil"
+                  | "Other",
+                amount: sheetExpense.amount,
+                note: sheetExpense.note,
+                date: sheetExpense.date,
+                timestamp: sheetExpense.timestamp,
+              })
+            );
+            setExpenses(convertedExpenses);
+          }
+        });
+
+        // Reload expense summary
+        getExpenseSummary(dateRange.startDate, dateRange.endDate).then(
+          (summaryResult) => {
+            if (summaryResult.success && summaryResult.data) {
+              setExpenseSummary(summaryResult.data);
+            }
+          }
+        );
+      }
+    }, REFRESH_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [dateRange.startDate, dateRange.endDate, productPrices]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-LK", {
@@ -570,7 +766,9 @@ const AnalyticsPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="w-12 h-12 mx-auto border-b-2 rounded-full animate-spin border-primary"></div>
-          <p className="mt-4 text-gray-600">Loading analytics data...</p>
+          <p className="mt-4 text-gray-600">
+            Loading analytics data from Google Sheets...
+          </p>
         </div>
       </div>
     );
@@ -622,10 +820,15 @@ const AnalyticsPage: React.FC = () => {
             Sales Analytics Dashboard
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Track your revenue, expenses, and profitability in real-time
+            Track your revenue, expenses, and profitability in real-time from
+            Google Sheets
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 text-sm text-gray-500">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span>Live sync enabled</span>
+          </div>
           <span className="text-sm text-gray-500">
             Last updated: {new Date().toLocaleDateString()}
           </span>
@@ -838,63 +1041,87 @@ const AnalyticsPage: React.FC = () => {
                   Revenue
                 </th>
                 <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Cost Price
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Profit
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                   Market Share
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {Object.entries(analyticsData.productSales).map(
-                ([product, data]) => (
-                  <tr key={product}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div
-                          className={`w-3 h-3 rounded-full mr-3 ${getProductDisplayColor(
-                            product
-                          )}`}
-                        ></div>
-                        <span className="text-sm font-medium text-gray-900">
-                          {product}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      {data.quantity}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      {formatCurrency(data.revenue)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span>
-                          {analyticsData.totalRevenue > 0
-                            ? (
-                                (data.revenue / analyticsData.totalRevenue) *
-                                100
-                              ).toFixed(1)
-                            : 0}
-                          %
-                        </span>
-                        <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
+                ([product, data]) => {
+                  const costPrice = productCosts[product] || 0;
+                  const totalCost = costPrice * data.quantity;
+                  const profit = data.revenue - totalCost;
+
+                  return (
+                    <tr key={product}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
                           <div
-                            className={`h-2 rounded-full ${getProductDisplayColor(
+                            className={`w-3 h-3 rounded-full mr-3 ${getProductDisplayColor(
                               product
                             )}`}
-                            style={{
-                              width: `${
-                                analyticsData.totalRevenue > 0
-                                  ? (data.revenue /
-                                      analyticsData.totalRevenue) *
-                                    100
-                                  : 0
-                              }%`,
-                            }}
                           ></div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {product}
+                          </span>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                )
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {data.quantity}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {formatCurrency(data.revenue)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        {formatCurrency(totalCost)}
+                      </td>
+                      <td className="px-6 py-4 text-sm whitespace-nowrap">
+                        <span
+                          className={`font-medium ${
+                            profit >= 0 ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {formatCurrency(profit)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <span>
+                            {analyticsData.totalRevenue > 0
+                              ? (
+                                  (data.revenue / analyticsData.totalRevenue) *
+                                  100
+                                ).toFixed(1)
+                              : 0}
+                            %
+                          </span>
+                          <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
+                            <div
+                              className={`h-2 rounded-full ${getProductDisplayColor(
+                                product
+                              )}`}
+                              style={{
+                                width: `${
+                                  analyticsData.totalRevenue > 0
+                                    ? (data.revenue /
+                                        analyticsData.totalRevenue) *
+                                      100
+                                    : 0
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
               )}
             </tbody>
           </table>
