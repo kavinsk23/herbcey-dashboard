@@ -10,7 +10,7 @@ import ExpenseForm from "./ExpenseForm";
 
 interface Expense {
   id: string;
-  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
+  type: "Shampoo" | "Conditioner" | "Marketing" | "Oil" | "Other";
   amount: number;
   note: string;
   date: string;
@@ -37,6 +37,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [expenseSummary, setExpenseSummary] = useState<{
     totalExpenses: number;
     expensesByType: Record<string, number>;
@@ -55,13 +56,66 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   // Load expenses from Google Sheets
   const loadExpenses = async () => {
     try {
+      console.log("🔄 Loading expenses from Google Sheets...");
       setLoading(true);
       setError(null);
 
       const result = await getAllExpensesFromSheet();
 
       if (result.success && result.data) {
+        console.log("✅ Raw expenses data from Google Sheets:", result.data);
         // Convert SheetExpense to Expense format
+        const convertedExpenses: Expense[] = result.data.map(
+          (sheetExpense) => ({
+            id: sheetExpense.id,
+            type: sheetExpense.type as
+              | "Shampoo"
+              | "Conditioner"
+              | "Marketing"
+              | "Oil"
+              | "Other",
+            amount: sheetExpense.amount,
+            note: sheetExpense.note,
+            date: sheetExpense.date,
+          })
+        );
+
+        console.log("✅ Converted expenses:", convertedExpenses);
+        setExpenses(convertedExpenses);
+
+        // Also load expense summary
+        const summaryResult = await getExpenseSummary(
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        if (summaryResult.success && summaryResult.data) {
+          setExpenseSummary(summaryResult.data);
+          onExpensesUpdate?.(summaryResult.data);
+        }
+      } else {
+        console.error("❌ Failed to load expenses:", result.error);
+        setError(result.error || "Failed to load expenses");
+      }
+    } catch (err) {
+      console.error("❌ Error loading expenses:", err);
+      setError("An unexpected error occurred while loading expenses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Force refresh data with visual feedback
+  const forceRefresh = async () => {
+    try {
+      console.log("🔄 Force refreshing expense data...");
+      setRefreshing(true);
+
+      // Wait a moment to ensure Google Sheets has processed any recent changes
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      const result = await getAllExpensesFromSheet();
+      if (result.success && result.data) {
+        console.log("✅ Force refresh - Raw data:", result.data);
         const convertedExpenses: Expense[] = result.data.map(
           (sheetExpense) => ({
             id: sheetExpense.id,
@@ -75,10 +129,14 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             date: sheetExpense.date,
           })
         );
+        console.log(
+          "✅ Force refresh - Converted expenses:",
+          convertedExpenses
+        );
 
         setExpenses(convertedExpenses);
 
-        // Also load expense summary
+        // Refresh expense summary
         const summaryResult = await getExpenseSummary(
           dateRange.startDate,
           dateRange.endDate
@@ -87,15 +145,17 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
           setExpenseSummary(summaryResult.data);
           onExpensesUpdate?.(summaryResult.data);
         }
-      } else {
-        setError(result.error || "Failed to load expenses");
       }
     } catch (err) {
-      console.error("Error loading expenses:", err);
-      setError("An unexpected error occurred while loading expenses");
+      console.error("❌ Error force refreshing data:", err);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  // Regular refresh function
+  const refreshData = async () => {
+    await forceRefresh();
   };
 
   useEffect(() => {
@@ -109,31 +169,25 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
         id: Date.now().toString(),
       };
 
+      console.log("💾 Adding expense to Google Sheets:", expenseToAdd);
+
       // Save to Google Sheets
       const result = await addExpenseToSheet(expenseToAdd);
 
       if (result.success) {
-        // Update local state
-        setExpenses([...expenses, expenseToAdd]);
+        console.log("✅ Expense saved successfully to Google Sheets!");
         setShowExpenseForm(false);
 
-        // Refresh expense summary
-        const summaryResult = await getExpenseSummary(
-          dateRange.startDate,
-          dateRange.endDate
-        );
-        if (summaryResult.success && summaryResult.data) {
-          setExpenseSummary(summaryResult.data);
-          onExpensesUpdate?.(summaryResult.data);
-        }
+        // Immediately reload fresh data from Google Sheets
+        await loadExpenses();
 
-        console.log("Expense saved successfully!");
+        console.log("✅ Table refreshed with fresh data from Google Sheets!");
       } else {
-        console.error("Failed to save expense:", result.error);
+        console.error("❌ Failed to save expense:", result.error);
         alert(`Failed to save expense: ${result.error}`);
       }
     } catch (error) {
-      console.error("Error saving expense:", error);
+      console.error("❌ Error saving expense:", error);
       alert("An unexpected error occurred while saving the expense");
     }
   };
@@ -147,6 +201,8 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
         id: editingExpense.id,
       };
 
+      console.log("💾 Updating expense in Google Sheets:", updatedExpense);
+
       // Update in Google Sheets
       const result = await updateExpenseInSheet(
         editingExpense.id,
@@ -154,32 +210,20 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       );
 
       if (result.success) {
-        // Update local state
-        setExpenses(
-          expenses.map((exp) =>
-            exp.id === editingExpense.id ? updatedExpense : exp
-          )
-        );
+        console.log("✅ Expense updated successfully in Google Sheets!");
         setShowExpenseForm(false);
         setEditingExpense(null);
 
-        // Refresh expense summary
-        const summaryResult = await getExpenseSummary(
-          dateRange.startDate,
-          dateRange.endDate
-        );
-        if (summaryResult.success && summaryResult.data) {
-          setExpenseSummary(summaryResult.data);
-          onExpensesUpdate?.(summaryResult.data);
-        }
+        // Immediately reload fresh data from Google Sheets
+        await loadExpenses();
 
-        console.log("Expense updated successfully!");
+        console.log("✅ Table refreshed with fresh data from Google Sheets!");
       } else {
-        console.error("Failed to update expense:", result.error);
+        console.error("❌ Failed to update expense:", result.error);
         alert(`Failed to update expense: ${result.error}`);
       }
     } catch (error) {
-      console.error("Error updating expense:", error);
+      console.error("❌ Error updating expense:", error);
       alert("An unexpected error occurred while updating the expense");
     }
   };
@@ -190,29 +234,23 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     }
 
     try {
+      console.log("🗑️ Deleting expense from Google Sheets:", expenseId);
+
       const result = await deleteExpenseFromSheet(expenseId);
 
       if (result.success) {
-        // Update local state
-        setExpenses(expenses.filter((expense) => expense.id !== expenseId));
+        console.log("✅ Expense deleted successfully from Google Sheets!");
 
-        // Refresh expense summary
-        const summaryResult = await getExpenseSummary(
-          dateRange.startDate,
-          dateRange.endDate
-        );
-        if (summaryResult.success && summaryResult.data) {
-          setExpenseSummary(summaryResult.data);
-          onExpensesUpdate?.(summaryResult.data);
-        }
+        // Immediately reload fresh data from Google Sheets
+        await loadExpenses();
 
-        console.log("Expense deleted successfully!");
+        console.log("✅ Table refreshed with fresh data from Google Sheets!");
       } else {
-        console.error("Failed to delete expense:", result.error);
+        console.error("❌ Failed to delete expense:", result.error);
         alert(`Failed to delete expense: ${result.error}`);
       }
     } catch (error) {
-      console.error("Error deleting expense:", error);
+      console.error("❌ Error deleting expense:", error);
       alert("An unexpected error occurred while deleting the expense");
     }
   };
@@ -246,11 +284,13 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
   });
 
   // Debug logging
-  console.log("Expenses debug:", {
+  console.log("📊 Expenses debug:", {
     totalExpenses: expenses.length,
     filteredExpenses: filteredExpenses.length,
     dateRange,
-    sampleExpense: expenses[0],
+    allExpenses: expenses,
+    filteredExpensesList: filteredExpenses,
+    expenseSummary,
   });
 
   return (
@@ -261,7 +301,8 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             Expenses Management
           </h3>
           <p className="text-sm text-gray-500">
-            Track and manage your business expenses
+            Track and manage your business expenses ({expenses.length} total
+            expenses)
           </p>
         </div>
         <div className="flex items-center space-x-4">
@@ -273,6 +314,14 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
               </span>
             </div>
           )}
+          <button
+            onClick={loadExpenses}
+            className="px-3 py-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+            disabled={loading || refreshing}
+            title="Reload fresh data from Google Sheets"
+          >
+            {refreshing ? "⏳" : "🔄"} Reload Data
+          </button>
           <button
             onClick={openAddForm}
             className="px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
@@ -286,7 +335,9 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       {loading ? (
         <div className="px-6 py-8 text-center">
           <div className="w-8 h-8 mx-auto border-b-2 rounded-full animate-spin border-primary"></div>
-          <p className="mt-2 text-gray-500">Loading expenses...</p>
+          <p className="mt-2 text-gray-500">
+            Loading expenses from Google Sheets...
+          </p>
         </div>
       ) : error ? (
         <div className="px-6 py-8 text-center">
@@ -338,7 +389,38 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
         </div>
       ) : (
         <>
-          {/* Expense Summary Cards */}
+          {/* Expense Summary */}
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">
+                  {filteredExpenses.length}
+                </div>
+                <div className="text-sm text-gray-500">Expenses in Range</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(
+                    filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0)
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">Total Amount</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(
+                    filteredExpenses.length > 0
+                      ? filteredExpenses.reduce(
+                          (sum, exp) => sum + exp.amount,
+                          0
+                        ) / filteredExpenses.length
+                      : 0
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">Average Amount</div>
+              </div>
+            </div>
+          </div>
 
           {/* Expense Table */}
           <div className="overflow-x-auto">
@@ -384,6 +466,8 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                                   ? "bg-cyan-600"
                                   : expense.type === "Conditioner"
                                   ? "bg-pink-600"
+                                  : expense.type === "Marketing"
+                                  ? "bg-purple-600"
                                   : "bg-gray-600"
                               }`}
                             ></div>
