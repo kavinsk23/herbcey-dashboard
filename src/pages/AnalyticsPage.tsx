@@ -13,6 +13,9 @@ import {
   AreaChart,
   Area,
   Legend,
+  BarChart,
+  Bar,
+  ComposedChart,
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
 import {
@@ -362,6 +365,43 @@ const AnalyticsPage: React.FC = () => {
     loadExpenses();
   }, []);
 
+  // Handle expense updates from ExpenseManager
+  const handleExpensesUpdate = (summary: {
+    totalExpenses: number;
+    expensesByType: Record<string, number>;
+    monthlyExpenses: Record<string, number>;
+  }) => {
+    setExpenseSummary(summary);
+    // Reload expenses to sync with charts
+    loadExpensesForCharts();
+  };
+
+  // Separate function to reload expenses for charts
+  const loadExpensesForCharts = async () => {
+    try {
+      const result = await getAllExpensesFromSheet();
+      if (result.success && result.data) {
+        const convertedExpenses: ExpenseData[] = result.data.map(
+          (sheetExpense) => ({
+            id: sheetExpense.id,
+            type: sheetExpense.type as
+              | "Shampoo"
+              | "Conditioner"
+              | "Oil"
+              | "Other",
+            amount: sheetExpense.amount,
+            note: sheetExpense.note,
+            date: sheetExpense.date,
+            timestamp: sheetExpense.timestamp,
+          })
+        );
+        setExpenses(convertedExpenses);
+      }
+    } catch (err) {
+      console.error("❌ Error reloading expenses for charts:", err);
+    }
+  };
+
   // Load expense summary
   useEffect(() => {
     const loadExpenseSummary = async () => {
@@ -515,6 +555,16 @@ const AnalyticsPage: React.FC = () => {
     });
   }, [realOrders, dateRange, selectedProduct]);
 
+  // Filter expenses based on date range
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const expenseDate = new Date(expense.date);
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      return expenseDate >= startDate && expenseDate <= endDate;
+    });
+  }, [expenses, dateRange]);
+
   const analyticsData = useMemo(() => {
     const totalRevenue = filteredOrders.reduce(
       (sum, order) => sum + calculateOrderRevenue(order),
@@ -544,6 +594,18 @@ const AnalyticsPage: React.FC = () => {
     }, 0);
 
     const totalOrders = filteredOrders.length;
+
+    // Calculate returns data
+    const returnedOrders = realOrders.filter((order) => {
+      const orderDate = new Date(order.orderDate);
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      const dateMatch = orderDate >= startDate && orderDate <= endDate;
+      return dateMatch && order.status === "Returned";
+    });
+
+    const totalReturns = returnedOrders.length;
+    const returnDeliveryLoss = totalReturns * 350; // 350 LKR per returned parcel
 
     const productSales = filteredOrders.reduce((acc, order) => {
       order.products.forEach((product) => {
@@ -601,13 +663,107 @@ const AnalyticsPage: React.FC = () => {
       totalReceivedFunds,
       totalUnitsSold,
       totalOrders,
+      totalReturns,
+      returnDeliveryLoss,
       productSales,
       timeData: Object.values(timeData).sort((a, b) =>
         a.date.localeCompare(b.date)
       ),
       paymentMethods,
     };
-  }, [filteredOrders, timePeriod, calculateOrderRevenue]);
+  }, [
+    filteredOrders,
+    timePeriod,
+    calculateOrderRevenue,
+    realOrders,
+    dateRange,
+  ]);
+
+  // Process expense data for charts
+  const expenseAnalytics = useMemo(() => {
+    // Expense trend over time
+    const expenseTimeData = filteredExpenses.reduce((acc, expense) => {
+      const date = new Date(expense.date);
+      let key = "";
+
+      if (timePeriod === "daily") {
+        key = date.toISOString().split("T")[0];
+      } else if (timePeriod === "monthly") {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+          2,
+          "0"
+        )}`;
+      } else {
+        key = date.getFullYear().toString();
+      }
+
+      if (!acc[key]) {
+        acc[key] = {
+          date: key,
+          expenses: 0,
+        };
+      }
+
+      acc[key].expenses += expense.amount;
+
+      return acc;
+    }, {} as Record<string, { date: string; expenses: number }>);
+
+    // Expense by type
+    const expensesByType = filteredExpenses.reduce((acc, expense) => {
+      if (!acc[expense.type]) {
+        acc[expense.type] = 0;
+      }
+      acc[expense.type] += expense.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      timeData: Object.values(expenseTimeData).sort((a, b) =>
+        a.date.localeCompare(b.date)
+      ),
+      byType: expensesByType,
+    };
+  }, [filteredExpenses, timePeriod]);
+
+  // Combine revenue and expense data for comparison
+  const revenueVsExpenseData = useMemo(() => {
+    // Create a unified time series combining revenue and expenses
+    const combinedData = new Map<
+      string,
+      { date: string; revenue: number; expenses: number; profit: number }
+    >();
+
+    // Add revenue data
+    analyticsData.timeData.forEach((item) => {
+      combinedData.set(item.date, {
+        date: item.date,
+        revenue: item.revenue,
+        expenses: 0,
+        profit: 0,
+      });
+    });
+
+    // Add expense data
+    expenseAnalytics.timeData.forEach((item) => {
+      const existing = combinedData.get(item.date);
+      if (existing) {
+        existing.expenses = item.expenses;
+        existing.profit = existing.revenue - existing.expenses;
+      } else {
+        combinedData.set(item.date, {
+          date: item.date,
+          revenue: 0,
+          expenses: item.expenses,
+          profit: -item.expenses,
+        });
+      }
+    });
+
+    return Array.from(combinedData.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+  }, [analyticsData.timeData, expenseAnalytics.timeData]);
 
   // Dynamic KPI Cards Configuration
   const kpiCards = useMemo((): KPICard[] => {
@@ -684,6 +840,30 @@ const AnalyticsPage: React.FC = () => {
         ),
       },
       {
+        id: "return-loss",
+        title: "Return Delivery Loss",
+        value: formatCurrency(analyticsData.returnDeliveryLoss),
+        textColor: "text-orange-600",
+        bgColor: "bg-orange-100",
+        iconColor: "text-orange-600",
+        subtitle: `${analyticsData.totalReturns} Returned Parcels`,
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"
+            />
+          </svg>
+        ),
+      },
+      {
         id: "total-orders",
         title: "Total Orders",
         value: analyticsData.totalOrders.toString(),
@@ -721,6 +901,15 @@ const AnalyticsPage: React.FC = () => {
     oil: "#10b981",
     shampoo: "#06b6d4",
     conditioner: "#ec4899",
+    expense: "#ef4444",
+    profit: "#10b981",
+  };
+
+  const expenseTypeColors = {
+    Shampoo: "#06b6d4",
+    Conditioner: "#ec4899",
+    Oil: "#10b981",
+    Other: "#8b5cf6",
   };
 
   const getProductDisplayColor = (productName: string) => {
@@ -749,7 +938,9 @@ const AnalyticsPage: React.FC = () => {
             <p key={index} style={{ color: entry.color }}>
               {`${entry.dataKey}: ${
                 entry.dataKey.includes("revenue") ||
-                entry.dataKey.includes("Revenue")
+                entry.dataKey.includes("Revenue") ||
+                entry.dataKey.includes("expenses") ||
+                entry.dataKey.includes("profit")
                   ? formatCurrency(entry.value)
                   : entry.value
               }`}
@@ -849,7 +1040,7 @@ const AnalyticsPage: React.FC = () => {
       />
 
       {/* Enhanced KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {kpiCards.map((card) => (
           <div
             key={card.id}
@@ -925,21 +1116,79 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Charts Row 2 - Product Sales */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Product Sales - Pie Chart */}
+      {/* Expense Charts Row */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Expense Trend - Area Chart */}
         <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Product Sales Distribution
+            Expense Trend Over Time
+          </h3>
+          <ResponsiveContainer width="100%" height={350}>
+            <AreaChart data={expenseAnalytics.timeData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="expenses"
+                stroke={chartColors.expense}
+                fill={chartColors.expense}
+                fillOpacity={0.6}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Revenue vs Expenses Comparison Chart */}
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
+            Revenue vs Expenses Comparison
+          </h3>
+          <ResponsiveContainer width="100%" height={350}>
+            <ComposedChart data={revenueVsExpenseData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Bar
+                dataKey="revenue"
+                fill={chartColors.primary}
+                name="Revenue"
+              />
+              <Bar
+                dataKey="expenses"
+                fill={chartColors.expense}
+                name="Expenses"
+              />
+              <Line
+                type="monotone"
+                dataKey="profit"
+                stroke={chartColors.profit}
+                strokeWidth={3}
+                name="Profit"
+                dot={{ fill: chartColors.profit, strokeWidth: 2, r: 4 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Expense Analysis Row */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Expense Distribution by Type - Pie Chart */}
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
+            Expense Distribution by Type
           </h3>
           <ResponsiveContainer width="100%" height={350}>
             <PieChart>
               <Pie
-                data={Object.entries(analyticsData.productSales).map(
-                  ([name, data]) => ({
-                    name,
-                    value: data.revenue,
-                    quantity: data.quantity,
+                data={Object.entries(expenseAnalytics.byType).map(
+                  ([type, amount]) => ({
+                    name: type,
+                    value: amount,
                   })
                 )}
                 cx="50%"
@@ -952,26 +1201,93 @@ const AnalyticsPage: React.FC = () => {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {Object.entries(analyticsData.productSales).map(
-                  ([name], index) => (
+                {Object.entries(expenseAnalytics.byType).map(
+                  ([type], index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={productColors[name] || chartColors.oil}
+                      fill={
+                        expenseTypeColors[
+                          type as keyof typeof expenseTypeColors
+                        ] || chartColors.error
+                      }
                     />
                   )
                 )}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [
-                  formatCurrency(value),
-                  "Revenue",
-                ]}
-                labelFormatter={(label) => `Product: ${label}`}
+                formatter={(value: number) => [formatCurrency(value), "Amount"]}
+                labelFormatter={(label) => `Expense Type: ${label}`}
               />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>
+
+        {/* Expense by Type - Bar Chart */}
+        <div className="p-6 bg-white border border-gray-200 rounded-lg">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900">
+            Expense Breakdown by Category
+          </h3>
+          <ResponsiveContainer width="100%" height={350}>
+            <BarChart
+              data={Object.entries(expenseAnalytics.byType).map(
+                ([type, amount]) => ({
+                  type,
+                  amount,
+                })
+              )}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="type" />
+              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="amount" fill={chartColors.expense} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Product Sales - Pie Chart */}
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          Product Sales Distribution
+        </h3>
+        <ResponsiveContainer width="100%" height={350}>
+          <PieChart>
+            <Pie
+              data={Object.entries(analyticsData.productSales).map(
+                ([name, data]) => ({
+                  name,
+                  value: data.revenue,
+                  quantity: data.quantity,
+                })
+              )}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }: any) =>
+                `${name} ${(percent * 100).toFixed(0)}%`
+              }
+              outerRadius={100}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {Object.entries(analyticsData.productSales).map(
+                ([name], index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={productColors[name] || chartColors.oil}
+                  />
+                )
+              )}
+            </Pie>
+            <Tooltip
+              formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+              labelFormatter={(label) => `Product: ${label}`}
+            />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Payment Methods - Donut Chart */}
@@ -1131,7 +1447,7 @@ const AnalyticsPage: React.FC = () => {
       {/* Expense Manager */}
       <ExpenseManager
         dateRange={dateRange}
-        onExpensesUpdate={setExpenseSummary}
+        onExpensesUpdate={handleExpensesUpdate}
       />
     </div>
   );
