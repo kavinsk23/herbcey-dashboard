@@ -65,7 +65,7 @@ interface ProductData {
 
 interface ExpenseData {
   id: string;
-  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
+  type: "Shampoo" | "Conditioner" | "Oil" | "Marketing" | "Other";
   amount: number;
   note: string;
   date: string;
@@ -344,6 +344,7 @@ const AnalyticsPage: React.FC = () => {
                 | "Shampoo"
                 | "Conditioner"
                 | "Oil"
+                | "Marketing"
                 | "Other",
               amount: sheetExpense.amount,
               note: sheetExpense.note,
@@ -388,6 +389,7 @@ const AnalyticsPage: React.FC = () => {
               | "Shampoo"
               | "Conditioner"
               | "Oil"
+              | "Marketing"
               | "Other",
             amount: sheetExpense.amount,
             note: sheetExpense.note,
@@ -492,6 +494,7 @@ const AnalyticsPage: React.FC = () => {
                   | "Shampoo"
                   | "Conditioner"
                   | "Oil"
+                  | "Marketing"
                   | "Other",
                 amount: sheetExpense.amount,
                 note: sheetExpense.note,
@@ -565,7 +568,9 @@ const AnalyticsPage: React.FC = () => {
     });
   }, [expenses, dateRange]);
 
+  // ENHANCED ANALYTICS DATA WITH COMPREHENSIVE PROFIT CALCULATIONS
   const analyticsData = useMemo(() => {
+    // Basic revenue calculations
     const totalRevenue = filteredOrders.reduce(
       (sum, order) => sum + calculateOrderRevenue(order),
       0
@@ -605,49 +610,171 @@ const AnalyticsPage: React.FC = () => {
     });
 
     const totalReturns = returnedOrders.length;
-    const returnDeliveryLoss = totalReturns * 350; // 350 LKR per returned parcel
+    const returnDeliveryLoss = totalReturns * SHIPPING_COST;
 
-    const productSales = filteredOrders.reduce((acc, order) => {
-      order.products.forEach((product) => {
-        if (!acc[product.name]) {
-          acc[product.name] = { quantity: 0, revenue: 0 };
+    // ENHANCED PRODUCT SALES WITH PROFIT CALCULATIONS
+    const productSales = filteredOrders.reduce(
+      (acc, order) => {
+        order.products.forEach((product) => {
+          if (!acc[product.name]) {
+            acc[product.name] = {
+              quantity: 0,
+              revenue: 0,
+              cost: 0,
+              profit: 0,
+              profitMargin: 0,
+            };
+          }
+
+          const productCost = productCosts[product.name] || 0;
+          const productRevenue = product.price * product.quantity;
+          const productTotalCost = productCost * product.quantity;
+          const productProfit = productRevenue - productTotalCost;
+
+          acc[product.name].quantity += product.quantity;
+          acc[product.name].revenue += productRevenue;
+          acc[product.name].cost += productTotalCost;
+          acc[product.name].profit += productProfit;
+
+          // Calculate profit margin as percentage
+          if (acc[product.name].revenue > 0) {
+            acc[product.name].profitMargin =
+              (acc[product.name].profit / acc[product.name].revenue) * 100;
+          }
+        });
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          quantity: number;
+          revenue: number;
+          cost: number;
+          profit: number;
+          profitMargin: number;
         }
-        acc[product.name].quantity += product.quantity;
-        acc[product.name].revenue += product.price * product.quantity;
-      });
-      return acc;
-    }, {} as Record<string, { quantity: number; revenue: number }>);
+      >
+    );
 
-    const timeData = filteredOrders.reduce((acc, order) => {
-      const date = new Date(order.orderDate);
-      let key = "";
+    // Calculate total product costs
+    const totalProductCosts = Object.values(productSales).reduce(
+      (sum, product) => sum + product.cost,
+      0
+    );
 
-      if (timePeriod === "daily") {
-        key = date.toISOString().split("T")[0];
-      } else if (timePeriod === "monthly") {
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-          2,
-          "0"
-        )}`;
-      } else {
-        key = date.getFullYear().toString();
+    // Calculate total gross profit (revenue - product costs only)
+    const totalGrossProfit = totalRevenue - totalProductCosts;
+
+    // MARKETING AND OPERATIONAL EXPENSES SEPARATION
+    const marketingExpenses = filteredExpenses
+      .filter(
+        (expense) =>
+          expense.type === "Marketing" ||
+          (expense.type === "Other" &&
+            expense.note.toLowerCase().includes("marketing"))
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+
+    const operationalExpenses = filteredExpenses
+      .filter(
+        (expense) =>
+          expense.type !== "Marketing" &&
+          !(
+            expense.type === "Other" &&
+            expense.note.toLowerCase().includes("marketing")
+          )
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+
+    // TOTAL EXPENSES AND NET PROFIT CALCULATIONS
+    const totalExpenses =
+      operationalExpenses + marketingExpenses + returnDeliveryLoss;
+    const netProfit = totalGrossProfit - marketingExpenses - returnDeliveryLoss;
+
+    // Calculate profit margins
+    const grossProfitMargin =
+      totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
+    const netProfitMargin =
+      totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    // MARKETING ANALYTICS
+    const marketingROI =
+      marketingExpenses > 0
+        ? ((totalRevenue - marketingExpenses) / marketingExpenses) * 100
+        : 0;
+
+    const customerAcquisitionCost =
+      totalOrders > 0 ? marketingExpenses / totalOrders : 0;
+
+    // TIME-BASED PROFIT DATA
+    const timeData = filteredOrders.reduce(
+      (acc, order) => {
+        const date = new Date(order.orderDate);
+        let key = "";
+
+        if (timePeriod === "daily") {
+          key = date.toISOString().split("T")[0];
+        } else if (timePeriod === "monthly") {
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+            2,
+            "0"
+          )}`;
+        } else {
+          key = date.getFullYear().toString();
+        }
+
+        if (!acc[key]) {
+          acc[key] = {
+            date: key,
+            revenue: 0,
+            orders: 0,
+            costs: 0,
+            grossProfit: 0,
+            netProfit: 0,
+          };
+        }
+
+        const orderRevenue = calculateOrderRevenue(order);
+        const orderCosts = order.products.reduce((sum, product) => {
+          return sum + (productCosts[product.name] || 0) * product.quantity;
+        }, 0);
+
+        acc[key].revenue += orderRevenue;
+        acc[key].orders += 1;
+        acc[key].costs += orderCosts;
+        acc[key].grossProfit += orderRevenue - orderCosts;
+
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          date: string;
+          revenue: number;
+          orders: number;
+          costs: number;
+          grossProfit: number;
+          netProfit: number;
+        }
+      >
+    );
+
+    // Calculate net profit for each time period
+    const timeDataArray = Object.values(timeData);
+    const totalTimeRevenue = timeDataArray.reduce(
+      (sum, item) => sum + item.revenue,
+      0
+    );
+
+    timeDataArray.forEach((item) => {
+      if (totalTimeRevenue > 0) {
+        const revenueRatio = item.revenue / totalTimeRevenue;
+        const periodMarketingExpense = marketingExpenses * revenueRatio;
+        const periodReturnLoss = returnDeliveryLoss * revenueRatio;
+        item.netProfit =
+          item.grossProfit - periodMarketingExpense - periodReturnLoss;
       }
-
-      if (!acc[key]) {
-        acc[key] = {
-          date: key,
-          revenue: 0,
-          orders: 0,
-        };
-      }
-
-      const orderRevenue = calculateOrderRevenue(order);
-
-      acc[key].revenue += orderRevenue;
-      acc[key].orders += 1;
-
-      return acc;
-    }, {} as Record<string, { date: string; revenue: number; orders: number }>);
+    });
 
     const paymentMethods = filteredOrders.reduce((acc, order) => {
       if (!acc[order.paymentMethod]) {
@@ -659,16 +786,29 @@ const AnalyticsPage: React.FC = () => {
     }, {} as Record<string, { count: number; revenue: number }>);
 
     return {
+      // Existing metrics
       totalRevenue,
       totalReceivedFunds,
       totalUnitsSold,
       totalOrders,
       totalReturns,
       returnDeliveryLoss,
+
+      // NEW PROFIT METRICS
+      totalProductCosts,
+      totalGrossProfit,
+      grossProfitMargin,
+      marketingExpenses,
+      operationalExpenses,
+      totalExpenses,
+      netProfit,
+      netProfitMargin,
+      marketingROI,
+      customerAcquisitionCost,
+
+      // Enhanced data
       productSales,
-      timeData: Object.values(timeData).sort((a, b) =>
-        a.date.localeCompare(b.date)
-      ),
+      timeData: timeDataArray.sort((a, b) => a.date.localeCompare(b.date)),
       paymentMethods,
     };
   }, [
@@ -677,37 +817,62 @@ const AnalyticsPage: React.FC = () => {
     calculateOrderRevenue,
     realOrders,
     dateRange,
+    productCosts,
+    filteredExpenses,
   ]);
 
   // Process expense data for charts
   const expenseAnalytics = useMemo(() => {
     // Expense trend over time
-    const expenseTimeData = filteredExpenses.reduce((acc, expense) => {
-      const date = new Date(expense.date);
-      let key = "";
+    const expenseTimeData = filteredExpenses.reduce(
+      (acc, expense) => {
+        const date = new Date(expense.date);
+        let key = "";
 
-      if (timePeriod === "daily") {
-        key = date.toISOString().split("T")[0];
-      } else if (timePeriod === "monthly") {
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-          2,
-          "0"
-        )}`;
-      } else {
-        key = date.getFullYear().toString();
-      }
+        if (timePeriod === "daily") {
+          key = date.toISOString().split("T")[0];
+        } else if (timePeriod === "monthly") {
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+            2,
+            "0"
+          )}`;
+        } else {
+          key = date.getFullYear().toString();
+        }
 
-      if (!acc[key]) {
-        acc[key] = {
-          date: key,
-          expenses: 0,
-        };
-      }
+        if (!acc[key]) {
+          acc[key] = {
+            date: key,
+            expenses: 0,
+            marketingExpenses: 0,
+            productionExpenses: 0,
+            otherExpenses: 0,
+          };
+        }
 
-      acc[key].expenses += expense.amount;
+        if (expense.type === "Marketing") {
+          acc[key].marketingExpenses += expense.amount;
+        } else if (["Shampoo", "Conditioner", "Oil"].includes(expense.type)) {
+          acc[key].productionExpenses += expense.amount;
+        } else {
+          acc[key].otherExpenses += expense.amount;
+        }
 
-      return acc;
-    }, {} as Record<string, { date: string; expenses: number }>);
+        acc[key].expenses += expense.amount;
+
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          date: string;
+          expenses: number;
+          marketingExpenses: number;
+          productionExpenses: number;
+          otherExpenses: number;
+        }
+      >
+    );
 
     // Expense by type
     const expensesByType = filteredExpenses.reduce((acc, expense) => {
@@ -765,10 +930,8 @@ const AnalyticsPage: React.FC = () => {
     );
   }, [analyticsData.timeData, expenseAnalytics.timeData]);
 
-  // Dynamic KPI Cards Configuration
+  // ENHANCED KPI CARDS WITH PROFIT METRICS
   const kpiCards = useMemo((): KPICard[] => {
-    const totalExpenses = expenseSummary?.totalExpenses || 0;
-
     return [
       {
         id: "total-revenue",
@@ -794,12 +957,13 @@ const AnalyticsPage: React.FC = () => {
         ),
       },
       {
-        id: "received-funds",
-        title: "Received Funds",
-        value: formatCurrency(analyticsData.totalReceivedFunds),
+        id: "gross-profit",
+        title: "Gross Profit",
+        value: formatCurrency(analyticsData.totalGrossProfit),
         textColor: "text-green-600",
         bgColor: "bg-green-100",
         iconColor: "text-green-600",
+        subtitle: `${analyticsData.grossProfitMargin.toFixed(1)}% margin`,
         icon: (
           <svg
             className="w-6 h-6"
@@ -811,18 +975,21 @@ const AnalyticsPage: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
             />
           </svg>
         ),
       },
       {
-        id: "total-expenses",
-        title: "Total Expenses",
-        value: formatCurrency(totalExpenses),
-        textColor: "text-red-600",
-        bgColor: "bg-red-100",
-        iconColor: "text-red-600",
+        id: "net-profit",
+        title: "Net Profit",
+        value: formatCurrency(analyticsData.netProfit),
+        textColor:
+          analyticsData.netProfit >= 0 ? "text-green-600" : "text-red-600",
+        bgColor: analyticsData.netProfit >= 0 ? "bg-green-100" : "bg-red-100",
+        iconColor:
+          analyticsData.netProfit >= 0 ? "text-green-600" : "text-red-600",
+        subtitle: `${analyticsData.netProfitMargin.toFixed(1)}% margin`,
         icon: (
           <svg
             className="w-6 h-6"
@@ -834,7 +1001,36 @@ const AnalyticsPage: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+        ),
+      },
+      {
+        id: "marketing-roi",
+        title: "Marketing ROI",
+        value: `${analyticsData.marketingROI.toFixed(1)}%`,
+        textColor:
+          analyticsData.marketingROI >= 0 ? "text-purple-600" : "text-red-600",
+        bgColor:
+          analyticsData.marketingROI >= 0 ? "bg-purple-100" : "bg-red-100",
+        iconColor:
+          analyticsData.marketingROI >= 0 ? "text-purple-600" : "text-red-600",
+        subtitle: `CAC: ${formatCurrency(
+          analyticsData.customerAcquisitionCost
+        )}`,
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
             />
           </svg>
         ),
@@ -863,32 +1059,8 @@ const AnalyticsPage: React.FC = () => {
           </svg>
         ),
       },
-      {
-        id: "total-orders",
-        title: "Total Orders",
-        value: analyticsData.totalOrders.toString(),
-        textColor: "text-blue-600",
-        bgColor: "bg-blue-100",
-        iconColor: "text-blue-600",
-        subtitle: `${analyticsData.totalUnitsSold} Units sold`,
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-            />
-          </svg>
-        ),
-      },
     ];
-  }, [analyticsData, formatCurrency, expenseSummary]);
+  }, [analyticsData, formatCurrency]);
 
   const chartColors = {
     primary: "#7cb342",
@@ -909,7 +1081,8 @@ const AnalyticsPage: React.FC = () => {
     Shampoo: "#06b6d4",
     Conditioner: "#ec4899",
     Oil: "#10b981",
-    Other: "#8b5cf6",
+    Marketing: "#8b5cf6",
+    Other: "#6b7280",
   };
 
   const getProductDisplayColor = (productName: string) => {
@@ -923,6 +1096,7 @@ const AnalyticsPage: React.FC = () => {
       "#3b82f6": "bg-blue-600",
       "#6366f1": "bg-indigo-600",
       "#ef4444": "bg-red-600",
+      "#6b7280": "bg-gray-600",
     };
 
     const hexColor = productColors[productName];
@@ -940,7 +1114,11 @@ const AnalyticsPage: React.FC = () => {
                 entry.dataKey.includes("revenue") ||
                 entry.dataKey.includes("Revenue") ||
                 entry.dataKey.includes("expenses") ||
-                entry.dataKey.includes("profit")
+                entry.dataKey.includes("profit") ||
+                entry.dataKey.includes("Profit") ||
+                entry.dataKey.includes("costs") ||
+                entry.dataKey.includes("grossProfit") ||
+                entry.dataKey.includes("netProfit")
                   ? formatCurrency(entry.value)
                   : entry.value
               }`}
@@ -1008,11 +1186,11 @@ const AnalyticsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Sales Analytics Dashboard
+            Sales Analytics Dashboard with Profit Analysis
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Track your revenue, expenses, and profitability in real-time from
-            Google Sheets
+            Comprehensive profit analysis tracking revenue, costs, and
+            profitability in real-time
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -1039,7 +1217,7 @@ const AnalyticsPage: React.FC = () => {
         onDateRangeChange={setDateRange}
       />
 
-      {/* Enhanced KPI Cards */}
+      {/* Enhanced KPI Cards with Profit Metrics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {kpiCards.map((card) => (
           <div
@@ -1068,7 +1246,195 @@ const AnalyticsPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Main Charts Row 1 - Revenue & Orders Trends */}
+      {/* Profit Analysis Over Time - NEW COMPREHENSIVE CHART */}
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          Comprehensive Profit Analysis Over Time
+        </h3>
+        <p className="mb-4 text-sm text-gray-500">
+          Revenue, costs, gross profit, and net profit trends with marketing
+          impact
+        </p>
+        <ResponsiveContainer width="100%" height={400}>
+          <ComposedChart data={analyticsData.timeData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            <Bar dataKey="revenue" fill={chartColors.primary} name="Revenue" />
+            <Bar
+              dataKey="costs"
+              fill={chartColors.expense}
+              name="Product Costs"
+            />
+            <Line
+              type="monotone"
+              dataKey="grossProfit"
+              stroke={chartColors.success}
+              strokeWidth={3}
+              name="Gross Profit"
+              dot={{ fill: chartColors.success, strokeWidth: 2, r: 4 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="netProfit"
+              stroke={chartColors.info}
+              strokeWidth={3}
+              name="Net Profit"
+              dot={{ fill: chartColors.info, strokeWidth: 2, r: 4 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Expense Breakdown Summary - NEW COMPREHENSIVE BREAKDOWN */}
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          Complete Expense Breakdown & Impact Analysis
+        </h3>
+        <p className="mb-6 text-sm text-gray-500">
+          Detailed breakdown of all costs affecting your profitability
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="p-4 text-center border-l-4 border-gray-400 rounded-lg bg-gray-50">
+            <div className="text-2xl font-bold text-gray-900">
+              {formatCurrency(analyticsData.totalProductCosts)}
+            </div>
+            <div className="text-sm font-medium text-gray-700">
+              Product Costs
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              {analyticsData.totalRevenue > 0
+                ? (
+                    (analyticsData.totalProductCosts /
+                      analyticsData.totalRevenue) *
+                    100
+                  ).toFixed(1)
+                : 0}
+              % of revenue
+            </div>
+            <div className="mt-1 text-xs text-gray-400">
+              Direct manufacturing costs
+            </div>
+          </div>
+
+          <div className="p-4 text-center border-l-4 border-purple-500 rounded-lg bg-purple-50">
+            <div className="text-2xl font-bold text-purple-600">
+              {formatCurrency(analyticsData.marketingExpenses)}
+            </div>
+            <div className="text-sm font-medium text-gray-700">
+              Marketing Expenses
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              {analyticsData.totalRevenue > 0
+                ? (
+                    (analyticsData.marketingExpenses /
+                      analyticsData.totalRevenue) *
+                    100
+                  ).toFixed(1)
+                : 0}
+              % of revenue
+            </div>
+            <div className="mt-1 text-xs text-gray-400">
+              ROI: {analyticsData.marketingROI.toFixed(1)}%
+            </div>
+          </div>
+
+          <div className="p-4 text-center border-l-4 border-orange-500 rounded-lg bg-orange-50">
+            <div className="text-2xl font-bold text-orange-600">
+              {formatCurrency(analyticsData.returnDeliveryLoss)}
+            </div>
+            <div className="text-sm font-medium text-gray-700">
+              Return Delivery Loss
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              {analyticsData.totalReturns} returns ×{" "}
+              {formatCurrency(SHIPPING_COST)}
+            </div>
+            <div className="mt-1 text-xs text-gray-400">
+              {analyticsData.totalOrders > 0
+                ? (
+                    (analyticsData.totalReturns / analyticsData.totalOrders) *
+                    100
+                  ).toFixed(1)
+                : 0}
+              % return rate
+            </div>
+          </div>
+
+          <div className="p-4 text-center border-l-4 border-blue-500 rounded-lg bg-blue-50">
+            <div className="text-2xl font-bold text-blue-600">
+              {formatCurrency(analyticsData.operationalExpenses)}
+            </div>
+            <div className="text-sm font-medium text-gray-700">
+              Other Operational
+            </div>
+            <div className="mt-1 text-xs text-gray-500">
+              {analyticsData.totalRevenue > 0
+                ? (
+                    (analyticsData.operationalExpenses /
+                      analyticsData.totalRevenue) *
+                    100
+                  ).toFixed(1)
+                : 0}
+              % of revenue
+            </div>
+            <div className="mt-1 text-xs text-gray-400">
+              Raw materials, supplies, etc.
+            </div>
+          </div>
+        </div>
+
+        {/* Profit Summary Row */}
+        <div className="p-4 mt-6 border-2 border-green-200 rounded-lg bg-gradient-to-r from-green-50 to-blue-50">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600">
+                {formatCurrency(analyticsData.totalGrossProfit)}
+              </div>
+              <div className="text-sm font-medium text-gray-700">
+                Gross Profit
+              </div>
+              <div className="text-xs text-gray-500">
+                {analyticsData.grossProfitMargin.toFixed(1)}% margin
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div
+                className={`text-3xl font-bold ${
+                  analyticsData.netProfit >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {formatCurrency(analyticsData.netProfit)}
+              </div>
+              <div className="text-sm font-medium text-gray-700">
+                Net Profit
+              </div>
+              <div className="text-xs text-gray-500">
+                {analyticsData.netProfitMargin.toFixed(1)}% margin
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">
+                {formatCurrency(analyticsData.customerAcquisitionCost)}
+              </div>
+              <div className="text-sm font-medium text-gray-700">
+                Customer Acquisition Cost
+              </div>
+              <div className="text-xs text-gray-500">
+                Marketing cost per order
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Charts Row - Revenue & Orders Trends */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Revenue Trend - Line Chart */}
         <div className="p-6 bg-white border border-gray-200 rounded-lg">
@@ -1118,66 +1484,7 @@ const AnalyticsPage: React.FC = () => {
 
       {/* Expense Charts Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Expense Trend - Area Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Expense Trend Over Time
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <AreaChart data={expenseAnalytics.timeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="expenses"
-                stroke={chartColors.expense}
-                fill={chartColors.expense}
-                fillOpacity={0.6}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Revenue vs Expenses Comparison Chart */}
-        <div className="p-6 bg-white border border-gray-200 rounded-lg">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Revenue vs Expenses Comparison
-          </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <ComposedChart data={revenueVsExpenseData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar
-                dataKey="revenue"
-                fill={chartColors.primary}
-                name="Revenue"
-              />
-              <Bar
-                dataKey="expenses"
-                fill={chartColors.expense}
-                name="Expenses"
-              />
-              <Line
-                type="monotone"
-                dataKey="profit"
-                stroke={chartColors.profit}
-                strokeWidth={3}
-                name="Profit"
-                dot={{ fill: chartColors.profit, strokeWidth: 2, r: 4 }}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Expense Analysis Row */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Expense Distribution by Type - Pie Chart */}
+        {/* Enhanced Expense Distribution by Type */}
         <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Expense Distribution by Type
@@ -1223,31 +1530,315 @@ const AnalyticsPage: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Expense by Type - Bar Chart */}
+        {/* Marketing Performance Metrics */}
         <div className="p-6 bg-white border border-gray-200 rounded-lg">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Expense Breakdown by Category
+            Marketing Performance Metrics
           </h3>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart
-              data={Object.entries(expenseAnalytics.byType).map(
-                ([type, amount]) => ({
-                  type,
-                  amount,
-                })
-              )}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="type" />
-              <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="amount" fill={chartColors.expense} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-purple-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Marketing ROI
+                  </h4>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {analyticsData.marketingROI.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="text-purple-500">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Return on marketing investment
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-blue-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Customer Acquisition Cost
+                  </h4>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(analyticsData.customerAcquisitionCost)}
+                  </p>
+                </div>
+                <div className="text-blue-500">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Marketing spend per order
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-green-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Marketing Efficiency
+                  </h4>
+                  <p className="text-2xl font-bold text-green-600">
+                    {analyticsData.marketingExpenses > 0
+                      ? (
+                          analyticsData.totalRevenue /
+                          analyticsData.marketingExpenses
+                        ).toFixed(1)
+                      : "∞"}
+                    x
+                  </p>
+                </div>
+                <div className="text-green-500">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Revenue generated per marketing dollar
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Product Sales - Pie Chart */}
+      {/* Revenue vs Expenses Comparison Chart */}
+      <div className="p-6 bg-white border border-gray-200 rounded-lg">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          Revenue vs Expenses Comparison
+        </h3>
+        <ResponsiveContainer width="100%" height={350}>
+          <ComposedChart data={revenueVsExpenseData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={(value: number) => formatCurrency(value)} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            <Bar dataKey="revenue" fill={chartColors.primary} name="Revenue" />
+            <Bar
+              dataKey="expenses"
+              fill={chartColors.expense}
+              name="Expenses"
+            />
+            <Line
+              type="monotone"
+              dataKey="profit"
+              stroke={chartColors.profit}
+              strokeWidth={3}
+              name="Profit"
+              dot={{ fill: chartColors.profit, strokeWidth: 2, r: 4 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Enhanced Product Performance Table with Profit Analysis */}
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Product Performance & Profitability Analysis
+          </h3>
+          <p className="text-sm text-gray-500">
+            Detailed profit analysis for each product including costs, margins,
+            and market share
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Units Sold
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Revenue
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Total Cost
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Gross Profit
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Profit Margin
+                </th>
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Market Share
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {Object.entries(analyticsData.productSales).map(
+                ([product, data]) => (
+                  <tr key={product} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div
+                          className={`w-3 h-3 rounded-full mr-3 ${getProductDisplayColor(
+                            product
+                          )}`}
+                        ></div>
+                        <span className="text-sm font-medium text-gray-900">
+                          {product}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {data.quantity.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {formatCurrency(data.revenue)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      {formatCurrency(data.cost)}
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      <span
+                        className={`font-medium ${
+                          data.profit >= 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {formatCurrency(data.profit)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span
+                          className={`font-medium px-2 py-1 rounded-full text-xs ${
+                            data.profitMargin >= 50
+                              ? "bg-green-100 text-green-800"
+                              : data.profitMargin >= 30
+                              ? "bg-yellow-100 text-yellow-800"
+                              : data.profitMargin >= 10
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {data.profitMargin.toFixed(1)}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span>
+                          {analyticsData.totalRevenue > 0
+                            ? (
+                                (data.revenue / analyticsData.totalRevenue) *
+                                100
+                              ).toFixed(1)
+                            : 0}
+                          %
+                        </span>
+                        <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
+                          <div
+                            className={`h-2 rounded-full ${getProductDisplayColor(
+                              product
+                            )}`}
+                            style={{
+                              width: `${
+                                analyticsData.totalRevenue > 0
+                                  ? (data.revenue /
+                                      analyticsData.totalRevenue) *
+                                    100
+                                  : 0
+                              }%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
+              {/* Totals Row */}
+              <tr className="font-semibold border-t-2 border-gray-300 bg-gray-50">
+                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  TOTAL
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  {analyticsData.totalUnitsSold.toLocaleString()}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  {formatCurrency(analyticsData.totalRevenue)}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  {formatCurrency(analyticsData.totalProductCosts)}
+                </td>
+                <td className="px-6 py-4 text-sm whitespace-nowrap">
+                  <span
+                    className={`font-bold ${
+                      analyticsData.totalGrossProfit >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {formatCurrency(analyticsData.totalGrossProfit)}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm whitespace-nowrap">
+                  <span
+                    className={`font-bold px-2 py-1 rounded-full text-xs ${
+                      analyticsData.grossProfitMargin >= 50
+                        ? "bg-green-100 text-green-800"
+                        : analyticsData.grossProfitMargin >= 30
+                        ? "bg-yellow-100 text-yellow-800"
+                        : analyticsData.grossProfitMargin >= 10
+                        ? "bg-orange-100 text-orange-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {analyticsData.grossProfitMargin.toFixed(1)}%
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
+                  100%
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Product Sales Distribution - Pie Chart */}
       <div className="p-6 bg-white border border-gray-200 rounded-lg">
         <h3 className="mb-4 text-lg font-semibold text-gray-900">
           Product Sales Distribution
@@ -1334,114 +1925,6 @@ const AnalyticsPage: React.FC = () => {
             <Legend />
           </PieChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* Product Performance Table */}
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Product Performance Analysis
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Units Sold
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Revenue
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Cost Price
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Profit
-                </th>
-                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                  Market Share
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {Object.entries(analyticsData.productSales).map(
-                ([product, data]) => {
-                  const costPrice = productCosts[product] || 0;
-                  const totalCost = costPrice * data.quantity;
-                  const profit = data.revenue - totalCost;
-
-                  return (
-                    <tr key={product}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div
-                            className={`w-3 h-3 rounded-full mr-3 ${getProductDisplayColor(
-                              product
-                            )}`}
-                          ></div>
-                          <span className="text-sm font-medium text-gray-900">
-                            {product}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {data.quantity}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {formatCurrency(data.revenue)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        {formatCurrency(totalCost)}
-                      </td>
-                      <td className="px-6 py-4 text-sm whitespace-nowrap">
-                        <span
-                          className={`font-medium ${
-                            profit >= 0 ? "text-green-600" : "text-red-600"
-                          }`}
-                        >
-                          {formatCurrency(profit)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <span>
-                            {analyticsData.totalRevenue > 0
-                              ? (
-                                  (data.revenue / analyticsData.totalRevenue) *
-                                  100
-                                ).toFixed(1)
-                              : 0}
-                            %
-                          </span>
-                          <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
-                            <div
-                              className={`h-2 rounded-full ${getProductDisplayColor(
-                                product
-                              )}`}
-                              style={{
-                                width: `${
-                                  analyticsData.totalRevenue > 0
-                                    ? (data.revenue /
-                                        analyticsData.totalRevenue) *
-                                      100
-                                    : 0
-                                }%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                }
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
 
       {/* Expense Manager */}
