@@ -141,8 +141,6 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
       throw new Error(`Failed to read sheet: ${metaRes.status}`);
     }
 
-    const meta = await metaRes.json();
-
     const rowData = orderToSheetRow(order);
     const trackingId = rowData[0] as string;
 

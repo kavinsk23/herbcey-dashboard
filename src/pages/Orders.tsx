@@ -293,32 +293,6 @@ const Orders: React.FC = () => {
     }
   };
 
-  const handleDeleteOrderFromCard = async (order: Order) => {
-    if (!order.tracking) return;
-
-    if (
-      !window.confirm(
-        `Are you sure you want to delete order ${order.tracking}?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const result = await deleteOrderFromSheet(order.tracking);
-
-      if (result.success) {
-        alert("Order deleted successfully!");
-        await loadOrdersFromSheets();
-      } else {
-        alert(`Error deleting order: ${result.error}`);
-      }
-    } catch (error) {
-      console.error("Error deleting order:", error);
-      alert("An unexpected error occurred while deleting the order.");
-    }
-  };
-
   const hasDateFilter = startDate || endDate;
 
   if (loading) {

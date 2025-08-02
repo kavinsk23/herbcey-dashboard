@@ -35,9 +35,6 @@ function GoogleLogin() {
           console.log("ID Token (JWT): " + response.credential);
 
           try {
-            const payload = JSON.parse(atob(response.credential.split(".")[1]));
-            const userName = payload.name;
-
             // Store ID token, but we still need access token for Sheets API
             localStorage.setItem("google_id_token", response.credential);
 
