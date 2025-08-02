@@ -13,6 +13,7 @@ type StatusType =
   | "All"
   | "Preparing"
   | "Shipped"
+  | "Dispatched"
   | "Delivered"
   | "Returned"
   | "Damaged";
@@ -30,7 +31,13 @@ interface Order {
     quantity: number;
     price: number;
   }[];
-  status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
+  status:
+    | "Preparing"
+    | "Shipped"
+    | "Dispatched"
+    | "Delivered"
+    | "Returned"
+    | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -51,6 +58,10 @@ const Orders: React.FC = () => {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [showDateFilter, setShowDateFilter] = useState(false);
+
+  // Pagination state - moved inside the component
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // OrderForm state
   const [showOrderForm, setShowOrderForm] = useState(false);
@@ -182,6 +193,15 @@ const Orders: React.FC = () => {
     );
   });
 
+  // Get paginated orders
+  const sortedOrders = filteredOrders.sort(
+    (a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
+  );
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
+
   const clearFilters = () => {
     setSearchTerm("");
     setTrackingSearch("");
@@ -191,6 +211,7 @@ const Orders: React.FC = () => {
     setStartDate("");
     setEndDate("");
     setShowDateFilter(false);
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
   // Handle creating new order
@@ -382,17 +403,23 @@ const Orders: React.FC = () => {
         clearFilters={clearFilters}
         filteredOrdersLength={filteredOrders.length}
         totalOrdersLength={orders.length}
+        itemsPerPage={itemsPerPage}
+        setItemsPerPage={setItemsPerPage}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
       />
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {filteredOrders.map((order, index) => (
-          <OrderCard
-            key={`${order.tracking}-${index}`}
-            order={order}
-            onUpdateClick={handleUpdateOrder}
-          />
-        ))}
+      {/* Orders List with Scroll */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="h-[600px] overflow-y-auto p-4 space-y-4">
+          {paginatedOrders.map((order, index) => (
+            <OrderCard
+              key={`${order.tracking}-${index}`}
+              order={order}
+              onUpdateClick={handleUpdateOrder}
+            />
+          ))}
+        </div>
       </div>
 
       {/* No Results Message */}

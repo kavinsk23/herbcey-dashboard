@@ -2,7 +2,7 @@ import React from "react";
 
 interface Expense {
   id: string;
-  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
+  type: "Shampoo" | "Conditioner" | "Marketing" | "Oil" | "Other";
   amount: number;
   note: string;
   date: string;
@@ -70,6 +70,7 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             >
               <option value="Shampoo">Shampoo</option>
               <option value="Conditioner">Conditioner</option>
+              <option value="Marketing">Marketing</option>
               <option value="Oil">Oil</option>
               <option value="Other">Other</option>
             </select>

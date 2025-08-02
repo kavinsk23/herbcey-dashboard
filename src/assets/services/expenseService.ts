@@ -4,7 +4,7 @@
 // Types for Expenses
 interface Expense {
   id: string;
-  type: "Shampoo" | "Conditioner" | "Oil" | "Other";
+  type: "Shampoo" | "Conditioner" | "Oil" | "Marketing" | "Other";
   amount: number;
   note: string;
   date: string;

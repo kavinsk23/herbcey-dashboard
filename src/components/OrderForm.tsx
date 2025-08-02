@@ -12,7 +12,13 @@ interface Order {
     quantity: number;
     price: number;
   }[];
-  status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
+  status:
+    | "Preparing"
+    | "Shipped"
+    | "Dispatched"
+    | "Delivered"
+    | "Returned"
+    | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -60,6 +66,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     status: "Preparing" as
       | "Preparing"
       | "Shipped"
+      | "Dispatched"
       | "Delivered"
       | "Returned"
       | "Damaged",
@@ -551,6 +558,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     >
                       <option value="Preparing">Preparing</option>
                       <option value="Shipped">Shipped</option>
+                      <option value="Dispatched">Dispatched</option>
                       <option value="Delivered">Delivered</option>
                       <option value="Returned">Returned</option>
                       <option value="Damaged">Damaged</option>

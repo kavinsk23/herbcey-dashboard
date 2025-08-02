@@ -15,7 +15,13 @@ interface Order {
   addressLine3?: string;
   contact: string;
   products: Product[];
-  status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
+  status:
+    | "Preparing"
+    | "Shipped"
+    | "Dispatched"
+    | "Delivered"
+    | "Returned"
+    | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
