@@ -4,6 +4,7 @@ type StatusType =
   | "All"
   | "Preparing"
   | "Shipped"
+  | "Dispatched"
   | "Delivered"
   | "Returned"
   | "Damaged";
@@ -30,6 +31,11 @@ interface FilterSectionProps {
   clearFilters: () => void;
   filteredOrdersLength: number;
   totalOrdersLength: number;
+  // Add new pagination props
+  itemsPerPage: number;
+  setItemsPerPage: (count: number) => void;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
 }
 
 const FilterSection: React.FC<FilterSectionProps> = ({
@@ -52,11 +58,17 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   clearFilters,
   filteredOrdersLength,
   totalOrdersLength,
+  // New pagination props
+  itemsPerPage,
+  setItemsPerPage,
+  currentPage,
+  setCurrentPage,
 }) => {
   const statusColors: Record<StatusType, string> = {
     All: "bg-gray-700 text-white",
     Preparing: "bg-blue-100 text-blue-800 border-blue-200",
     Shipped: "bg-purple-100 text-purple-800 border-purple-200",
+    Dispatched: "bg-indigo-100 text-indigo-800 border-indigo-200",
     Delivered: "bg-green-100 text-green-800 border-green-200",
     Returned: "bg-amber-100 text-amber-800 border-amber-200",
     Damaged: "bg-red-100 text-red-800 border-red-200",
@@ -127,6 +139,17 @@ const FilterSection: React.FC<FilterSectionProps> = ({
         newSelection.length === 0 ? ["All"] : newSelection
       );
     }
+  };
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(filteredOrdersLength / itemsPerPage);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, filteredOrdersLength);
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page
   };
 
   return (
@@ -288,17 +311,93 @@ const FilterSection: React.FC<FilterSectionProps> = ({
         </div>
       </div>
 
-      {/* Results and Clear Filters */}
+      {/* Results, Pagination, and Clear Filters */}
       <div className="mb-4 flex justify-between items-center">
-        <p className="text-sm text-gray-600">
-          Showing {filteredOrdersLength} of {totalOrdersLength} orders
-        </p>
-        <button
-          onClick={clearFilters}
-          className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          Clear All
-        </button>
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-gray-600">
+            Showing {filteredOrdersLength > 0 ? startItem : 0}-{endItem} of{" "}
+            {filteredOrdersLength} orders
+          </p>
+
+          {/* Items per page selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Show:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+            <span className="text-sm text-gray-600">per page</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              {/* Previous button */}
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ←
+              </button>
+
+              {/* Page numbers */}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-2 py-1 text-sm border rounded ${
+                      currentPage === pageNum
+                        ? "bg-primary text-white border-primary"
+                        : "border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              {/* Next button */}
+              <button
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, currentPage + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                →
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={clearFilters}
+            className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Clear All
+          </button>
+        </div>
       </div>
     </div>
   );

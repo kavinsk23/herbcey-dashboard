@@ -13,6 +13,7 @@ type StatusType =
   | "All"
   | "Preparing"
   | "Shipped"
+  | "Dispatched"
   | "Delivered"
   | "Returned"
   | "Damaged";
@@ -30,7 +31,13 @@ interface Order {
     quantity: number;
     price: number;
   }[];
-  status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
+  status:
+    | "Preparing"
+    | "Shipped"
+    | "Dispatched"
+    | "Delivered"
+    | "Returned"
+    | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -360,7 +367,6 @@ const Orders: React.FC = () => {
           <span>New Order</span>
         </button>
       </div>
-
       {/* Filter Section */}
       <FilterSection
         searchTerm={searchTerm}
@@ -383,18 +389,21 @@ const Orders: React.FC = () => {
         filteredOrdersLength={filteredOrders.length}
         totalOrdersLength={orders.length}
       />
-
       {/* Orders List */}
       <div className="space-y-4">
-        {filteredOrders.map((order, index) => (
-          <OrderCard
-            key={`${order.tracking}-${index}`}
-            order={order}
-            onUpdateClick={handleUpdateOrder}
-          />
-        ))}
+        {filteredOrders
+          .sort(
+            (a, b) =>
+              new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
+          )
+          .map((order, index) => (
+            <OrderCard
+              key={`${order.tracking}-${index}`}
+              order={order}
+              onUpdateClick={handleUpdateOrder}
+            />
+          ))}
       </div>
-
       {/* No Results Message */}
       {filteredOrders.length === 0 &&
         (searchTerm ||
@@ -409,7 +418,6 @@ const Orders: React.FC = () => {
             </p>
           </div>
         )}
-
       {/* Empty state for no orders */}
       {orders.length === 0 && !loading && !error && (
         <div className="py-8 text-center">
@@ -428,7 +436,6 @@ const Orders: React.FC = () => {
           </button>
         </div>
       )}
-
       {/* Order Form Modal */}
       <OrderForm
         isOpen={showOrderForm}
