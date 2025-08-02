@@ -131,7 +131,7 @@ const getAllProductsFromSheet = async (): Promise<{
 
 const AnalyticsPage: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<"daily" | "monthly" | "yearly">(
-    "monthly"
+    "daily"
   );
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [dateRange, setDateRange] = useState(() => {
@@ -687,8 +687,7 @@ const AnalyticsPage: React.FC = () => {
       .reduce((sum, expense) => sum + expense.amount, 0);
 
     // TOTAL EXPENSES AND NET PROFIT CALCULATIONS
-    const totalExpenses =
-      operationalExpenses + marketingExpenses + returnDeliveryLoss;
+    const totalExpenses = operationalExpenses + marketingExpenses;
     const netProfit = totalGrossProfit - marketingExpenses - returnDeliveryLoss;
 
     // Calculate profit margins
@@ -940,6 +939,9 @@ const AnalyticsPage: React.FC = () => {
         textColor: "text-primary",
         bgColor: "bg-primary/10",
         iconColor: "text-primary",
+        subtitle: `${formatCurrency(
+          analyticsData.totalReceivedFunds
+        )} Received`,
         icon: (
           <svg
             className="w-6 h-6"
@@ -983,6 +985,30 @@ const AnalyticsPage: React.FC = () => {
           </svg>
         ),
       },
+      {
+        id: "total-expenses",
+        title: "Total Expenses",
+        value: formatCurrency(analyticsData.totalExpenses),
+        textColor: "text-red-600",
+        bgColor: "bg-red-100",
+        iconColor: "text-red-600",
+
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+            />
+          </svg>
+        ),
+      },
 
       {
         id: "return-loss",
@@ -1004,6 +1030,30 @@ const AnalyticsPage: React.FC = () => {
               strokeLinejoin="round"
               strokeWidth={2}
               d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"
+            />
+          </svg>
+        ),
+      },
+      {
+        id: "total-orders",
+        title: "Total Orders",
+        value: analyticsData.totalOrders.toString(),
+        textColor: "text-blue-600",
+        bgColor: "bg-blue-100",
+        iconColor: "text-blue-600",
+        subtitle: `${analyticsData.totalUnitsSold} Units sold`,
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
             />
           </svg>
         ),
