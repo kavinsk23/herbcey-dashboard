@@ -59,6 +59,10 @@ const Orders: React.FC = () => {
   const [endDate, setEndDate] = useState<string>("");
   const [showDateFilter, setShowDateFilter] = useState(false);
 
+  // Pagination state - moved inside the component
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
   // OrderForm state
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -189,6 +193,15 @@ const Orders: React.FC = () => {
     );
   });
 
+  // Get paginated orders
+  const sortedOrders = filteredOrders.sort(
+    (a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
+  );
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedOrders = sortedOrders.slice(startIndex, endIndex);
+
   const clearFilters = () => {
     setSearchTerm("");
     setTrackingSearch("");
@@ -198,6 +211,7 @@ const Orders: React.FC = () => {
     setStartDate("");
     setEndDate("");
     setShowDateFilter(false);
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
   // Handle creating new order
@@ -367,6 +381,7 @@ const Orders: React.FC = () => {
           <span>New Order</span>
         </button>
       </div>
+
       {/* Filter Section */}
       <FilterSection
         searchTerm={searchTerm}
@@ -388,22 +403,23 @@ const Orders: React.FC = () => {
         clearFilters={clearFilters}
         filteredOrdersLength={filteredOrders.length}
         totalOrdersLength={orders.length}
+        itemsPerPage={itemsPerPage}
+        setItemsPerPage={setItemsPerPage}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
       />
+
       {/* Orders List */}
       <div className="space-y-4">
-        {filteredOrders
-          .sort(
-            (a, b) =>
-              new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
-          )
-          .map((order, index) => (
-            <OrderCard
-              key={`${order.tracking}-${index}`}
-              order={order}
-              onUpdateClick={handleUpdateOrder}
-            />
-          ))}
+        {paginatedOrders.map((order, index) => (
+          <OrderCard
+            key={`${order.tracking}-${index}`}
+            order={order}
+            onUpdateClick={handleUpdateOrder}
+          />
+        ))}
       </div>
+
       {/* No Results Message */}
       {filteredOrders.length === 0 &&
         (searchTerm ||
@@ -418,6 +434,7 @@ const Orders: React.FC = () => {
             </p>
           </div>
         )}
+
       {/* Empty state for no orders */}
       {orders.length === 0 && !loading && !error && (
         <div className="py-8 text-center">
@@ -436,6 +453,7 @@ const Orders: React.FC = () => {
           </button>
         </div>
       )}
+
       {/* Order Form Modal */}
       <OrderForm
         isOpen={showOrderForm}
