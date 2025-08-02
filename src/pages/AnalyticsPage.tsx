@@ -956,30 +956,7 @@ const AnalyticsPage: React.FC = () => {
           </svg>
         ),
       },
-      {
-        id: "gross-profit",
-        title: "Gross Profit",
-        value: formatCurrency(analyticsData.totalGrossProfit),
-        textColor: "text-green-600",
-        bgColor: "bg-green-100",
-        iconColor: "text-green-600",
-        subtitle: `${analyticsData.grossProfitMargin.toFixed(1)}% margin`,
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-            />
-          </svg>
-        ),
-      },
+
       {
         id: "net-profit",
         title: "Net Profit",
@@ -1006,35 +983,7 @@ const AnalyticsPage: React.FC = () => {
           </svg>
         ),
       },
-      {
-        id: "marketing-roi",
-        title: "Marketing ROI",
-        value: `${analyticsData.marketingROI.toFixed(1)}%`,
-        textColor:
-          analyticsData.marketingROI >= 0 ? "text-purple-600" : "text-red-600",
-        bgColor:
-          analyticsData.marketingROI >= 0 ? "bg-purple-100" : "bg-red-100",
-        iconColor:
-          analyticsData.marketingROI >= 0 ? "text-purple-600" : "text-red-600",
-        subtitle: `CAC: ${formatCurrency(
-          analyticsData.customerAcquisitionCost
-        )}`,
-        icon: (
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-            />
-          </svg>
-        ),
-      },
+
       {
         id: "return-loss",
         title: "Return Delivery Loss",
@@ -1227,7 +1176,7 @@ const AnalyticsPage: React.FC = () => {
             <div className="flex items-center justify-between h-full">
               <div>
                 <p className="text-sm text-gray-600">{card.title}</p>
-                <p className={`text-2xl font-bold ${card.textColor}`}>
+                <p className={`text-xl font-bold ${card.textColor}`}>
                   {card.value}
                 </p>
                 {card.subtitle && (
@@ -1237,7 +1186,7 @@ const AnalyticsPage: React.FC = () => {
                 )}
               </div>
               <div
-                className={`flex items-center justify-center w-12 h-12 rounded-full ${card.bgColor}`}
+                className={`flex items-center justify-center p-1 w-8 h-8 rounded-full ${card.bgColor}`}
               >
                 <div className={card.iconColor}>{card.icon}</div>
               </div>
@@ -1360,75 +1309,6 @@ const AnalyticsPage: React.FC = () => {
                   ).toFixed(1)
                 : 0}
               % return rate
-            </div>
-          </div>
-
-          <div className="p-4 text-center border-l-4 border-blue-500 rounded-lg bg-blue-50">
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(analyticsData.operationalExpenses)}
-            </div>
-            <div className="text-sm font-medium text-gray-700">
-              Other Operational
-            </div>
-            <div className="mt-1 text-xs text-gray-500">
-              {analyticsData.totalRevenue > 0
-                ? (
-                    (analyticsData.operationalExpenses /
-                      analyticsData.totalRevenue) *
-                    100
-                  ).toFixed(1)
-                : 0}
-              % of revenue
-            </div>
-            <div className="mt-1 text-xs text-gray-400">
-              Raw materials, supplies, etc.
-            </div>
-          </div>
-        </div>
-
-        {/* Profit Summary Row */}
-        <div className="p-4 mt-6 border-2 border-green-200 rounded-lg bg-gradient-to-r from-green-50 to-blue-50">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">
-                {formatCurrency(analyticsData.totalGrossProfit)}
-              </div>
-              <div className="text-sm font-medium text-gray-700">
-                Gross Profit
-              </div>
-              <div className="text-xs text-gray-500">
-                {analyticsData.grossProfitMargin.toFixed(1)}% margin
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div
-                className={`text-3xl font-bold ${
-                  analyticsData.netProfit >= 0
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {formatCurrency(analyticsData.netProfit)}
-              </div>
-              <div className="text-sm font-medium text-gray-700">
-                Net Profit
-              </div>
-              <div className="text-xs text-gray-500">
-                {analyticsData.netProfitMargin.toFixed(1)}% margin
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">
-                {formatCurrency(analyticsData.customerAcquisitionCost)}
-              </div>
-              <div className="text-sm font-medium text-gray-700">
-                Customer Acquisition Cost
-              </div>
-              <div className="text-xs text-gray-500">
-                Marketing cost per order
-              </div>
             </div>
           </div>
         </div>
