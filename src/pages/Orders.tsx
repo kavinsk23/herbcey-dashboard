@@ -409,15 +409,17 @@ const Orders: React.FC = () => {
         setCurrentPage={setCurrentPage}
       />
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {paginatedOrders.map((order, index) => (
-          <OrderCard
-            key={`${order.tracking}-${index}`}
-            order={order}
-            onUpdateClick={handleUpdateOrder}
-          />
-        ))}
+      {/* Orders List with Scroll */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="h-[600px] overflow-y-auto p-4 space-y-4">
+          {paginatedOrders.map((order, index) => (
+            <OrderCard
+              key={`${order.tracking}-${index}`}
+              order={order}
+              onUpdateClick={handleUpdateOrder}
+            />
+          ))}
+        </div>
       </div>
 
       {/* No Results Message */}

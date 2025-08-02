@@ -31,7 +31,7 @@ interface FilterSectionProps {
   clearFilters: () => void;
   filteredOrdersLength: number;
   totalOrdersLength: number;
-  // Add new pagination props
+  // Pagination props
   itemsPerPage: number;
   setItemsPerPage: (count: number) => void;
   currentPage: number;
@@ -58,7 +58,6 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   clearFilters,
   filteredOrdersLength,
   totalOrdersLength,
-  // New pagination props
   itemsPerPage,
   setItemsPerPage,
   currentPage,
@@ -86,6 +85,55 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     "COD Paid": "bg-green-100 text-green-800",
     "COD Unpaid": "bg-red-100 text-red-800",
     "Bank Transfer": "bg-blue-100 text-blue-800",
+  };
+
+  // Quick date range presets
+  const setQuickDateRange = (preset: string) => {
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date(now);
+
+    switch (preset) {
+      case "today":
+        startDate = new Date(now);
+        endDate = new Date(now);
+        break;
+      case "yesterday":
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 1);
+        endDate = new Date(startDate);
+        break;
+      case "last7days":
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case "last30days":
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case "thisMonth":
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case "lastMonth":
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+        break;
+      case "thisYear":
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+        break;
+      case "lastYear":
+        startDate = new Date(now.getFullYear() - 1, 0, 1);
+        endDate = new Date(now.getFullYear() - 1, 11, 31);
+        break;
+      default:
+        return;
+    }
+
+    setStartDate(startDate.toISOString().split("T")[0]);
+    setEndDate(endDate.toISOString().split("T")[0]);
+    setCurrentPage(1); // Reset to first page when changing date range
   };
 
   const formatDateRange = () => {
@@ -189,8 +237,9 @@ const FilterSection: React.FC<FilterSectionProps> = ({
           </button>
 
           {showDateFilter && (
-            <div className="absolute top-full mt-2 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-80">
-              <div className="space-y-3">
+            <div className="absolute top-full mt-2 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
+              <div className="space-y-4">
+                {/* Custom Date Inputs */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Start Date
@@ -231,6 +280,32 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               </div>
             </div>
           )}
+        </div>
+      </div>
+      {/* Quick Date Range Buttons */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Quick Date Ranges
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: "Today", value: "today" },
+            { label: "Yesterday", value: "yesterday" },
+            { label: "Last 7 days", value: "last7days" },
+            { label: "Last 30 days", value: "last30days" },
+            { label: "This Month", value: "thisMonth" },
+            { label: "Last Month", value: "lastMonth" },
+            { label: "This Year", value: "thisYear" },
+            { label: "Last Year", value: "lastYear" },
+          ].map((preset) => (
+            <button
+              key={preset.value}
+              onClick={() => setQuickDateRange(preset.value)}
+              className="px-3 py-1 text-xs font-medium text-gray-600 transition-colors bg-gray-100 rounded-md hover:bg-primary hover:text-white whitespace-nowrap"
+            >
+              {preset.label}
+            </button>
+          ))}
         </div>
       </div>
 
