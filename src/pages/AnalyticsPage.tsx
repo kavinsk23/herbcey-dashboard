@@ -13,7 +13,6 @@ import {
   AreaChart,
   Area,
   Legend,
-  BarChart,
   Bar,
   ComposedChart,
 } from "recharts";
@@ -152,7 +151,7 @@ const AnalyticsPage: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<
     "revenue" | "orders" | "both"
   >("both");
-  const [expenseSummary, setExpenseSummary] = useState<{
+  const [, setExpenseSummary] = useState<{
     totalExpenses: number;
     expensesByType: Record<string, number>;
     monthlyExpenses: Record<string, number>;
@@ -165,7 +164,7 @@ const AnalyticsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Product data from Google Sheets
-  const [products, setProducts] = useState<ProductData[]>([]);
+  const [, setProducts] = useState<ProductData[]>([]);
   const [availableProducts, setAvailableProducts] = useState<string[]>(["all"]);
   const [productPrices, setProductPrices] = useState<Record<string, number>>(
     {}
@@ -520,6 +519,7 @@ const AnalyticsPage: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [dateRange.startDate, dateRange.endDate, productPrices]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-LK", {
       style: "currency",
@@ -529,6 +529,7 @@ const AnalyticsPage: React.FC = () => {
     }).format(amount);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const calculateOrderRevenue = (order: Order) => {
     const productTotal = order.products.reduce(
       (sum, product) => sum + product.price * product.quantity,

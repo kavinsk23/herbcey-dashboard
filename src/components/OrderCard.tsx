@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 interface Order {
   name: string;
@@ -31,9 +31,6 @@ interface OrderCardProps {
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
-  const [customerCity, setCustomerCity] = useState<string | null>(null);
-  const [cityLoading, setCityLoading] = useState(false);
-
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
   };

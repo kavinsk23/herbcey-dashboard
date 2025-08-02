@@ -231,7 +231,14 @@ const OrderForm: React.FC<OrderFormProps> = ({
         products: productState,
       }));
     }
-  }, [initialOrder, mode, isOpen, productPrices, availableProducts]);
+  }, [
+    initialOrder,
+    mode,
+    isOpen,
+    productPrices,
+    availableProducts,
+    formData.products,
+  ]);
 
   const parseCustomerInfo = (customerInfo: string) => {
     const lines = customerInfo.split("\n").filter((line) => line.trim());
