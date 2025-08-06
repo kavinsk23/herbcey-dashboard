@@ -92,40 +92,42 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         <head>
           <title>Order Receipt - ${order.tracking}</title>
           <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-            @media print {
-              body { margin: 0; padding: 0; }
-            }
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
-              font-weight: normal;
-              line-height: 1.2;
-              margin: 0;
-              padding: 2mm;
-              width: 100%;
-              box-sizing: border-box;
-              color: #000000;
-            }
-            .center {
-              text-align: center;
-            }
-            .bold {
-              font-weight: bold;
-            }
-            .flex-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .gap {
-              height: 1em;
-              line-height: 1em;
-            }
-          </style>
+          @page {
+            size: 80mm 70mm;
+            margin: 0;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            margin: 0;
+            padding: 1mm;
+            width: 78mm;
+            height: 68mm;
+          }
+          .header {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1mm;
+          }
+          .row {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5mm 0;
+          }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 1mm 0;
+          }
+          .total {
+            font-weight: bold;
+            margin-top: 1mm;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 1mm;
+            font-size: 9px;
+          }
+        </style>
         </head>
         <body>
           <div class="gap">&nbsp;</div>
@@ -181,7 +183,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           
           <div class="flex-row bold">
             <span>Total: ${formatCurrency(finalTotal)}</span>
-          </div>
+          </div> 
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
@@ -212,10 +214,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   };
 
   return (
-    <div
-      className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
-      style={{ height: "7mm" }}
-    >
+    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
       {/* Header with status and payment */}
       <div className="flex items-center justify-between border-b">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
