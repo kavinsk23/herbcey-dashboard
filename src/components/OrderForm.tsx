@@ -495,19 +495,17 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="gap">&nbsp;</div>
           
           <div class="bold">TRACKING: ${formData.trackingId}</div>
-          // <div class="gap">&nbsp;</div>
-          // <div class="gap">&nbsp;</div>
-          // <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
           
-          <div class="bold">CUSTOMER INFO:</div>
           <div>${name}</div>
           <div>${addressLine1}</div>
           ${addressLine2 ? `<div>${addressLine2}</div>` : ""}
           ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
           <div>Tel: ${contact}</div>
           <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
+         
           
           <div class="bold">ITEMS:</div>
           ${selectedProducts
@@ -522,8 +520,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             )
             .join("")}
           <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
+          
           
           ${
             !formData.freeShipping
