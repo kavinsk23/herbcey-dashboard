@@ -430,6 +430,172 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   const totalAmount = calculateTotal();
 
+  // Print function with empty lines using non-breaking spaces
+  const handlePrint = () => {
+    if (!formData.trackingId.trim()) {
+      alert("Please enter a tracking ID before printing");
+      return;
+    }
+
+    const { name, addressLine1, addressLine2, addressLine3, contact } =
+      parseCustomerInfo(formData.customerInfo);
+
+    if (!name.trim() || !addressLine1.trim()) {
+      alert("Please enter complete customer information before printing");
+      return;
+    }
+
+    const selectedProducts = Object.entries(formData.products).filter(
+      ([_, product]) => product.selected
+    );
+
+    if (selectedProducts.length === 0) {
+      alert("Please select at least one product before printing");
+      return;
+    }
+
+    // Create print content with non-breaking space lines for gaps
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Order Receipt - ${formData.trackingId}</title>
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            @media print {
+              body { margin: 0; padding: 0; }
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              font-weight: normal;
+              line-height: 1.2;
+              margin: 0;
+              padding: 2mm;
+              width: 100%;
+              box-sizing: border-box;
+              color: #000000;
+            }
+            .center {
+              text-align: center;
+            }
+            .bold {
+              font-weight: bold;
+            }
+            .flex-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .gap {
+              height: 1em;
+              line-height: 1em;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          <div class="bold">TRACKING: ${formData.trackingId}</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          <div class="bold">CUSTOMER INFO:</div>
+          <div>${name}</div>
+          <div>${addressLine1}</div>
+          ${addressLine2 ? `<div>${addressLine2}</div>` : ""}
+          ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
+          <div>Tel: ${contact}</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          <div class="bold">ITEMS:</div>
+          ${selectedProducts
+            .map(
+              ([name, product]) => `
+              <div class="flex-row">
+                <span>${name}</span>
+                <span>x${product.quantity}</span>
+                <span>${formatCurrency(product.price * product.quantity)}</span>
+              </div>
+            `
+            )
+            .join("")}
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          ${
+            !formData.freeShipping
+              ? `
+            <div class="flex-row">
+              <span>Subtotal:</span>
+              <span></span>
+              <span>${formatCurrency(totalAmount - 350)}</span>
+            </div>
+            <div class="flex-row">
+              <span>Shipping:</span>
+              <span></span>
+              <span>${formatCurrency(350)}</span>
+            </div>
+          `
+              : `
+            <div class="flex-row">
+              <span>Subtotal:</span>
+              <span></span>
+              <span>${formatCurrency(totalAmount)}</span>
+            </div>
+            <div class="flex-row">
+              <span>Shipping:</span>
+              <span></span>
+              <span>FREE</span>
+            </div>
+          `
+          }
+          <div class="gap">&nbsp;</div>
+          
+          <div class="flex-row bold">
+            <span>TOTAL:</span>
+            <span></span>
+            <span>${formatCurrency(totalAmount)}</span>
+          </div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+        </body>
+      </html>
+    `;
+
+    // Open print window
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Auto print after content loads
+      printWindow.addEventListener("load", () => {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 250);
+      });
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -797,6 +963,30 @@ const OrderForm: React.FC<OrderFormProps> = ({
               {isSubmitting ? "Deleting..." : "Delete Order"}
             </button>
           )}
+
+          {/* Print Button */}
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="flex items-center px-4 py-2 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSubmitting || loadingProducts}
+          >
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
+            </svg>
+            Print Receipt
+          </button>
+
           <button
             type="button"
             onClick={onClose}
