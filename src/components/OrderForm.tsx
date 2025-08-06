@@ -508,9 +508,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
             ${selectedProducts
               .map(
                 ([name, product]) => `
-              <div class="flex-row">
+              <div class="flex-row">                
+              <span> x ${product.quantity}</span>
+
                 <span>${name}</span>
-                <span> x ${product.quantity}</span>
                 <span>${formatCurrency(product.price * product.quantity)}</span>
               </div>
             `
@@ -534,9 +535,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
               <span>Subtotal: ${formatCurrency(totalAmount)}</span>
             </div>
             <div class="flex-row">
-              <span>Shipping:</span>
-              <span></span>
-              <span>FREE</span>
+            
+              <span>Shipping: FREE</span>
             </div>
           `
           }
