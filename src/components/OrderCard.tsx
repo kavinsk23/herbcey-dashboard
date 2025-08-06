@@ -212,7 +212,10 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   };
 
   return (
-    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 hover:shadow-md">
+    <div
+      className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
+      style={{ height: "7mm" }}
+    >
       {/* Header with status and payment */}
       <div className="flex items-center justify-between border-b">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
