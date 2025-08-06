@@ -84,144 +84,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const contacts = parseContacts(order.contact);
 
-  // ESC/POS Auto-cut commands based on Xprinter documentation
-  const CUT_COMMANDS = {
-    FULL_CUT: "\x1B\x64\x00", // ESC d 0 - Full cut
-    PARTIAL_CUT: "\x1B\x64\x01", // ESC d 1 - Partial cut
-    FULL_CUT_ALT: "\x1D\x56\x00", // GS V 0 - Full cut (alternative)
-    PARTIAL_CUT_ALT: "\x1D\x56\x01", // GS V 1 - Partial cut (alternative)
-    FEED_AND_CUT: "\x1B\x64\x03", // ESC d 3 - Feed to cut position then cut
-    INITIALIZE: "\x1B\x40", // ESC @ - Initialize printer
-    LINE_FEED: "\x0A", // LF - Line feed
-  };
-
-  // Send raw ESC/POS commands to printer
-  const sendRawCommand = async (command: string) => {
-    try {
-      // Method 1: Web Serial API (Chrome/Edge)
-      if ("serial" in navigator) {
-        const port = await (navigator as any).serial.requestPort();
-        await port.open({ baudRate: 9600 });
-        const writer = port.writable.getWriter();
-        const encoder = new TextEncoder();
-        await writer.write(encoder.encode(command));
-        writer.releaseLock();
-        await port.close();
-        return true;
-      }
-
-      // Method 2: Electron IPC (if available)
-      if (window.electronAPI?.sendToPrinter) {
-        window.electronAPI.sendToPrinter(command);
-        return true;
-      }
-
-      // Method 3: Raw printer helper (Windows)
-      if (window.rawPrinterHelper?.sendRaw) {
-        window.rawPrinterHelper.sendRaw(command);
-        return true;
-      }
-
-      console.warn("No direct printer communication method available");
-      return false;
-    } catch (error) {
-      console.error("Failed to send raw command:", error);
-      return false;
-    }
-  };
-
-  // Manual cut commands
-  const handleFullCut = () => sendRawCommand(CUT_COMMANDS.FULL_CUT);
-  const handlePartialCut = () => sendRawCommand(CUT_COMMANDS.PARTIAL_CUT);
-  const handleFeedAndCut = () => sendRawCommand(CUT_COMMANDS.FEED_AND_CUT);
-
-  // Print without auto-cut
-  const handlePrintOnly = () => {
-    const printContent = createPrintContent(false);
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.addEventListener("load", () => {
-        setTimeout(() => {
-          printWindow.print();
-          printWindow.close();
-        }, 250);
-      });
-    }
-  };
-
-  // Print with auto-cut
-  const handlePrintWithCut = () => {
-    const printContent = createPrintContent(true);
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.addEventListener("load", () => {
-        setTimeout(async () => {
-          printWindow.print();
-          // Wait for print to complete, then send cut command
-          setTimeout(async () => {
-            await sendRawCommand(CUT_COMMANDS.FULL_CUT);
-            printWindow.close();
-          }, 1000);
-        }, 250);
-      });
-    }
-  };
-
-  // Direct ESC/POS printing with embedded cut command
-  const handleDirectPrint = async () => {
-    const receiptData = `${CUT_COMMANDS.INITIALIZE}
-Tracking: ${order.tracking || "N/A"}
-
-${order.name}
-${order.addressLine1}
-${order.addressLine2 || ""}
-${order.addressLine3 || ""}
-${contacts.join(", ")}
-
-${order.products
-  .map(
-    (product) =>
-      `${product.quantity} x ${product.name.padEnd(15)} ${formatCurrency(
-        product.price * product.quantity
-      ).padStart(10)}`
-  )
-  .join("\n")}
-
-${
-  !order.freeShipping
-    ? `Subtotal: ${formatCurrency(subtotal).padStart(20)}
-Delivery: ${formatCurrency(350).padStart(20)}`
-    : `Subtotal: ${formatCurrency(subtotal).padStart(20)}
-Shipping: ${"FREE".padStart(20)}`
-}
-
-Total: ${formatCurrency(finalTotal).padStart(25)}
-
-${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${
-      CUT_COMMANDS.FULL_CUT
-    }`;
-
-    const success = await sendRawCommand(receiptData);
-    if (!success) {
-      // Fallback to regular print
-      handlePrintWithCut();
-    }
-  };
-
-  // Create print content helper
-  const createPrintContent = (includeCut: boolean) => {
-    return `
+  // Print function
+  const handlePrint = () => {
+    const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
           <title>Order Receipt - ${order.tracking}</title>
-          <meta charset="UTF-8">
           <style>
             @page {
               size: 80mm auto;
@@ -229,7 +98,6 @@ ${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${
             }
             @media print {
               body { margin: 0; padding: 0; }
-              .cut-command { display: none; }
             }
             body {
               font-family: 'Courier New', monospace;
@@ -242,18 +110,20 @@ ${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${
               box-sizing: border-box;
               color: #000000;
             }
-            .center { text-align: center; }
-            .bold { font-weight: bold; }
+            .center {
+              text-align: center;
+            }
+            .bold {
+              font-weight: bold;
+            }
             .flex-row {
               display: flex;
               justify-content: space-between;
               align-items: center;
             }
-            .gap { height: 1em; line-height: 1em; }
-            .cut-command {
-              position: absolute;
-              left: -9999px;
-              visibility: hidden;
+            .gap {
+              height: 1em;
+              line-height: 1em;
             }
           </style>
         </head>
@@ -320,20 +190,25 @@ ${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
           
-          ${
-            includeCut
-              ? `
-          <!-- ESC/POS Auto-cut command -->
-          <div class="cut-command">
-            <span style="white-space: pre;">&#27;d&#0;</span>
-          </div>
-          `
-              : ""
-          }
-          
         </body>
       </html>
     `;
+
+    // Open print window
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Auto print after content loads
+      printWindow.addEventListener("load", () => {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 250);
+      });
+    }
   };
 
   return (
@@ -493,155 +368,17 @@ ${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${
           </div>
         </div>
 
-        {/* Action Buttons with Dropdown */}
-        <div className="flex flex-col items-center justify-center flex-shrink-0 gap-1">
-          {/* Print Options Dropdown */}
-          <div className="relative group">
-            <button
-              onClick={handlePrintWithCut}
-              className="w-24 px-3 py-1 text-xs text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-1"
-            >
-              Print & Cut
-              <svg
-                className="w-3 h-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-            </button>
-
-            {/* Dropdown Menu */}
-            <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-              <div className="p-1">
-                <button
-                  onClick={handlePrintWithCut}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 rounded flex items-center gap-2"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                    />
-                  </svg>
-                  Print + Cut
-                </button>
-                <button
-                  onClick={handleDirectPrint}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 rounded flex items-center gap-2"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                  Direct Print
-                </button>
-                <button
-                  onClick={handlePrintOnly}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-700 hover:bg-gray-50 rounded flex items-center gap-2"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                    />
-                  </svg>
-                  Print Only
-                </button>
-                <hr className="my-1 border-gray-200" />
-                <button
-                  onClick={handleFullCut}
-                  className="w-full px-3 py-2 text-xs text-left text-red-600 hover:bg-red-50 rounded flex items-center gap-2"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                    />
-                  </svg>
-                  Full Cut
-                </button>
-                <button
-                  onClick={handlePartialCut}
-                  className="w-full px-3 py-2 text-xs text-left text-orange-600 hover:bg-orange-50 rounded flex items-center gap-2"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                    />
-                  </svg>
-                  Partial Cut
-                </button>
-                <button
-                  onClick={handleFeedAndCut}
-                  className="w-full px-3 py-2 text-xs text-left text-blue-600 hover:bg-blue-50 rounded flex items-center gap-2"
-                >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                    />
-                  </svg>
-                  Feed & Cut
-                </button>
-              </div>
-            </div>
-          </div>
-
+        {/* Action Buttons */}
+        <div className="flex flex-col items-center justify-center flex-shrink-0 gap-2">
+          <button
+            onClick={handlePrint}
+            className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Print
+          </button>
           <button
             onClick={() => onUpdateClick && onUpdateClick(order)}
-            className="w-24 px-3 py-1 text-xs text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
+            className="w-20 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
           >
             Edit
           </button>
@@ -650,18 +387,5 @@ ${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${CUT_COMMANDS.LINE_FEED}${
     </div>
   );
 };
-
-// Type declarations for external APIs
-declare global {
-  interface Window {
-    electronAPI?: {
-      sendToPrinter: (data: string) => void;
-      printReceipt: (data: string) => void;
-    };
-    rawPrinterHelper?: {
-      sendRaw: (data: string) => void;
-    };
-  }
-}
 
 export default OrderCard;
