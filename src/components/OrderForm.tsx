@@ -495,9 +495,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="gap">&nbsp;</div>
           
           <div class="bold">TRACKING: ${formData.trackingId}</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
+          // <div class="gap">&nbsp;</div>
+          // <div class="gap">&nbsp;</div>
+          // <div class="gap">&nbsp;</div>
           
           <div class="bold">CUSTOMER INFO:</div>
           <div>${name}</div>
