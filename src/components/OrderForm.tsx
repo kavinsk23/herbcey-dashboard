@@ -509,7 +509,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
               .map(
                 ([name, product]) => `
               <div class="flex-row">                
-              <span>${product.quantity} x </span>
+<span className="mr-1">${product.quantity} x</span>
 
                 <span>${name}</span>
                 <span>${formatCurrency(product.price * product.quantity)}</span>
