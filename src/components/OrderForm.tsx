@@ -511,7 +511,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
               <div class="flex-row">                
 <span>${product.quantity} x&nbsp;</span>
 
-                <span>${name}</span>
+<span>${name}&nbsp;</span>
                 <span>${formatCurrency(product.price * product.quantity)}</span>
               </div>
             `
