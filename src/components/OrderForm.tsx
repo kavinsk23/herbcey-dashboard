@@ -499,8 +499,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
           
           
           <div>${name}</div>
-          <div>${addressLine1}</div>
-          ${addressLine2 ? `<div>${addressLine2}</div>` : ""}
+          <div>
+            ${addressLine1}${addressLine2 ? `<br/>${addressLine2}` : ""}
+          </div>
           ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
           <div>${contact}</div>
           <div class="gap">&nbsp;</div>

@@ -136,8 +136,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div class="gap">&nbsp;</div>
           
           <div>${order.name}</div>
-          <div>${order.addressLine1}</div>
-          ${order.addressLine2 ? `<div>${order.addressLine2}</div>` : ""}
+          <div>
+            ${order.addressLine1}${
+      order.addressLine2 ? `<br/>${order.addressLine2}` : ""
+    }
+          </div>
           ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
           <div>${contacts.join(", ")}</div>
           <div class="gap">&nbsp;</div>
@@ -282,10 +285,15 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </div>
 
           <div className="mt-1 space-y-1">
-            <p className="text-sm text-gray-700">{order.addressLine1}</p>
-            {order.addressLine2 && (
-              <p className="text-sm text-gray-700">{order.addressLine2}</p>
-            )}
+            <p className="text-sm text-gray-700">
+              {order.addressLine1}
+              {order.addressLine2 && (
+                <>
+                  <br />
+                  {order.addressLine2}
+                </>
+              )}
+            </p>
             {order.addressLine3 && (
               <p className="text-sm text-gray-700">{order.addressLine3}</p>
             )}
