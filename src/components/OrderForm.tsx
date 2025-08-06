@@ -231,14 +231,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         products: productState,
       }));
     }
-  }, [
-    initialOrder,
-    mode,
-    isOpen,
-    productPrices,
-    availableProducts,
-    formData.products,
-  ]);
+  }, [initialOrder, mode, isOpen, productPrices, availableProducts]);
 
   const parseCustomerInfo = (customerInfo: string) => {
     const lines = customerInfo.split("\n").filter((line) => line.trim());
@@ -731,7 +724,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     >
                       <option value="Preparing">Preparing</option>
                       <option value="Shipped">Shipped</option>
-                      <option value="Dispatched">Dispatched</option>
+                      <option value="Shipped">Dispatched</option>
                       <option value="Delivered">Delivered</option>
                       <option value="Returned">Returned</option>
                       <option value="Damaged">Damaged</option>
