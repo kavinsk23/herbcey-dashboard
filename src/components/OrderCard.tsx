@@ -93,22 +93,36 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <title>Order Receipt - ${order.tracking}</title>
           <style>
             @page {
-              size: 80mm auto;
+              size: 110mm 70mm;
               margin: 0;
             }
             @media print {
-              body { margin: 0; padding: 0; }
+              body { 
+                margin: 0; 
+                padding: 0;
+                transform: rotate(90deg);
+                transform-origin: center center;
+                width: 70mm;
+                height: 110mm;
+                position: absolute;
+                top: 0;
+                left: 0;
+              }
             }
             body {
               font-family: 'Courier New', monospace;
-              font-size: 12px;
+              font-size: 10px;
               font-weight: normal;
-              line-height: 1.2;
+              line-height: 1.1;
               margin: 0;
               padding: 2mm;
-              width: 100%;
+              width: 66mm;
+              height: 106mm;
               box-sizing: border-box;
               color: #000000;
+              transform: rotate(90deg);
+              transform-origin: center center;
+              position: relative;
             }
             .center {
               text-align: center;
@@ -122,8 +136,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               align-items: center;
             }
             .gap {
-              height: 1em;
-              line-height: 1em;
+              height: 0.8em;
+              line-height: 0.8em;
             }
           </style>
         </head>
