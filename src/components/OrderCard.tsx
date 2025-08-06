@@ -54,7 +54,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Preparing: "bg-blue-100 text-blue-800 border-blue-200",
     Shipped: "bg-purple-100 text-purple-800 border-purple-200",
     Dispatched: "bg-indigo-100 text-indigo-800 border-indigo-200",
-
     Delivered: "bg-green-100 text-green-800 border-green-200",
     Returned: "bg-amber-100 text-amber-800 border-amber-200",
     Damaged: "bg-red-100 text-red-800 border-red-200",
@@ -76,7 +75,138 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     0
   );
 
+  const subtotal = order.products.reduce(
+    (sum, product) => sum + product.price * product.quantity,
+    0
+  );
+
+  const finalTotal = order.freeShipping ? subtotal : subtotal + 350;
+
   const contacts = parseContacts(order.contact);
+
+  // Print function
+  const handlePrint = () => {
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Order Receipt - ${order.tracking}</title>
+          <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
+            @media print {
+              body { margin: 0; padding: 0; }
+            }
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              font-weight: normal;
+              line-height: 1.2;
+              margin: 0;
+              padding: 2mm;
+              width: 100%;
+              box-sizing: border-box;
+              color: #000000;
+            }
+            .center {
+              text-align: center;
+            }
+            .bold {
+              font-weight: bold;
+            }
+            .flex-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .gap {
+              height: 1em;
+              line-height: 1em;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          <div class="bold">Tracking: ${order.tracking || "N/A"}</div>
+          <div class="gap">&nbsp;</div>
+          
+          <div>${order.name}</div>
+          <div>${order.addressLine1}</div>
+          ${order.addressLine2 ? `<div>${order.addressLine2}</div>` : ""}
+          ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
+          <div>${contacts.join(", ")}</div>
+          <div class="gap">&nbsp;</div>
+         
+          ${order.products
+            .map(
+              (product) => `
+            <div class="flex-row">                
+              <span>${product.quantity} x&nbsp;</span>
+              <span>${product.name}&nbsp;</span>
+              <span>${formatCurrency(product.price * product.quantity)}</span>
+            </div>
+          `
+            )
+            .join("")}
+          <div class="gap">&nbsp;</div>
+          
+          ${
+            !order.freeShipping
+              ? `
+            <div class="flex-row">
+              <span>Subtotal: ${formatCurrency(subtotal)}</span>
+            </div>
+            <div class="flex-row">
+              <span>Delivery: ${formatCurrency(350)}</span>
+            </div>
+          `
+              : `
+            <div class="flex-row">
+              <span>Subtotal: ${formatCurrency(subtotal)}</span>
+            </div>
+            <div class="flex-row">
+              <span>Shipping: FREE</span>
+            </div>
+          `
+          }
+          <div class="gap">&nbsp;</div>
+          
+          <div class="flex-row bold">
+            <span>Total: ${formatCurrency(finalTotal)}</span>
+          </div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          <div class="gap">&nbsp;</div>
+          
+        </body>
+      </html>
+    `;
+
+    // Open print window
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+
+      // Auto print after content loads
+      printWindow.addEventListener("load", () => {
+        setTimeout(() => {
+          printWindow.print();
+          printWindow.close();
+        }, 250);
+      });
+    }
+  };
 
   return (
     <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 hover:shadow-md">
@@ -222,7 +352,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                     Total:
                   </td>
                   <td className="px-3 py-1 text-sm font-bold text-right">
-                    {formatCurrency(totalAmount)}
+                    {formatCurrency(finalTotal)}
                   </td>
                 </tr>
               </tfoot>
@@ -232,7 +362,10 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
         {/* Action Buttons */}
         <div className="flex flex-col items-center justify-center flex-shrink-0 gap-2">
-          <button className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50">
+          <button
+            onClick={handlePrint}
+            className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
             Print
           </button>
           <button
