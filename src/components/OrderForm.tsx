@@ -494,7 +494,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
           
-          <div class="bold">TRACKING: ${formData.trackingId}</div>
+          <div class="bold">Tracking: ${formData.trackingId}</div>
           <div class="gap">&nbsp;</div>
           
           
@@ -502,22 +502,20 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div>${addressLine1}</div>
           ${addressLine2 ? `<div>${addressLine2}</div>` : ""}
           ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
-          <div>Tel: ${contact}</div>
+          <div>${contact}</div>
           <div class="gap">&nbsp;</div>
          
-          
-          <div class="bold">ITEMS:</div>
-          ${selectedProducts
-            .map(
-              ([name, product]) => `
+            ${selectedProducts
+              .map(
+                ([name, product]) => `
               <div class="flex-row">
                 <span>${name}</span>
-                <span>x${product.quantity}</span>
+                <span> x ${product.quantity}</span>
                 <span>${formatCurrency(product.price * product.quantity)}</span>
               </div>
             `
-            )
-            .join("")}
+              )
+              .join("")}
           <div class="gap">&nbsp;</div>
           
           
@@ -525,21 +523,15 @@ const OrderForm: React.FC<OrderFormProps> = ({
             !formData.freeShipping
               ? `
             <div class="flex-row">
-              <span>Subtotal:</span>
-              <span></span>
-              <span>${formatCurrency(totalAmount - 350)}</span>
+              <span>Subtotal: ${formatCurrency(totalAmount - 350)}</span>
             </div>
             <div class="flex-row">
-              <span>Shipping:</span>
-              <span></span>
-              <span>${formatCurrency(350)}</span>
+              <span>Delivery: ${formatCurrency(350)}</span>
             </div>
           `
               : `
             <div class="flex-row">
-              <span>Subtotal:</span>
-              <span></span>
-              <span>${formatCurrency(totalAmount)}</span>
+              <span>Subtotal: ${formatCurrency(totalAmount)}</span>
             </div>
             <div class="flex-row">
               <span>Shipping:</span>
@@ -551,9 +543,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="gap">&nbsp;</div>
           
           <div class="flex-row bold">
-            <span>TOTAL:</span>
-            <span></span>
-            <span>${formatCurrency(totalAmount)}</span>
+            <span>Total: ${formatCurrency(totalAmount)}</span>
           </div>
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
