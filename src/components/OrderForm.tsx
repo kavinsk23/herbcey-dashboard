@@ -496,8 +496,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           
           <div class="bold">TRACKING: ${formData.trackingId}</div>
           <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
+          
           
           <div>${name}</div>
           <div>${addressLine1}</div>
@@ -506,19 +505,17 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div>Tel: ${contact}</div>
           <div class="gap">&nbsp;</div>
          
-          
-          <div class="bold">ITEMS:</div>
-          ${selectedProducts
-            .map(
-              ([name, product]) => `
+            ${selectedProducts
+              .map(
+                ([name, product]) => `
               <div class="flex-row">
                 <span>${name}</span>
                 <span>x${product.quantity}</span>
                 <span>${formatCurrency(product.price * product.quantity)}</span>
               </div>
             `
-            )
-            .join("")}
+              )
+              .join("")}
           <div class="gap">&nbsp;</div>
           
           
