@@ -513,12 +513,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
               body { margin: 0; padding: 0; }
             }
             body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
+              font-family: 'Arial', 'Helvetica', sans-serif;
+              font-size: 14px;
               font-weight: normal;
-              line-height: 1.2;
+              line-height: 1.4;
               margin: 0;
-              padding: 2mm;
+              padding: 3mm;
               width: 100%;
               box-sizing: border-box;
               color: #000000;
@@ -528,85 +528,113 @@ const OrderForm: React.FC<OrderFormProps> = ({
             }
             .bold {
               font-weight: bold;
+              font-size: 15px;
             }
             .flex-row {
               display: flex;
               justify-content: space-between;
               align-items: center;
+              margin: 2px 0;
             }
             .gap {
-              height: 1em;
-              line-height: 1em;
+              height: 0.8em;
+              line-height: 0.8em;
+            }
+            .product-line {
+              border-bottom: 1px dotted #ccc;
+              padding-bottom: 2px;
+              margin-bottom: 2px;
+            }
+            .total-section {
+              border-top: 2px solid #000;
+              padding-top: 4px;
+              margin-top: 4px;
+            }
+            .tracking {
+              font-size: 16px;
+              font-weight: bold;
+              text-align: center;
+              border: 2px solid #000;
+              padding: 4px;
+              margin: 4px 0;
+            }
+            .customer-info {
+              background-color: #f9f9f9;
+              padding: 4px;
+              margin: 4px 0;
+              border-left: 3px solid #000;
             }
           </style>
         </head>
         <body>
           <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
           
-          <div class="bold">Tracking: ${formData.trackingId}</div>
+          <div class="tracking">Tracking: ${formData.trackingId}</div>
           <div class="gap">&nbsp;</div>
           
-          
-          <div>${name}</div>
-          <div>
-            ${addressLine1}${addressLine2 ? `<br/>${addressLine2}` : ""}
+          <div class="customer-info">
+            <div><strong>${name}</strong></div>
+            <div>${addressLine1}${
+      addressLine2 ? `<br/>${addressLine2}` : ""
+    }</div>
+            ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
+            <div><strong>Tel: ${contact}</strong></div>
           </div>
-          ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
-          <div>${contact}</div>
           <div class="gap">&nbsp;</div>
          
+          <div style="border-top: 1px solid #000; padding-top: 4px;">
             ${selectedProducts
               .map(
                 ([name, product]) => `
-              <div class="flex-row">                
-<span>${product.quantity} x&nbsp;</span>
-
-<span>${name}&nbsp;</span>
-                <span>${formatCurrency(product.price * product.quantity)}</span>
+              <div class="flex-row product-line">                
+                <span><strong>${product.quantity} x ${name}</strong></span>
+                <span><strong>${formatCurrency(
+                  product.price * product.quantity
+                )}</strong></span>
               </div>
             `
               )
               .join("")}
+          </div>
           <div class="gap">&nbsp;</div>
           
-          
-          ${
-            !formData.freeShipping
-              ? `
-            <div class="flex-row">
-              <span>Subtotal: ${formatCurrency(totalAmount - 350)}</span>
-            </div>
-            <div class="flex-row">
-              <span>Delivery: ${formatCurrency(350)}</span>
-            </div>
-          `
-              : `
-            <div class="flex-row">
-              <span>Subtotal: ${formatCurrency(totalAmount)}</span>
-            </div>
-            <div class="flex-row">
+          <div class="total-section">
+            ${
+              !formData.freeShipping
+                ? `
+              <div class="flex-row">
+                <span>Subtotal:</span>
+                <span>${formatCurrency(totalAmount - 350)}</span>
+              </div>
+              <div class="flex-row">
+                <span>Delivery:</span>
+                <span>${formatCurrency(350)}</span>
+              </div>
+            `
+                : `
+              <div class="flex-row">
+                <span>Subtotal:</span>
+                <span>${formatCurrency(totalAmount)}</span>
+              </div>
+              <div class="flex-row">
+                <span>Delivery:</span>
+                <span>FREE</span>
+              </div>
+            `
+            }
             
-              <span>Shipping: FREE</span>
+            <div class="flex-row bold" style="border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; font-size: 18px;">
+              <span>TOTAL:</span>
+              <span>${
+                formData.paymentMethod === "Bank Transfer"
+                  ? "LKR 0.00 (PAID)"
+                  : formatCurrency(totalAmount)
+              }</span>
             </div>
-          `
-          }
-          <div class="gap">&nbsp;</div>
-          
-          <div class="flex-row bold">
-  <span>Total: ${
-    formData.paymentMethod === "Bank Transfer"
-      ? "0 (Paid)"
-      : formatCurrency(totalAmount)
-  }</span>
-</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          
+          </div>
           
           <div class="gap">&nbsp;</div>
+          
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
           
