@@ -12,9 +12,11 @@ import {
 type StatusType =
   | "All"
   | "Preparing"
+  | "Packed"
   | "Shipped"
   | "Dispatched"
   | "Delivered"
+  | "Rescheduled"
   | "Returned"
   | "Damaged";
 type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner";
@@ -33,9 +35,11 @@ interface Order {
   }[];
   status:
     | "Preparing"
+    | "Packed"
     | "Shipped"
     | "Dispatched"
     | "Delivered"
+    | "Rescheduled"
     | "Returned"
     | "Damaged";
   orderDate: string;
@@ -43,6 +47,7 @@ interface Order {
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
+  lastUpdated?: string;
 }
 
 const Orders: React.FC = () => {
@@ -106,14 +111,14 @@ const Orders: React.FC = () => {
             products.push({
               name: "Shampoo",
               quantity: sheetOrder.shampooQty,
-              price: 1750,
+              price: 1350,
             });
           }
           if (sheetOrder.conditionerQty > 0) {
             products.push({
               name: "Conditioner",
               quantity: sheetOrder.conditionerQty,
-              price: 1850,
+              price: 1350,
             });
           }
 
@@ -130,6 +135,7 @@ const Orders: React.FC = () => {
             paymentReceived: sheetOrder.paymentReceived,
             tracking: sheetOrder.trackingId,
             freeShipping: sheetOrder.freeShipping,
+            lastUpdated: sheetOrder.lastUpdated,
           };
         });
 

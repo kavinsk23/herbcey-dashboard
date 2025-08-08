@@ -15,8 +15,10 @@ interface Order {
   status:
     | "Preparing"
     | "Shipped"
+    | "Packed"
     | "Dispatched"
     | "Delivered"
+    | "Rescheduled"
     | "Returned"
     | "Damaged";
   orderDate: string;
@@ -66,8 +68,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
     status: "Preparing" as
       | "Preparing"
       | "Shipped"
+      | "Packed"
       | "Dispatched"
       | "Delivered"
+      | "Rescheduled"
       | "Returned"
       | "Damaged",
     paymentMethod: "COD" as "COD" | "Bank Transfer",
@@ -710,9 +714,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       disabled={isSubmitting}
                     >
                       <option value="Preparing">Preparing</option>
+                      <option value="Packed">Packed</option>
                       <option value="Shipped">Shipped</option>
-                      <option value="Shipped">Dispatched</option>
+                      <option value="ShipDispatchedped">Dispatched</option>
                       <option value="Delivered">Delivered</option>
+                      <option value="Rescheduled">Rescheduled</option>
                       <option value="Returned">Returned</option>
                       <option value="Damaged">Damaged</option>
                     </select>

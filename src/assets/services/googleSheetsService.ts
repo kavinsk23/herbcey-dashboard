@@ -18,8 +18,10 @@ interface Order {
   status:
     | "Preparing"
     | "Shipped"
+    | "Packed"
     | "Dispatched"
     | "Delivered"
+    | "Rescheduled"
     | "Returned"
     | "Damaged";
   orderDate: string;

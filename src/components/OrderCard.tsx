@@ -14,8 +14,10 @@ interface Order {
   status:
     | "Preparing"
     | "Shipped"
+    | "Packed"
     | "Dispatched"
     | "Delivered"
+    | "Rescheduled"
     | "Returned"
     | "Damaged";
   orderDate: string;
@@ -52,11 +54,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const statusColors = {
     Preparing: "bg-blue-100 text-blue-800 border-blue-200",
+    Packed: "bg-teal-100 text-teal-800 border-teal-200",
     Shipped: "bg-purple-100 text-purple-800 border-purple-200",
     Dispatched: "bg-indigo-100 text-indigo-800 border-indigo-200",
     Delivered: "bg-green-100 text-green-800 border-green-200",
     Returned: "bg-amber-100 text-amber-800 border-amber-200",
     Damaged: "bg-red-100 text-red-800 border-red-200",
+    Rescheduled: "bg-orange-100 text-orange-800 border-orange-200",
   };
 
   const paymentColors = {
