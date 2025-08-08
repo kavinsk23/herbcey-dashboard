@@ -730,7 +730,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             ? "border-red-500"
                             : "border-gray-300"
                         }`}
-                        placeholder="123456"
+                        placeholder="1234567"
                         // maxLength={6}
                         disabled={isSubmitting}
                       />
@@ -950,7 +950,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                           disabled={isSubmitting}
                         />
                         <span className="text-sm text-gray-700">
-                          Free Shipping
+                          Free Delivery
                         </span>
                       </label>
                       <span
