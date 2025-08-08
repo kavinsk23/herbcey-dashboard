@@ -184,7 +184,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div class="gap">&nbsp;</div>
           
           <div class="flex-row bold">
-            <span>Total: ${formatCurrency(finalTotal)}</span>
+            <span>Total: ${
+              order.paymentMethod === "Bank Transfer"
+                ? "0 (Paid)"
+                : formatCurrency(finalTotal)
+            }</span>
           </div>
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
@@ -364,7 +368,9 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                     Total:
                   </td>
                   <td className="px-3 py-1 text-sm font-bold text-right">
-                    {formatCurrency(finalTotal)}
+                    {order.paymentMethod === "Bank Transfer"
+                      ? "0 (Paid)"
+                      : formatCurrency(finalTotal)}
                   </td>
                 </tr>
               </tfoot>
