@@ -597,7 +597,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="flex-row bold">
   <span>Total: ${
     formData.paymentMethod === "Bank Transfer"
-      ? "LKR 0.00 (Paid)"
+      ? "0 (Paid)"
       : formatCurrency(totalAmount)
   }</span>
 </div>
