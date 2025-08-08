@@ -731,7 +731,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             : "border-gray-300"
                         }`}
                         placeholder="123456"
-                        maxLength={6}
+                        // maxLength={6}
                         disabled={isSubmitting}
                       />
 
