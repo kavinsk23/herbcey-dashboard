@@ -19,7 +19,7 @@ interface Order {
     | "Dispatched"
     | "Delivered"
     | "Rescheduled"
-    | "Returned"
+    | "Return"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
@@ -72,7 +72,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       | "Dispatched"
       | "Delivered"
       | "Rescheduled"
-      | "Returned"
+      | "Return"
       | "Damaged",
     paymentMethod: "COD" as "COD" | "Bank Transfer",
     paymentReceived: false,
@@ -293,6 +293,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
     if (!formData.trackingId.trim()) {
       newErrors.trackingId = "Tracking ID is required";
+    } else if (!/^\d{6}$/.test(formData.trackingId.trim())) {
+      newErrors.trackingId = "Tracking ID must be exactly 6 digits";
     }
 
     const hasSelectedProduct = Object.values(formData.products).some(
@@ -643,7 +645,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       onChange={(e) =>
                         handleInputChange("customerInfo", e.target.value)
                       }
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm ${
+                      className={`w-full px-3 py-2 border rounded-lg min-h-48 focus:outline-none focus:ring-2 focus:ring-primary text-sm ${
                         errors.customerInfo
                           ? "border-red-500"
                           : "border-gray-300"
@@ -683,6 +685,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         errors.trackingId ? "border-red-500" : "border-gray-300"
                       }`}
                       placeholder="123456"
+                      maxLength={6}
                       disabled={isSubmitting}
                     />
 
@@ -718,7 +721,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <option value="ShipDispatchedped">Dispatched</option>
                       <option value="Delivered">Delivered</option>
                       <option value="Rescheduled">Rescheduled</option>
-                      <option value="Returned">Returned</option>
+                      <option value="Return">Return</option>
                       <option value="Damaged">Damaged</option>
                     </select>
                   </div>
@@ -839,22 +842,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                   {productName}
                                 </span>
                                 <div className="flex items-center mt-1 space-x-2">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={product.price}
-                                    onChange={(e) =>
-                                      handleProductChange(
-                                        productName,
-                                        "price",
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                    className="w-16 px-1 py-0.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                                    disabled={isSubmitting}
-                                  />
+                                  <span className="text-xs font-medium text-gray-900">
+                                    {formatCurrency(product.price)}
+                                  </span>
                                   <span className="text-xs text-gray-600">
-                                    LKR each
+                                    each
                                   </span>
                                 </div>
                               </div>

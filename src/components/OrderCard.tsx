@@ -18,7 +18,7 @@ interface Order {
     | "Dispatched"
     | "Delivered"
     | "Rescheduled"
-    | "Returned"
+    | "Return"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
@@ -58,7 +58,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Shipped: "bg-purple-100 text-purple-800 border-purple-200",
     Dispatched: "bg-indigo-100 text-indigo-800 border-indigo-200",
     Delivered: "bg-green-100 text-green-800 border-green-200",
-    Returned: "bg-amber-100 text-amber-800 border-amber-200",
+    Return: "bg-amber-100 text-amber-800 border-amber-200",
     Damaged: "bg-red-100 text-red-800 border-red-200",
     Rescheduled: "bg-orange-100 text-orange-800 border-orange-200",
   };

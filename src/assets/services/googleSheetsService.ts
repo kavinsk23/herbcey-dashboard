@@ -22,7 +22,7 @@ interface Order {
     | "Dispatched"
     | "Delivered"
     | "Rescheduled"
-    | "Returned"
+    | "Return"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";

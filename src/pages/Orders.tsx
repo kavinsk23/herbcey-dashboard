@@ -17,7 +17,7 @@ type StatusType =
   | "Dispatched"
   | "Delivered"
   | "Rescheduled"
-  | "Returned"
+  | "Return"
   | "Damaged";
 type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
@@ -40,7 +40,7 @@ interface Order {
     | "Dispatched"
     | "Delivered"
     | "Rescheduled"
-    | "Returned"
+    | "Return"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
