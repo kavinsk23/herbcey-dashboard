@@ -416,7 +416,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const handleInputChange = (field: string, value: any) => {
     // For tracking ID, only allow digits and limit to 6 characters
     if (field === "trackingId") {
-      value = value.replace(/\D/g, "").slice(0, 6); // Remove non-digits and limit to 6 chars
+      value = value.replace(/\D/g, "").slice(0, 7); // Remove non-digits and limit to 6 chars
     }
 
     // Automatically set paymentReceived to true if payment method is Bank Transfer
