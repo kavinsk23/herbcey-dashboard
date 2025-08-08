@@ -305,7 +305,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
     if (!formData.trackingId.trim()) {
       newErrors.trackingId = "Tracking ID is required";
-    } else if (!/^\d{6}$/.test(formData.trackingId.trim())) {
+    } else if (!/^\d{7}$/.test(formData.trackingId.trim())) {
       newErrors.trackingId = "Tracking ID must be exactly 6 digits";
     }
 
