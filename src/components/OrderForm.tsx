@@ -514,11 +514,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
         }
         body {
           font-family: 'Arial', sans-serif;
-          font-size: 11px; /* Increased from 10px */
+          font-size: 12px;
           font-weight: normal;
-          line-height: 1.3; /* Slightly more spacing */
+          line-height: 1.3;
           margin: 0;
-          padding: 2mm; /* Increased padding */
+          padding: 2mm;
           width: 100%;
           box-sizing: border-box;
           color: #000000;
@@ -533,10 +533,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin: 1px 0; /* Increased margin */
+          margin: 1px 0;
         }
         .gap {
-          height: 0.6em; /* Increased gap */
+          height: 0.6em;
           line-height: 0.6em;
         }
         .product-line {
@@ -546,49 +546,41 @@ const OrderForm: React.FC<OrderFormProps> = ({
         }
         .total-section {
           border-top: 1px solid #000;
-          padding-top: 3px; /* Increased padding */
+          padding-top: 3px;
           margin-top: 3px;
         }
         .tracking {
-          font-size: 13px; /* Increased from 11px */
+          font-size: 13px;
           text-align: center;
           border: 1px solid #000;
-          padding: 2px; /* Increased padding */
+          padding: 2px;
           margin: 2px 0;
         }
         .customer-info {
           background-color: #f9f9f9;
-          padding: 3px; /* Increased padding */
+          padding: 3px;
           margin: 3px 0;
-          border-left: 1px solid #000;
+          border-left: 2px solid #000;
         }
         .total-amount {
-          font-size: 14px; /* Increased from 12px */
-        }
-        .address {
-          font-weight: bold;
-          font-size: 10.5px; /* Slightly increased */
+          font-size: 12px;
         }
       </style>
     </head>
     <body>
       <div class="gap">&nbsp;</div>
       
-      <div class="tracking">TRACKING: ${formData.trackingId}</div>
+      <div class="tracking bold">TRACKING: ${formData.trackingId}</div>
       <div class="gap">&nbsp;</div>
       
       <div class="customer-info">
-  <div class="bold" style="margin-bottom: 3px;">${name}</div>  <!-- Added margin-bottom -->
-  <div class="address" style="line-height: 1.5;">${addressLine1}${
+        <div class="bold">${name}</div>
+        <div class="bold">${addressLine1}${
       addressLine2 ? `<br/>${addressLine2}` : ""
     }</div>
-  ${
-    addressLine3
-      ? `<div class="address" style="margin-top: 3px;">${addressLine3}</div>`
-      : ""
-  }
-  <div class="bold" style="margin-top: 3px;">Tel: ${contact}</div>  <!-- Added margin-top -->
-</div>
+        ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
+        <div class="bold">Tel: ${contact}</div>
+      </div>
       <div class="gap">&nbsp;</div>
      
       <div style="border-top: 1px solid #000; padding-top: 2px;">
@@ -598,7 +590,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="flex-row product-line">                
             <span>${product.quantity} x ${name}</span>
             <span>${formatCurrency(product.price * product.quantity)}</span>
-          </div>`
+          </div>
+        `
           )
           .join("")}
       </div>
@@ -608,26 +601,28 @@ const OrderForm: React.FC<OrderFormProps> = ({
         ${
           !formData.freeShipping
             ? `
-            <div class="flex-row">
-              <span>Subtotal:</span>
-              <span>${formatCurrency(totalAmount - 350)}</span>
-            </div>
-            <div class="flex-row">
-              <span>Delivery:</span>
-              <span>${formatCurrency(350)}</span>
-            </div>`
+          <div class="flex-row">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(totalAmount - 350)}</span>
+          </div>
+          <div class="flex-row">
+            <span>Delivery:</span>
+            <span>${formatCurrency(350)}</span>
+          </div>
+        `
             : `
-            <div class="flex-row">
-              <span>Subtotal:</span>
-              <span>${formatCurrency(totalAmount)}</span>
-            </div>
-            <div class="flex-row">
-              <span>Delivery:</span>
-              <span>FREE</span>
-            </div>`
+          <div class="flex-row">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(totalAmount)}</span>
+          </div>
+          <div class="flex-row">
+            <span>Delivery:</span>
+            <span>FREE</span>
+          </div>
+        `
         }
         
-        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 4px; margin-top: 4px;">
+        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 3px; margin-top: 3px;">
           <span>TOTAL:</span>
           <span>${
             formData.paymentMethod === "Bank Transfer"

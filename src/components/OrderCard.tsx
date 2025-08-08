@@ -104,7 +104,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           body { margin: 0; padding: 0; }
         }
         body {
-          font-family: 'Courier New', monospace;
+          font-family: 'Arial', sans-serif;
           font-size: 12px;
           font-weight: normal;
           line-height: 1.3;
@@ -151,33 +151,26 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           background-color: #f9f9f9;
           padding: 3px;
           margin: 3px 0;
-          border-left: 1px solid #000;
+          border-left: 2px solid #000;
         }
-        .address {
-          font-weight: bold;
-          font-size: 11px;
+        .total-amount {
+          font-size: 12px;
         }
       </style>
     </head>
     <body>
       <div class="gap">&nbsp;</div>
       
-      <div class="tracking">TRACKING: ${order.tracking || "N/A"}</div>
+      <div class="tracking bold">TRACKING: ${order.tracking || "N/A"}</div>
       <div class="gap">&nbsp;</div>
       
       <div class="customer-info">
-        <div class="bold" style="margin-bottom: 3px;">${order.name}</div>
-        <div class="address" style="line-height: 1.5;">${order.addressLine1}${
+        <div class="bold">${order.name}</div>
+        <div class="bold">${order.addressLine1}${
       order.addressLine2 ? `<br/>${order.addressLine2}` : ""
     }</div>
-        ${
-          order.addressLine3
-            ? `<div class="address" style="margin-top: 3px;">${order.addressLine3}</div>`
-            : ""
-        }
-        <div class="bold" style="margin-top: 3px;">Tel: ${contacts.join(
-          ", "
-        )}</div>
+        ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
+        <div class="bold">Tel: ${contacts.join(", ")}</div>
       </div>
       <div class="gap">&nbsp;</div>
      
@@ -217,7 +210,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
             </div>`
         }
         
-        <div class="flex-row bold" style="font-size: 14px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px;">
+        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 3px; margin-top: 3px;">
           <span>TOTAL:</span>
           <span>${
             order.paymentMethod === "Bank Transfer"
@@ -228,15 +221,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       </div>
       
       <div class="gap">&nbsp;</div>
-      <div class="center" style="font-size: 11px; color: #666;">
-        Thank you for your order!
-      </div>
       <div class="gap">&nbsp;</div>
       <div class="gap">&nbsp;</div>
     </body>
   </html>
 `;
-
     // Open print window
     const printWindow = window.open("", "_blank");
     if (printWindow) {
