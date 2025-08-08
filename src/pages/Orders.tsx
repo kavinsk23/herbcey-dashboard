@@ -382,14 +382,11 @@ const Orders: React.FC = () => {
   }
 
   return (
-    <div className="container px-4 py-8 mx-auto">
+    <div className="container px-4 py-8 pt-0 mx-auto">
       {/* Header with New Order Button */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Latest orders appear first
-          </p>
         </div>
         <button
           onClick={handleCreateOrder}
