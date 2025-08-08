@@ -514,11 +514,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
         }
         body {
           font-family: 'Arial', sans-serif;
-          font-size: 10px; /* Reduced from 12px */
+          font-size: 11px; /* Increased from 10px */
           font-weight: normal;
-          line-height: 1.2; /* Tighter line spacing */
+          line-height: 1.3; /* Slightly more spacing */
           margin: 0;
-          padding: 1mm; /* Reduced padding */
+          padding: 2mm; /* Increased padding */
           width: 100%;
           box-sizing: border-box;
           color: #000000;
@@ -533,41 +533,41 @@ const OrderForm: React.FC<OrderFormProps> = ({
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin: 0.5px 0; /* Reduced margin */
+          margin: 1px 0; /* Increased margin */
         }
         .gap {
-          height: 0.4em; /* Reduced gap */
-          line-height: 0.4em;
+          height: 0.6em; /* Increased gap */
+          line-height: 0.6em;
         }
         .product-line {
           border-bottom: 1px dotted #ccc;
-          padding-bottom: 0.5px;
-          margin-bottom: 0.5px;
+          padding-bottom: 1px;
+          margin-bottom: 1px;
         }
         .total-section {
           border-top: 1px solid #000;
-          padding-top: 2px; /* Reduced padding */
-          margin-top: 2px;
+          padding-top: 3px; /* Increased padding */
+          margin-top: 3px;
         }
         .tracking {
-          font-size: 11px; /* Reduced from 13px */
+          font-size: 13px; /* Increased from 11px */
           text-align: center;
           border: 1px solid #000;
-          padding: 1px; /* Reduced padding */
-          margin: 1px 0;
+          padding: 2px; /* Increased padding */
+          margin: 2px 0;
         }
         .customer-info {
           background-color: #f9f9f9;
-          padding: 2px; /* Reduced padding */
-          margin: 2px 0;
-          border-left: 1px solid #000; /* Thinner border */
+          padding: 3px; /* Increased padding */
+          margin: 3px 0;
+          border-left: 1px solid #000;
         }
         .total-amount {
-          font-size: 12px; /* Reduced from 14px */
+          font-size: 14px; /* Increased from 12px */
         }
         .address {
           font-weight: bold;
-          font-size: 9.5px; /* Slightly smaller than body */
+          font-size: 10.5px; /* Slightly increased */
         }
       </style>
     </head>
@@ -578,16 +578,20 @@ const OrderForm: React.FC<OrderFormProps> = ({
       <div class="gap">&nbsp;</div>
       
       <div class="customer-info">
-        <div class="bold">${name}</div>
-        <div class="address">${addressLine1}${
+  <div class="bold" style="margin-bottom: 3px;">${name}</div>  <!-- Added margin-bottom -->
+  <div class="address" style="line-height: 1.5;">${addressLine1}${
       addressLine2 ? `<br/>${addressLine2}` : ""
     }</div>
-        ${addressLine3 ? `<div class="address">${addressLine3}</div>` : ""}
-        <div class="bold">Tel: ${contact}</div>
-      </div>
+  ${
+    addressLine3
+      ? `<div class="address" style="margin-top: 3px;">${addressLine3}</div>`
+      : ""
+  }
+  <div class="bold" style="margin-top: 3px;">Tel: ${contact}</div>  <!-- Added margin-top -->
+</div>
       <div class="gap">&nbsp;</div>
      
-      <div style="border-top: 1px solid #000; padding-top: 1px;">
+      <div style="border-top: 1px solid #000; padding-top: 2px;">
         ${selectedProducts
           .map(
             ([name, product]) => `
@@ -623,18 +627,18 @@ const OrderForm: React.FC<OrderFormProps> = ({
             </div>`
         }
         
-        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 2px; margin-top: 2px;">
+        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 4px; margin-top: 4px;">
           <span>TOTAL:</span>
-          <span>${formatCurrency(
-            totalAmount
-          )}</span> <!-- Removed Bank Transfer condition -->
+          <span>${
+            formData.paymentMethod === "Bank Transfer"
+              ? "0 (PAID)"
+              : formatCurrency(totalAmount)
+          }</span>
         </div>
       </div>
       
       <div class="gap">&nbsp;</div>
-      <div class="center" style="font-size: 9px; color: #666;">
-        Thank you for your order!
-      </div>
+      
       <div class="gap">&nbsp;</div>
       <div class="gap">&nbsp;</div>
     </body>
