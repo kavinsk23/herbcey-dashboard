@@ -65,7 +65,7 @@ const Orders: React.FC = () => {
   const [showDateFilter, setShowDateFilter] = useState(false);
 
   // Pagination state - moved inside the component
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
 
   // OrderForm state
@@ -151,6 +151,25 @@ const Orders: React.FC = () => {
     }
   };
 
+  // Utility function to parse date strings into comparable timestamps
+  const parseOrderDate = (dateString: string): number => {
+    if (!dateString) return 0;
+
+    // Handle different date formats
+    let parsedDate: Date;
+
+    // If it's already a valid ISO string or standard format
+    if (dateString.includes("T") || dateString.includes("-")) {
+      parsedDate = new Date(dateString);
+    } else {
+      // Handle locale-specific formats like "1/8/2025, 10:30:45 AM"
+      parsedDate = new Date(dateString);
+    }
+
+    // Return timestamp, or 0 if invalid
+    return isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
+  };
+
   const filteredOrders = orders.filter((order) => {
     const matchesGeneral =
       searchTerm === "" ||
@@ -199,10 +218,36 @@ const Orders: React.FC = () => {
     );
   });
 
-  // Get paginated orders
-  const sortedOrders = filteredOrders.sort(
-    (a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
-  );
+  // Get paginated orders with improved sorting - LATEST FIRST
+  const sortedOrders = filteredOrders.sort((a, b) => {
+    // Priority 1: Sort by lastUpdated (most recent first) if both have it
+    if (a.lastUpdated && b.lastUpdated) {
+      const aTime = parseOrderDate(a.lastUpdated);
+      const bTime = parseOrderDate(b.lastUpdated);
+      if (aTime !== bTime) {
+        return bTime - aTime; // Most recent first
+      }
+    }
+
+    // Priority 2: If one has lastUpdated and other doesn't, prioritize the one with lastUpdated
+    if (a.lastUpdated && !b.lastUpdated) return -1;
+    if (!a.lastUpdated && b.lastUpdated) return 1;
+
+    // Priority 3: Sort by orderDate (most recent first)
+    const aOrderTime = parseOrderDate(a.orderDate);
+    const bOrderTime = parseOrderDate(b.orderDate);
+    if (aOrderTime !== bOrderTime) {
+      return bOrderTime - aOrderTime; // Most recent first
+    }
+
+    // Priority 4: If dates are same, sort by tracking ID (descending for newer tracking numbers)
+    if (a.tracking && b.tracking) {
+      return b.tracking.localeCompare(a.tracking);
+    }
+
+    // Final fallback: sort by name
+    return a.name.localeCompare(b.name);
+  });
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -340,7 +385,12 @@ const Orders: React.FC = () => {
     <div className="container px-4 py-8 mx-auto">
       {/* Header with New Order Button */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Latest orders appear first
+          </p>
+        </div>
         <button
           onClick={handleCreateOrder}
           className="flex items-center px-6 py-3 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"

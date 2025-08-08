@@ -327,8 +327,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           price: product.price,
         }));
 
-      const now = new Date().toISOString().split("T")[0];
-
+      const now = new Date().toLocaleString(); // Localized date and time string
       const orderData: Order = {
         name,
         addressLine1,
