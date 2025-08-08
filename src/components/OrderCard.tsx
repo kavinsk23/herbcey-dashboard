@@ -368,9 +368,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                     Total:
                   </td>
                   <td className="px-3 py-1 text-sm font-bold text-right">
-                    {order.paymentMethod === "Bank Transfer"
-                      ? "0 (Paid)"
-                      : formatCurrency(finalTotal)}
+                    {formatCurrency(totalAmount)}
                   </td>
                 </tr>
               </tfoot>

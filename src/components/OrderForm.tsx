@@ -500,148 +500,148 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
     // Create print content with non-breaking space lines for gaps
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Order Receipt - ${formData.trackingId}</title>
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-            @media print {
-              body { margin: 0; padding: 0; }
-            }
-            body {
-              font-family: 'Arial', 'Helvetica', sans-serif;
-              font-size: 14px;
-              font-weight: normal;
-              line-height: 1.4;
-              margin: 0;
-              padding: 3mm;
-              width: 100%;
-              box-sizing: border-box;
-              color: #000000;
-            }
-            .center {
-              text-align: center;
-            }
-            .bold {
-              font-weight: bold;
-              font-size: 15px;
-            }
-            .flex-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin: 2px 0;
-            }
-            .gap {
-              height: 0.8em;
-              line-height: 0.8em;
-            }
-            .product-line {
-              border-bottom: 1px dotted #ccc;
-              padding-bottom: 2px;
-              margin-bottom: 2px;
-            }
-            .total-section {
-              border-top: 2px solid #000;
-              padding-top: 4px;
-              margin-top: 4px;
-            }
-            .tracking {
-              font-size: 16px;
-              font-weight: bold;
-              text-align: center;
-              border: 2px solid #000;
-              padding: 4px;
-              margin: 4px 0;
-            }
-            .customer-info {
-              background-color: #f9f9f9;
-              padding: 4px;
-              margin: 4px 0;
-              border-left: 3px solid #000;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="gap">&nbsp;</div>
-          
-          <div class="tracking">Tracking: ${formData.trackingId}</div>
-          <div class="gap">&nbsp;</div>
-          
-          <div class="customer-info">
-            <div><strong>${name}</strong></div>
-            <div>${addressLine1}${
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Order Receipt - ${formData.trackingId}</title>
+      <style>
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        @media print {
+          body { margin: 0; padding: 0; }
+        }
+        body {
+          font-family: 'Arial', sans-serif;
+          font-size: 12px;
+          font-weight: normal;
+          line-height: 1.3;
+          margin: 0;
+          padding: 2mm;
+          width: 100%;
+          box-sizing: border-box;
+          color: #000000;
+        }
+        .center {
+          text-align: center;
+        }
+        .bold {
+          font-weight: bold;
+        }
+        .flex-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 1px 0;
+        }
+        .gap {
+          height: 0.6em;
+          line-height: 0.6em;
+        }
+        .product-line {
+          border-bottom: 1px dotted #ccc;
+          padding-bottom: 1px;
+          margin-bottom: 1px;
+        }
+        .total-section {
+          border-top: 1px solid #000;
+          padding-top: 3px;
+          margin-top: 3px;
+        }
+        .tracking {
+          font-size: 13px;
+          text-align: center;
+          border: 1px solid #000;
+          padding: 2px;
+          margin: 2px 0;
+        }
+        .customer-info {
+          background-color: #f9f9f9;
+          padding: 3px;
+          margin: 3px 0;
+          border-left: 2px solid #000;
+        }
+        .total-amount {
+          font-size: 14px;
+        }
+        .address {
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="gap">&nbsp;</div>
+      
+      <div class="tracking">TRACKING: ${formData.trackingId}</div>
+      <div class="gap">&nbsp;</div>
+      
+      <div class="customer-info">
+        <div class="bold">${name}</div>
+        <div class="address">${addressLine1}${
       addressLine2 ? `<br/>${addressLine2}` : ""
     }</div>
-            ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
-            <div><strong>Tel: ${contact}</strong></div>
+        ${addressLine3 ? `<div class="address">${addressLine3}</div>` : ""}
+        <div class="bold">Tel: ${contact}</div>
+      </div>
+      <div class="gap">&nbsp;</div>
+     
+      <div style="border-top: 1px solid #000; padding-top: 2px;">
+        ${selectedProducts
+          .map(
+            ([name, product]) => `
+          <div class="flex-row product-line">                
+            <span>${product.quantity} x ${name}</span>
+            <span>${formatCurrency(product.price * product.quantity)}</span>
           </div>
-          <div class="gap">&nbsp;</div>
-         
-          <div style="border-top: 1px solid #000; padding-top: 4px;">
-            ${selectedProducts
-              .map(
-                ([name, product]) => `
-              <div class="flex-row product-line">                
-                <span><strong>${product.quantity} x ${name}</strong></span>
-                <span><strong>${formatCurrency(
-                  product.price * product.quantity
-                )}</strong></span>
-              </div>
-            `
-              )
-              .join("")}
+        `
+          )
+          .join("")}
+      </div>
+      <div class="gap">&nbsp;</div>
+      
+      <div class="total-section">
+        ${
+          !formData.freeShipping
+            ? `
+          <div class="flex-row">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(totalAmount - 350)}</span>
           </div>
-          <div class="gap">&nbsp;</div>
-          
-          <div class="total-section">
-            ${
-              !formData.freeShipping
-                ? `
-              <div class="flex-row">
-                <span>Subtotal:</span>
-                <span>${formatCurrency(totalAmount - 350)}</span>
-              </div>
-              <div class="flex-row">
-                <span>Delivery:</span>
-                <span>${formatCurrency(350)}</span>
-              </div>
-            `
-                : `
-              <div class="flex-row">
-                <span>Subtotal:</span>
-                <span>${formatCurrency(totalAmount)}</span>
-              </div>
-              <div class="flex-row">
-                <span>Delivery:</span>
-                <span>FREE</span>
-              </div>
-            `
-            }
-            
-            <div class="flex-row bold" style="border-top: 2px solid #000; padding-top: 4px; margin-top: 4px; font-size: 18px;">
-              <span>TOTAL:</span>
-              <span>${
-                formData.paymentMethod === "Bank Transfer"
-                  ? "LKR 0.00 (PAID)"
-                  : formatCurrency(totalAmount)
-              }</span>
-            </div>
+          <div class="flex-row">
+            <span>Delivery:</span>
+            <span>${formatCurrency(350)}</span>
           </div>
-          
-          <div class="gap">&nbsp;</div>
-          
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          
-        </body>
-      </html>
-    `;
-
+        `
+            : `
+          <div class="flex-row">
+            <span>Subtotal:</span>
+            <span>${formatCurrency(totalAmount)}</span>
+          </div>
+          <div class="flex-row">
+            <span>Delivery:</span>
+            <span>FREE</span>
+          </div>
+        `
+        }
+        
+        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 3px; margin-top: 3px;">
+          <span>TOTAL:</span>
+          <span>${
+            formData.paymentMethod === "Bank Transfer"
+              ? "0 (PAID)"
+              : formatCurrency(totalAmount)
+          }</span>
+        </div>
+      </div>
+      
+      <div class="gap">&nbsp;</div>
+      
+      <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+    </body>
+  </html>
+`;
     // Open print window
     const printWindow = window.open("", "_blank");
     if (printWindow) {
