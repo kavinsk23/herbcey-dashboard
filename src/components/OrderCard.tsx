@@ -170,7 +170,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       order.addressLine2 ? `<br/>${order.addressLine2}` : ""
     }</div>
         ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
-        <div class="bold">Tel: ${contacts.join(", ")}</div>
+        <div class="bold">${contacts.join(", ")}</div>
       </div>
       <div class="gap">&nbsp;</div>
      

@@ -579,7 +579,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       addressLine2 ? `<br/>${addressLine2}` : ""
     }</div>
         ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
-        <div class="bold">Tel: ${contact}</div>
+        <div class="bold">${contact}</div>
       </div>
       <div class="gap">&nbsp;</div>
      
