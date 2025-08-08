@@ -595,8 +595,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
           <div class="gap">&nbsp;</div>
           
           <div class="flex-row bold">
-            <span>Total: ${formatCurrency(totalAmount)}</span>
-          </div>
+  <span>Total: ${
+    formData.paymentMethod === "Bank Transfer"
+      ? "LKR 0.00 (Paid)"
+      : formatCurrency(totalAmount)
+  }</span>
+</div>
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
           <div class="gap">&nbsp;</div>
