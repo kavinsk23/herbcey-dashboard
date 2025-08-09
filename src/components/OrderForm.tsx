@@ -565,6 +565,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
         .total-amount {
           font-size: 12px;
         }
+        .bottom-margin {
+          height: 0.5in;
+          width: 100%;
+        }
       </style>
     </head>
     <body>
@@ -630,17 +634,19 @@ const OrderForm: React.FC<OrderFormProps> = ({
               : formatCurrency(totalAmount)
           }</span>
         </div>
-              <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
       </div>
       
       <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
       
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
+      <!-- 0.5 inch bottom margin before cut -->
+      <div class="bottom-margin">&nbsp;</div>
+      
     </body>
   </html>
 `;

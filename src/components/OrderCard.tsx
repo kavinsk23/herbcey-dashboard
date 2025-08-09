@@ -101,7 +101,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           margin: 0;
         }
         @media print {
-          body { margin: 0; padding: 0; }
+          body { margin: 0; padding: 0; margin-bottom: 0.5in; }
         }
         body {
           font-family: 'Arial', sans-serif;
@@ -155,6 +155,10 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         }
         .total-amount {
           font-size: 12px;
+        }
+        .bottom-margin {
+          height: 0.5in;
+          width: 100%;
         }
       </style>
     </head>
@@ -218,20 +222,17 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               : formatCurrency(finalTotal)
           }</span>
         </div>
-              <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
       </div>
       
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
-      <div class="gap">&nbsp;</div>
+      <div class="bottom-margin">&nbsp;</div>
+      
     </body>
   </html>
-`;
-    // Open print window
+`; // Open print window
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
