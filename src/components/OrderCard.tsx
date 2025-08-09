@@ -218,6 +218,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               : formatCurrency(finalTotal)
           }</span>
         </div>
+              <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+
       </div>
       
       <div class="gap">&nbsp;</div>

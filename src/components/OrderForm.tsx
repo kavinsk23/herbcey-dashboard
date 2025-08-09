@@ -630,6 +630,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
               : formatCurrency(totalAmount)
           }</span>
         </div>
+              <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+      <div class="gap">&nbsp;</div>
+
       </div>
       
       <div class="gap">&nbsp;</div>
