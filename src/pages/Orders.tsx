@@ -218,29 +218,16 @@ const Orders: React.FC = () => {
     );
   });
 
-  // Get paginated orders with improved sorting - LATEST FIRST
+  // Get paginated orders sorted by creation date - LATEST FIRST
   const sortedOrders = filteredOrders.sort((a, b) => {
-    // Priority 1: Sort by lastUpdated (most recent first) if both have it
-    if (a.lastUpdated && b.lastUpdated) {
-      const aTime = parseOrderDate(a.lastUpdated);
-      const bTime = parseOrderDate(b.lastUpdated);
-      if (aTime !== bTime) {
-        return bTime - aTime; // Most recent first
-      }
-    }
-
-    // Priority 2: If one has lastUpdated and other doesn't, prioritize the one with lastUpdated
-    if (a.lastUpdated && !b.lastUpdated) return -1;
-    if (!a.lastUpdated && b.lastUpdated) return 1;
-
-    // Priority 3: Sort by orderDate (most recent first)
+    // Sort by orderDate only (most recent first)
     const aOrderTime = parseOrderDate(a.orderDate);
     const bOrderTime = parseOrderDate(b.orderDate);
     if (aOrderTime !== bOrderTime) {
       return bOrderTime - aOrderTime; // Most recent first
     }
 
-    // Priority 4: If dates are same, sort by tracking ID (descending for newer tracking numbers)
+    // If dates are same, sort by tracking ID (descending for newer tracking numbers)
     if (a.tracking && b.tracking) {
       return b.tracking.localeCompare(a.tracking);
     }
@@ -387,6 +374,9 @@ const Orders: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Sorted by order creation date (latest first)
+          </p>
         </div>
         <button
           onClick={handleCreateOrder}
