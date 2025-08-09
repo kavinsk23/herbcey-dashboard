@@ -7,8 +7,9 @@ type StatusType =
   | "Shipped"
   | "Dispatched"
   | "Delivered"
-  | "Rescheduled"
+  | "Reschedule"
   | "Return"
+  | "Transfer"
   | "Damaged";
 type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
@@ -77,7 +78,8 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     Delivered: "bg-green-100 text-green-800 border-green-200",
     Return: "bg-amber-100 text-amber-800 border-amber-200",
     Damaged: "bg-red-100 text-red-800 border-red-200",
-    Rescheduled: "bg-orange-100 text-orange-800 border-orange-200",
+    Reschedule: "bg-orange-100 text-orange-800 border-orange-200",
+    Transfer: "bg-pink-100 text-pink-800 border-pink-200",
   };
 
   const productColors: Record<ProductType, string> = {

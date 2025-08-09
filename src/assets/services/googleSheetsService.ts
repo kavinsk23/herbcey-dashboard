@@ -21,8 +21,9 @@ interface Order {
     | "Packed"
     | "Dispatched"
     | "Delivered"
-    | "Rescheduled"
+    | "Reschedule"
     | "Return"
+    | "Transfer"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";

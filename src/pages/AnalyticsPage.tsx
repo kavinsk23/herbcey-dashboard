@@ -35,7 +35,13 @@ interface Order {
     quantity: number;
     price: number;
   }[];
-  status: "Preparing" | "Shipped" | "Delivered" | "Return" | "Damaged";
+  status:
+    | "Preparing"
+    | "Shipped"
+    | "Delivered"
+    | "Return"
+    | "Damaged"
+    | "Transfer";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
