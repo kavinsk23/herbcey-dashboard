@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import FilterSection from "../components/FilterSection";
 import OrderCard from "../components/OrderCard";
 import OrderForm from "../components/OrderForm";
@@ -74,6 +74,8 @@ const Orders: React.FC = () => {
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [formMode, setFormMode] = useState<"create" | "update">("create");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -426,7 +428,7 @@ const Orders: React.FC = () => {
       />
 
       {/* Orders List with Scroll */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="h-[600px] overflow-y-auto p-4 space-y-4">
           {paginatedOrders.map((order, index) => (
             <OrderCard

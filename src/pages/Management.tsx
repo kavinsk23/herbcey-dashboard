@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ProductManager from "../components/ProductManager";
 import ExpenseManager from "../components/ExpenseManager";
+import PaymentTracking from "../components/PaymentTracking";
 
 const Management = () => {
   // Set default date range to current month
@@ -39,13 +40,16 @@ const Management = () => {
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="px-6 py-8 mx-auto max-w-7xl">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Business Management
-            </h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Manage your products, expenses, and business operations
-            </p>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Business Management
+              </h1>
+              <p className="mt-2 text-sm text-gray-600">
+                Manage your products, expenses, payment tracking, and business
+                operations
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -53,6 +57,19 @@ const Management = () => {
       {/* Main Content */}
       <div className="px-6 py-8 mx-auto max-w-7xl">
         <div className="space-y-8">
+          {/* Payment Tracking Section */}
+          <div>
+            <div className="mb-6">
+              <h2 className="mb-2 text-xl font-semibold text-gray-900">
+                Payment Tracking System
+              </h2>
+              <p className="text-sm text-gray-600">
+                Upload payment CSV files and monitor failed tracking numbers
+              </p>
+            </div>
+            <PaymentTracking />
+          </div>
+
           {/* Product Management Section */}
           <div>
             <div className="mb-6">
