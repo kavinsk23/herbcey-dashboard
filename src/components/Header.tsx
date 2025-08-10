@@ -136,7 +136,7 @@ const Header: React.FC<HeaderProps> = ({
               </div>
 
               {/* Logout Dropdown */}
-              <div className="absolute right-0 z-10 hidden w-32 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg group-hover:block">
+              <div className="absolute right-0 z-10 top-6 hidden w-32 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg group-hover:block">
                 <button
                   onClick={handleLogout}
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 rounded-lg hover:bg-red-50 hover:text-red-600"
