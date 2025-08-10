@@ -226,8 +226,8 @@ const AnalyticsPage: React.FC = () => {
           console.warn("⚠️ No products found, using defaults");
           // Fallback defaults
           setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
-          setProductPrices({ Oil: 950, Shampoo: 1750, Conditioner: 1850 });
-          setProductCosts({ Oil: 500, Shampoo: 800, Conditioner: 900 });
+          setProductPrices({ Oil: 950, Shampoo: 1350, Conditioner: 1350 });
+          setProductCosts({ Oil: 300, Shampoo: 350, Conditioner: 400 });
           setProductColors({
             Oil: "#10b981",
             Shampoo: "#06b6d4",
@@ -238,8 +238,8 @@ const AnalyticsPage: React.FC = () => {
         console.error("❌ Failed to load products:", error);
         // Keep defaults
         setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
-        setProductPrices({ Oil: 950, Shampoo: 1750, Conditioner: 1850 });
-        setProductCosts({ Oil: 500, Shampoo: 800, Conditioner: 900 });
+        setProductPrices({ Oil: 950, Shampoo: 1350, Conditioner: 1350 });
+        setProductCosts({ Oil: 300, Shampoo: 350, Conditioner: 400 });
         setProductColors({
           Oil: "#10b981",
           Shampoo: "#06b6d4",
@@ -287,14 +287,14 @@ const AnalyticsPage: React.FC = () => {
               products.push({
                 name: "Shampoo",
                 quantity: sheetOrder.shampooQty,
-                price: productPrices["Shampoo"] || 1750,
+                price: productPrices["Shampoo"] || 1350,
               });
             }
             if (sheetOrder.conditionerQty > 0) {
               products.push({
                 name: "Conditioner",
                 quantity: sheetOrder.conditionerQty,
-                price: productPrices["Conditioner"] || 1850,
+                price: productPrices["Conditioner"] || 1350,
               });
             }
 
@@ -458,14 +458,14 @@ const AnalyticsPage: React.FC = () => {
                 products.push({
                   name: "Shampoo",
                   quantity: sheetOrder.shampooQty,
-                  price: productPrices["Shampoo"] || 1750,
+                  price: productPrices["Shampoo"] || 1350,
                 });
               }
               if (sheetOrder.conditionerQty > 0) {
                 products.push({
                   name: "Conditioner",
                   quantity: sheetOrder.conditionerQty,
-                  price: productPrices["Conditioner"] || 1850,
+                  price: productPrices["Conditioner"] || 1350,
                 });
               }
 
@@ -1191,13 +1191,9 @@ const AnalyticsPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Sales Analytics Dashboard with Profit Analysis
+          <h1 className="text-2xl font-bold text-gray-900">
+            Sales Analytics Dashboard
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Comprehensive profit analysis tracking revenue, costs, and
-            profitability in real-time
-          </p>
         </div>
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-1 text-sm text-gray-500">

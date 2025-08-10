@@ -67,8 +67,8 @@ const SHEET_NAME = "Orders"; // Change this to your sheet name
 // Product prices (as defined in your React code)
 const PRODUCT_PRICES: Record<string, number> = {
   Oil: 950,
-  Shampoo: 1750,
-  Conditioner: 1850,
+  Shampoo: 1350,
+  Conditioner: 1350,
 };
 
 const SHIPPING_COST: number = 350;
