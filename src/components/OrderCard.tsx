@@ -76,17 +76,20 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Conditioner: "bg-pink-700 text-white",
   };
 
-  const totalAmount = order.products.reduce(
-    (sum, product) => sum + product.price * product.quantity,
-    0
-  );
+  // Calculate total the same way as OrderForm - with delivery charges
+  const calculateTotal = () => {
+    const subtotal = order.products.reduce(
+      (sum, product) => sum + product.price * product.quantity,
+      0
+    );
+    return order.freeShipping ? subtotal : subtotal + 350;
+  };
 
+  const totalAmount = calculateTotal();
   const subtotal = order.products.reduce(
     (sum, product) => sum + product.price * product.quantity,
     0
   );
-
-  const finalTotal = order.freeShipping ? subtotal : subtotal + 350;
 
   const contacts = parseContacts(order.contact);
 
@@ -221,7 +224,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <span>${
             order.paymentMethod === "Bank Transfer"
               ? "0 (PAID)"
-              : formatCurrency(finalTotal)
+              : formatCurrency(totalAmount)
           }</span>
         </div>
         <div class="gap">&nbsp;</div>
@@ -234,7 +237,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       
     </body>
   </html>
-`; // Open print window
+`;
+    // Open print window
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
@@ -308,7 +312,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </div>
           {order.freeShipping && (
             <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-              Free Shipping
+              Free Delivery
             </span>
           )}
           <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
@@ -395,14 +399,29 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="font-medium bg-gray-50">
-                  <td colSpan={3} className="px-3 py-1 text-sm text-right">
-                    Total:
-                  </td>
-                  <td className="px-3 py-1 text-sm font-bold text-right">
-                    {formatCurrency(totalAmount)}
-                  </td>
-                </tr>
+                {!order.freeShipping ? (
+                  <>
+                    <tr className="font-medium bg-gray-100 border-t border-gray-300">
+                      <td colSpan={3} className="px-3 py-1 text-sm text-right">
+                        Total:
+                      </td>
+                      <td className="px-3 py-1 text-sm font-bold text-right">
+                        {formatCurrency(totalAmount)}
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <>
+                    <tr className="font-medium bg-gray-100 border-t border-gray-300">
+                      <td colSpan={3} className="px-3 py-1 text-sm text-right">
+                        Total:
+                      </td>
+                      <td className="px-3 py-1 text-sm font-bold text-right">
+                        {formatCurrency(totalAmount)}
+                      </td>
+                    </tr>
+                  </>
+                )}
               </tfoot>
             </table>
           </div>
