@@ -8,10 +8,6 @@ import {
   updateOrderInSheet,
   deleteOrderFromSheet,
 } from "../assets/services/googleSheetsService";
-import {
-  updatePaymentsFromCsv,
-  validateCsvFormat,
-} from "../assets/services/csvPaymentService";
 
 type StatusType =
   | "All"
@@ -72,10 +68,6 @@ const Orders: React.FC = () => {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [formMode, setFormMode] = useState<"create" | "update">("create");
 
-  // CSV Upload state
-  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
-  const [showUploadResults, setShowUploadResults] = useState(false);
-  const [uploadResults, setUploadResults] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -152,54 +144,6 @@ const Orders: React.FC = () => {
       setError("An unexpected error occurred while loading orders");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // CSV Upload handlers
-  const handleCsvUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleCsvFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setIsUploadingCsv(true);
-
-      // Validate file format
-      const isValidFormat = await validateCsvFormat(file);
-      if (!isValidFormat) {
-        alert(
-          'Invalid CSV format. Please ensure the file contains "Waybill ID" and "Order ID" columns.'
-        );
-        return;
-      }
-
-      // Process the CSV
-      const result = await updatePaymentsFromCsv(file);
-      setUploadResults(result);
-      setShowUploadResults(true);
-
-      // Reload orders if any were updated
-      if (result.updated > 0) {
-        await loadOrdersFromSheets();
-      }
-    } catch (error) {
-      console.error("Error processing CSV:", error);
-      alert(
-        `Error processing CSV: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-    } finally {
-      setIsUploadingCsv(false);
-      // Clear the file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     }
   };
 
@@ -390,39 +334,10 @@ const Orders: React.FC = () => {
 
   return (
     <div className="container px-4 py-8 mx-auto">
-      {/* Header with New Order and Upload CSV buttons */}
+      {/* Header with New Order */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
         <div className="flex space-x-3">
-          <button
-            onClick={handleCsvUploadClick}
-            disabled={isUploadingCsv}
-            className="flex items-center px-4 py-2 space-x-2 font-medium text-gray-700 transition-colors bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isUploadingCsv ? (
-              <>
-                <div className="w-4 h-4 border-b-2 border-gray-700 rounded-full animate-spin"></div>
-                <span>Processing...</span>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                <span>Upload CSV</span>
-              </>
-            )}
-          </button>
           <button
             onClick={handleCreateOrder}
             className="flex items-center px-6 py-3 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
@@ -444,15 +359,6 @@ const Orders: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Hidden file input for CSV upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".csv"
-        style={{ display: "none" }}
-        onChange={handleCsvFileSelect}
-      />
 
       {/* Filter Section */}
       <FilterSection
@@ -525,107 +431,6 @@ const Orders: React.FC = () => {
           >
             Create First Order
           </button>
-        </div>
-      )}
-
-      {/* Upload Results Modal */}
-      {showUploadResults && uploadResults && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                CSV Upload Results
-              </h3>
-            </div>
-
-            <div className="px-6 py-4 overflow-y-auto max-h-96">
-              <div className="mb-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="font-medium">Processed:</span>
-                  <span>{uploadResults.processed} records</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium text-green-600">Updated:</span>
-                  <span className="text-green-600">
-                    {uploadResults.updated} payments
-                  </span>
-                </div>
-                {uploadResults.errors.length > 0 && (
-                  <div className="flex justify-between">
-                    <span className="font-medium text-red-600">Errors:</span>
-                    <span className="text-red-600">
-                      {uploadResults.errors.length}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Detailed results */}
-              <div className="mt-6">
-                <h4 className="mb-3 font-medium text-gray-900">Details:</h4>
-                <div className="space-y-2 text-sm">
-                  {uploadResults.details.map((detail: any, index: number) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 rounded bg-gray-50"
-                    >
-                      <span className="font-mono">{detail.waybillId}</span>
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            detail.status === "updated"
-                              ? "bg-green-100 text-green-800"
-                              : detail.status === "not_found"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {detail.status === "updated"
-                            ? "Updated"
-                            : detail.status === "not_found"
-                            ? "Not Found"
-                            : "Error"}
-                        </span>
-                        {detail.message && (
-                          <span className="text-xs text-gray-600">
-                            {detail.message}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Show errors if any */}
-              {uploadResults.errors.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="mb-3 font-medium text-red-600">Errors:</h4>
-                  <div className="space-y-1 text-sm">
-                    {uploadResults.errors.map(
-                      (error: string, index: number) => (
-                        <div
-                          key={index}
-                          className="p-2 text-red-800 rounded bg-red-50"
-                        >
-                          {error}
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end px-6 py-4 border-t border-gray-200">
-              <button
-                onClick={() => setShowUploadResults(false)}
-                className="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

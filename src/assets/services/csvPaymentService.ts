@@ -210,6 +210,7 @@ export async function updatePaymentsFromCsv(
             status: "updated",
             message: "Payment already marked as received",
           });
+          result.updated++; // Count as updated for success metrics
           continue;
         }
 

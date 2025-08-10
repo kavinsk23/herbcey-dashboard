@@ -100,7 +100,7 @@ const AdminLoadingPage = () => {
               </div>
               <div className="flex-1">
                 <h3 className="mb-2 text-xl font-medium transition-colors text-black-800 group-hover:text-primary">
-                  Products
+                  Management
                 </h3>
                 <p className="mb-4 text-black-600">
                   Manage product costs, prices, and profit margins.
