@@ -54,8 +54,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
 }) => {
   const [productPrices, setProductPrices] = useState<ProductPrices>({
     Oil: 950,
-    Shampoo: 1750,
-    Conditioner: 1850,
+    Shampoo: 1350,
+    Conditioner: 1350,
   });
 
   const [availableProducts, setAvailableProducts] = useState<string[]>([

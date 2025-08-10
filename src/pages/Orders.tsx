@@ -375,13 +375,13 @@ const Orders: React.FC = () => {
   return (
     <div className="container px-4 py-8 pt-0 mx-auto">
       {/* Header with New Order Button */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 sticky z-10 top-20 py-4 bg-[#F9FAFB]">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Orders Dashboard</h1>
         </div>
         <button
           onClick={handleCreateOrder}
-          className="flex items-center px-6 py-3 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
+          className="flex items-center px-4 py-2 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
         >
           <svg
             className="w-5 h-5"
