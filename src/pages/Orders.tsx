@@ -375,7 +375,7 @@ const Orders: React.FC = () => {
   return (
     <div className="container px-4 py-8 pt-0 mx-auto">
       {/* Header with New Order Button */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Orders Dashboard</h1>
         </div>

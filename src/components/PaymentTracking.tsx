@@ -245,80 +245,6 @@ const PaymentTracking = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="px-6 py-8 mx-auto max-w-7xl">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Payment Tracking System
-              </h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Upload payment CSV files and monitor failed tracking numbers
-              </p>
-            </div>
-
-            {/* CSV Upload Button */}
-            <div className="flex flex-col items-end space-y-2">
-              <button
-                onClick={handleCsvUploadClick}
-                disabled={isUploadingCsv}
-                className="flex items-center px-4 py-2 space-x-2 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploadingCsv ? (
-                  <>
-                    <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    <span>Upload Payment CSV</span>
-                  </>
-                )}
-              </button>
-
-              {/* Last Upload Status */}
-              {lastUploadTime && (
-                <div className="text-xs text-gray-500">
-                  Last upload: {lastUploadTime}
-                </div>
-              )}
-
-              {/* Upload Success Indicator */}
-              {uploadResults?.success && (
-                <div className="flex items-center space-x-1 text-xs text-green-600">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span>{uploadResults.updated} payments updated</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Hidden file input for CSV upload */}
       <input
         ref={fileInputRef}
@@ -329,7 +255,7 @@ const PaymentTracking = () => {
       />
 
       {/* Main Content */}
-      <div className=" py-8 mx-auto max-w-7xl">
+      <div className=" py-4 mx-auto max-w-7xl">
         <div className="space-y-8">
           {/* CSV Upload Status Card */}
           {uploadResults && (
@@ -413,33 +339,88 @@ const PaymentTracking = () => {
                   <h2 className="text-lg font-semibold text-gray-900">
                     Failed Tracking Numbers
                   </h2>
-                  <p className="text-sm text-gray-600">
-                    Monitor and retry failed tracking numbers automatically
-                    synced with FailTrackings sheet
-                  </p>
                 </div>
-                <button
-                  onClick={loadFailedTrackings}
-                  disabled={loadingFailedTrackings}
-                  className="flex items-center px-3 py-2 space-x-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <svg
-                    className={`w-4 h-4 ${
-                      loadingFailedTrackings ? "animate-spin" : ""
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="flex gap-4">
+                  {/* CSV Upload Button */}
+                  <div className="flex flex-col items-end space-y-2">
+                    <button
+                      onClick={handleCsvUploadClick}
+                      disabled={isUploadingCsv}
+                      className="flex items-center px-4 py-2 space-x-2 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUploadingCsv ? (
+                        <>
+                          <div className="w-4 h-4 border-b-2 border-white rounded-full animate-spin"></div>
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                            />
+                          </svg>
+                          <span>Upload Payment CSV</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Last Upload Status */}
+                    {lastUploadTime && (
+                      <div className="text-xs text-gray-500">
+                        Last upload: {lastUploadTime}
+                      </div>
+                    )}
+
+                    {/* Upload Success Indicator */}
+                    {uploadResults?.success && (
+                      <div className="flex items-center space-x-1 text-xs text-green-600">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>{uploadResults.updated} payments updated</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={loadFailedTrackings}
+                    disabled={loadingFailedTrackings}
+                    className="flex items-center px-3 py-2 space-x-2 text-sm text-gray-600 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  <span>Refresh</span>
-                </button>
+                    <svg
+                      className={`w-4 h-4 ${
+                        loadingFailedTrackings ? "animate-spin" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
 
               {/* Filters */}
