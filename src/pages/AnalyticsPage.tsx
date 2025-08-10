@@ -35,7 +35,13 @@ interface Order {
     quantity: number;
     price: number;
   }[];
-  status: "Preparing" | "Shipped" | "Delivered" | "Returned" | "Damaged";
+  status:
+    | "Preparing"
+    | "Shipped"
+    | "Delivered"
+    | "Return"
+    | "Damaged"
+    | "Transfer";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -550,7 +556,7 @@ const AnalyticsPage: React.FC = () => {
       const endDate = new Date(dateRange.endDate);
 
       const dateMatch = orderDate >= startDate && orderDate <= endDate;
-      const statusMatch = !["Damaged", "Returned"].includes(order.status);
+      const statusMatch = !["Damaged", "Return"].includes(order.status);
       const productMatch =
         selectedProduct === "all" ||
         order.products.some((p) => p.name === selectedProduct);
@@ -607,7 +613,7 @@ const AnalyticsPage: React.FC = () => {
       const startDate = new Date(dateRange.startDate);
       const endDate = new Date(dateRange.endDate);
       const dateMatch = orderDate >= startDate && orderDate <= endDate;
-      return dateMatch && order.status === "Returned";
+      return dateMatch && order.status === "Return";
     });
 
     const totalReturns = returnedOrders.length;

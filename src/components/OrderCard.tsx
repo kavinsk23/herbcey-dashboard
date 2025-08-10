@@ -14,9 +14,12 @@ interface Order {
   status:
     | "Preparing"
     | "Shipped"
+    | "Packed"
     | "Dispatched"
     | "Delivered"
-    | "Returned"
+    | "Reschedule"
+    | "Return"
+    | "Transfer"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
@@ -52,11 +55,14 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const statusColors = {
     Preparing: "bg-blue-100 text-blue-800 border-blue-200",
+    Packed: "bg-teal-100 text-teal-800 border-teal-200",
     Shipped: "bg-purple-100 text-purple-800 border-purple-200",
     Dispatched: "bg-indigo-100 text-indigo-800 border-indigo-200",
     Delivered: "bg-green-100 text-green-800 border-green-200",
-    Returned: "bg-amber-100 text-amber-800 border-amber-200",
+    Return: "bg-amber-100 text-amber-800 border-amber-200",
     Damaged: "bg-red-100 text-red-800 border-red-200",
+    Reschedule: "bg-orange-100 text-orange-800 border-orange-200",
+    Transfer: "bg-pink-100 text-pink-800 border-pink-200",
   };
 
   const paymentColors = {
@@ -70,130 +76,168 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Conditioner: "bg-pink-700 text-white",
   };
 
-  const totalAmount = order.products.reduce(
-    (sum, product) => sum + product.price * product.quantity,
-    0
-  );
+  // Calculate total the same way as OrderForm - with delivery charges
+  const calculateTotal = () => {
+    const subtotal = order.products.reduce(
+      (sum, product) => sum + product.price * product.quantity,
+      0
+    );
+    return order.freeShipping ? subtotal : subtotal + 350;
+  };
 
+  const totalAmount = calculateTotal();
   const subtotal = order.products.reduce(
     (sum, product) => sum + product.price * product.quantity,
     0
   );
-
-  const finalTotal = order.freeShipping ? subtotal : subtotal + 350;
 
   const contacts = parseContacts(order.contact);
 
   // Print function
   const handlePrint = () => {
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Order Receipt - ${order.tracking}</title>
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-            }
-            @media print {
-              body { margin: 0; padding: 0; }
-            }
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 12px;
-              font-weight: normal;
-              line-height: 1.2;
-              margin: 0;
-              padding: 2mm;
-              width: 100%;
-              box-sizing: border-box;
-              color: #000000;
-            }
-            .center {
-              text-align: center;
-            }
-            .bold {
-              font-weight: bold;
-            }
-            .flex-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .gap {
-              height: 1em;
-              line-height: 1em;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          
-          <div class="bold">Tracking: ${order.tracking || "N/A"}</div>
-          <div class="gap">&nbsp;</div>
-          
-          <div>${order.name}</div>
-          <div>
-            ${order.addressLine1}${
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Order Receipt - ${order.tracking}</title>
+      <style>
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        @media print {
+          body { margin: 0; padding: 0; margin-bottom: 0.5in; }
+        }
+        body {
+          font-family: 'Arial', sans-serif;
+          font-size: 12px;
+          font-weight: normal;
+          line-height: 1.3;
+          margin: 0;
+          padding: 2mm;
+          width: 100%;
+          box-sizing: border-box;
+          color: #000000;
+        }
+        .center {
+          text-align: center;
+        }
+        .bold {
+          font-weight: bold;
+        }
+        .flex-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 1px 0;
+        }
+        .gap {
+          height: 0.6em;
+          line-height: 0.6em;
+        }
+        .product-line {
+          border-bottom: 1px dotted #ccc;
+          padding-bottom: 1px;
+          margin-bottom: 1px;
+        }
+        .total-section {
+          border-top: 1px solid #000;
+          padding-top: 3px;
+          margin-top: 3px;
+        }
+        .tracking {
+          font-size: 13px;
+          text-align: center;
+          border: 1px solid #000;
+          padding: 2px;
+          margin: 2px 0;
+        }
+        .customer-info {
+          background-color: #f9f9f9;
+          padding: 3px;
+          margin: 3px 0;
+          border-left: 2px solid #000;
+        }
+        .total-amount {
+          font-size: 12px;
+        }
+        .bottom-margin {
+          height: 0.5in;
+          width: 100%;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="gap">&nbsp;</div>
+      
+      <div class="tracking bold">TRACKING: ${order.tracking || "N/A"}</div>
+      <div class="gap">&nbsp;</div>
+      
+      <div class="customer-info">
+        <div class="bold">${order.name}</div>
+        <div class="bold">${order.addressLine1}${
       order.addressLine2 ? `<br/>${order.addressLine2}` : ""
-    }
-          </div>
-          ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
-          <div>${contacts.join(", ")}</div>
-          <div class="gap">&nbsp;</div>
-         
-          ${order.products
-            .map(
-              (product) => `
-            <div class="flex-row">                
-              <span>${product.quantity} x&nbsp;</span>
-              <span>${product.name}&nbsp;</span>
-              <span>${formatCurrency(product.price * product.quantity)}</span>
-            </div>
-          `
-            )
-            .join("")}
-          <div class="gap">&nbsp;</div>
-          
-          ${
-            !order.freeShipping
-              ? `
+    }</div>
+        ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
+        <div class="bold">${contacts.join(", ")}</div>
+      </div>
+      <div class="gap">&nbsp;</div>
+     
+      <div style="border-top: 1px solid #000; padding-top: 2px;">
+        ${order.products
+          .map(
+            (product) => `
+          <div class="flex-row product-line">                
+            <span>${product.quantity} x ${product.name}</span>
+            <span>${formatCurrency(product.price * product.quantity)}</span>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <div class="gap">&nbsp;</div>
+      
+      <div class="total-section">
+        ${
+          !order.freeShipping
+            ? `
             <div class="flex-row">
-              <span>Subtotal: ${formatCurrency(subtotal)}</span>
-            </div>
-            <div class="flex-row">
-              <span>Delivery: ${formatCurrency(350)}</span>
-            </div>
-          `
-              : `
-            <div class="flex-row">
-              <span>Subtotal: ${formatCurrency(subtotal)}</span>
+              <span>Subtotal:</span>
+              <span>${formatCurrency(subtotal)}</span>
             </div>
             <div class="flex-row">
-              <span>Shipping: FREE</span>
+              <span>Delivery:</span>
+              <span>${formatCurrency(350)}</span>
+            </div>`
+            : `
+            <div class="flex-row">
+              <span>Subtotal:</span>
+              <span>${formatCurrency(subtotal)}</span>
             </div>
-          `
-          }
-          <div class="gap">&nbsp;</div>
-          
-          <div class="flex-row bold">
-            <span>Total: ${formatCurrency(finalTotal)}</span>
-          </div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          <div class="gap">&nbsp;</div>
-          
-        </body>
-      </html>
-    `;
-
+            <div class="flex-row">
+              <span>Delivery:</span>
+              <span>FREE</span>
+            </div>`
+        }
+        
+        <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 3px; margin-top: 3px;">
+          <span>TOTAL:</span>
+          <span>${
+            order.paymentMethod === "Bank Transfer"
+              ? "0 (PAID)"
+              : formatCurrency(totalAmount)
+          }</span>
+        </div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+        <div class="gap">&nbsp;</div>
+      </div>
+      
+      <div class="bottom-margin">&nbsp;</div>
+      
+    </body>
+  </html>
+`;
     // Open print window
     const printWindow = window.open("", "_blank");
     if (printWindow) {
@@ -212,7 +256,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   };
 
   return (
-    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm max-h-44 hover:shadow-md">
+    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
       {/* Header with status and payment */}
       <div className="flex items-center justify-between border-b">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
@@ -268,7 +312,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </div>
           {order.freeShipping && (
             <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-              Free Shipping
+              Free Delivery
             </span>
           )}
           <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
@@ -355,14 +399,29 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="font-medium bg-gray-50">
-                  <td colSpan={3} className="px-3 py-1 text-sm text-right">
-                    Total:
-                  </td>
-                  <td className="px-3 py-1 text-sm font-bold text-right">
-                    {formatCurrency(finalTotal)}
-                  </td>
-                </tr>
+                {!order.freeShipping ? (
+                  <>
+                    <tr className="font-medium bg-gray-100 border-t border-gray-300">
+                      <td colSpan={3} className="px-3 py-1 text-sm text-right">
+                        Total:
+                      </td>
+                      <td className="px-3 py-1 text-sm font-bold text-right">
+                        {formatCurrency(totalAmount)}
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <>
+                    <tr className="font-medium bg-gray-100 border-t border-gray-300">
+                      <td colSpan={3} className="px-3 py-1 text-sm text-right">
+                        Total:
+                      </td>
+                      <td className="px-3 py-1 text-sm font-bold text-right">
+                        {formatCurrency(totalAmount)}
+                      </td>
+                    </tr>
+                  </>
+                )}
               </tfoot>
             </table>
           </div>

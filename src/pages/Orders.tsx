@@ -12,10 +12,13 @@ import {
 type StatusType =
   | "All"
   | "Preparing"
+  | "Packed"
   | "Shipped"
   | "Dispatched"
   | "Delivered"
-  | "Returned"
+  | "Reschedule"
+  | "Return"
+  | "Transfer"
   | "Damaged";
 type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
@@ -33,16 +36,20 @@ interface Order {
   }[];
   status:
     | "Preparing"
+    | "Packed"
     | "Shipped"
     | "Dispatched"
     | "Delivered"
-    | "Returned"
+    | "Reschedule"
+    | "Return"
+    | "Transfer"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
+  lastUpdated?: string;
 }
 
 const Orders: React.FC = () => {
@@ -60,7 +67,7 @@ const Orders: React.FC = () => {
   const [showDateFilter, setShowDateFilter] = useState(false);
 
   // Pagination state - moved inside the component
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
 
   // OrderForm state
@@ -108,14 +115,14 @@ const Orders: React.FC = () => {
             products.push({
               name: "Shampoo",
               quantity: sheetOrder.shampooQty,
-              price: 1750,
+              price: 1350,
             });
           }
           if (sheetOrder.conditionerQty > 0) {
             products.push({
               name: "Conditioner",
               quantity: sheetOrder.conditionerQty,
-              price: 1850,
+              price: 1350,
             });
           }
 
@@ -132,6 +139,7 @@ const Orders: React.FC = () => {
             paymentReceived: sheetOrder.paymentReceived,
             tracking: sheetOrder.trackingId,
             freeShipping: sheetOrder.freeShipping,
+            lastUpdated: sheetOrder.lastUpdated,
           };
         });
 
@@ -145,6 +153,25 @@ const Orders: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Utility function to parse date strings into comparable timestamps
+  const parseOrderDate = (dateString: string): number => {
+    if (!dateString) return 0;
+
+    // Handle different date formats
+    let parsedDate: Date;
+
+    // If it's already a valid ISO string or standard format
+    if (dateString.includes("T") || dateString.includes("-")) {
+      parsedDate = new Date(dateString);
+    } else {
+      // Handle locale-specific formats like "1/8/2025, 10:30:45 AM"
+      parsedDate = new Date(dateString);
+    }
+
+    // Return timestamp, or 0 if invalid
+    return isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -195,10 +222,23 @@ const Orders: React.FC = () => {
     );
   });
 
-  // Get paginated orders
-  const sortedOrders = filteredOrders.sort(
-    (a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()
-  );
+  // Get paginated orders sorted by creation date - LATEST FIRST
+  const sortedOrders = filteredOrders.sort((a, b) => {
+    // Sort by orderDate only (most recent first)
+    const aOrderTime = parseOrderDate(a.orderDate);
+    const bOrderTime = parseOrderDate(b.orderDate);
+    if (aOrderTime !== bOrderTime) {
+      return bOrderTime - aOrderTime; // Most recent first
+    }
+
+    // If dates are same, sort by tracking ID (descending for newer tracking numbers)
+    if (a.tracking && b.tracking) {
+      return b.tracking.localeCompare(a.tracking);
+    }
+
+    // Final fallback: sort by name
+    return a.name.localeCompare(b.name);
+  });
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -333,31 +373,31 @@ const Orders: React.FC = () => {
   }
 
   return (
-    <div className="container px-4 py-8 mx-auto">
-      {/* Header with New Order */}
+    <div className="container px-4 py-8 pt-0 mx-auto">
+      {/* Header with New Order Button */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Orders Dashboard</h1>
-        <div className="flex space-x-3">
-          <button
-            onClick={handleCreateOrder}
-            className="flex items-center px-6 py-3 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span>New Order</span>
-          </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Orders Dashboard</h1>
         </div>
+        <button
+          onClick={handleCreateOrder}
+          className="flex items-center px-6 py-3 space-x-2 font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span>New Order</span>
+        </button>
       </div>
 
       {/* Filter Section */}

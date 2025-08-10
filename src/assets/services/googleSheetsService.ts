@@ -18,9 +18,12 @@ interface Order {
   status:
     | "Preparing"
     | "Shipped"
+    | "Packed"
     | "Dispatched"
     | "Delivered"
-    | "Returned"
+    | "Reschedule"
+    | "Return"
+    | "Transfer"
     | "Damaged";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
