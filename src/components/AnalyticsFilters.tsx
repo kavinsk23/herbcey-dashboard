@@ -1,5 +1,11 @@
 // AnalyticsFilters.tsx
 import React from "react";
+import {
+  formatToISODate,
+  createOrderTimestamp,
+  formatToISODateTime,
+  getCurrentISODateTime,
+} from "../utils/dateUtils";
 
 interface AnalyticsFiltersProps {
   timePeriod: "daily" | "monthly" | "yearly";
@@ -44,7 +50,7 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
     });
   };
 
-  // Quick date range presets
+  // Quick date range presets - Updated to use dateUtils with datetime support
   const setQuickDateRange = (preset: string) => {
     const now = new Date();
     let startDate: Date;
@@ -87,15 +93,31 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
         return;
     }
 
+    // Use dateUtils for consistent formatting - dates only for filtering
     onDateRangeChange({
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
+      startDate: formatToISODate(startDate),
+      endDate: formatToISODate(endDate),
     });
+  };
+
+  // Get current datetime for display purposes
+  const getCurrentDateTime = () => {
+    return getCurrentISODateTime(); // Returns "YYYY-MM-DD HH:mm:ss"
   };
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
       <div className="p-6">
+        {/* Header with current datetime */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Analytics Filters
+          </h3>
+          <div className="text-sm text-gray-500">
+            Last updated: {getCurrentDateTime()}
+          </div>
+        </div>
+
         {/* Quick Date Range Buttons */}
         <div className="relative mb-6">
           <div className="absolute right-0 flex items-center space-x-2 top-1">
@@ -218,6 +240,28 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
               onChange={(e) => handleEndDateChange(e.target.value)}
               className="w-full px-3 py-2 transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             />
+          </div>
+        </div>
+
+        {/* Filter Summary with Timestamps */}
+        <div className="p-3 mt-4 border border-gray-200 rounded-lg bg-gray-50">
+          <div className="text-sm text-gray-600">
+            <div className="flex items-center justify-between">
+              <span>
+                Filtering:{" "}
+                {selectedProduct === "all" ? "All Products" : selectedProduct} |
+                Period: {timePeriod} | Metric: {selectedMetric}
+              </span>
+              <span className="text-xs">
+                Filter applied at: {createOrderTimestamp()}
+              </span>
+            </div>
+            {(dateRange.startDate || dateRange.endDate) && (
+              <div className="mt-1 text-xs">
+                Date Range: {dateRange.startDate || "Start"} to{" "}
+                {dateRange.endDate || "End"}
+              </div>
+            )}
           </div>
         </div>
       </div>

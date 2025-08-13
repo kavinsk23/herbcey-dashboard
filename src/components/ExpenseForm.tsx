@@ -1,11 +1,16 @@
 import React from "react";
+import {
+  createOrderTimestamp,
+  extractDateFromDateTime,
+  formatToISODate,
+} from "../utils/dateUtils";
 
 interface Expense {
   id: string;
   type: "Shampoo" | "Conditioner" | "Marketing" | "Oil" | "Other";
   amount: number;
   note: string;
-  date: string;
+  date: string; // Now in YYYY-MM-DD HH:mm:ss format
 }
 
 interface ExpenseFormProps {
@@ -19,7 +24,14 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   onSave,
   onClose,
 }) => {
-  const [expense, setExpense] = React.useState(initialExpense);
+  // Initialize with datetime, but extract date for the input
+  const [expense, setExpense] = React.useState(() => {
+    return {
+      ...initialExpense,
+      // Ensure we have a proper datetime format
+      date: initialExpense.date || createOrderTimestamp(),
+    };
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +39,29 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
       alert("Please enter a valid amount");
       return;
     }
-    onSave(expense);
+
+    // Ensure the expense has proper datetime format before saving
+    const expenseWithDateTime = {
+      ...expense,
+      date: expense.date.includes(" ")
+        ? expense.date
+        : `${expense.date} ${new Date().toTimeString().slice(0, 8)}`, // Add current time to date-only
+    };
+
+    onSave(expenseWithDateTime);
   };
+
+  const handleDateChange = (dateValue: string) => {
+    // Convert date input to datetime by adding current time
+    const currentTime = new Date().toTimeString().slice(0, 8);
+    const newDateTime = `${dateValue} ${currentTime}`;
+    setExpense({ ...expense, date: newDateTime });
+  };
+
+  // Extract just the date part for the HTML date input
+  const dateInputValue = expense.date
+    ? extractDateFromDateTime(expense.date)
+    : formatToISODate(new Date());
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
@@ -110,8 +143,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <label className="block mb-1 text-sm font-medium">Date</label>
             <input
               type="date"
-              value={expense.date}
-              onChange={(e) => setExpense({ ...expense, date: e.target.value })}
+              value={dateInputValue}
+              onChange={(e) => handleDateChange(e.target.value)}
               className="w-full p-2 border rounded"
               required
             />

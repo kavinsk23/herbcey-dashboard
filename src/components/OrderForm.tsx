@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { getAllProductsFromSheet } from "../assets/services/productService";
 import ConfirmationDialog from "./ConfirmationDialog";
+import {
+  createOrderTimestamp,
+  formatDisplayDateTime,
+} from "../utils/dateUtils";
 
 interface Order {
   name: string;
@@ -386,7 +390,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
           price: product.price,
         }));
 
-      const now = new Date().toLocaleString(); // Localized date and time string
+      const currentTimestamp = createOrderTimestamp();
+
+      // Localized date and time string
       const orderData: Order = {
         name,
         addressLine1,
@@ -395,7 +401,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
         contact: contact,
         products: selectedProducts,
         status: formData.status,
-        orderDate: mode === "create" ? now : initialOrder?.orderDate || now,
+        orderDate:
+          mode === "create"
+            ? currentTimestamp
+            : initialOrder?.orderDate || currentTimestamp,
         paymentMethod: formData.paymentMethod,
         paymentReceived:
           formData.paymentMethod === "Bank Transfer"
@@ -403,7 +412,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             : formData.paymentReceived,
         freeShipping: formData.freeShipping,
         tracking: formData.trackingId,
-        lastUpdated: now,
+        lastUpdated: currentTimestamp, // Always update this to current time
       };
 
       await onSubmit(orderData);
@@ -499,6 +508,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       alert("Please select at least one product before printing");
       return;
     }
+    const currentTimestamp = createOrderTimestamp();
 
     // Create print content with non-breaking space lines for gaps
     const printContent = `

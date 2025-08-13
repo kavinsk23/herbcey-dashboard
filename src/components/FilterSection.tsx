@@ -1,4 +1,9 @@
 import React, { useState } from "react";
+import {
+  formatToISODate,
+  getCurrentISODateTime,
+  createOrderTimestamp,
+} from "../utils/dateUtils";
 
 type StatusType =
   | "All"
@@ -96,7 +101,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     "Bank Transfer": "bg-blue-100 text-blue-800",
   };
 
-  // Quick date range presets
+  // Quick date range presets - Updated to use dateUtils
   const setQuickDateRange = (preset: string) => {
     const now = new Date();
     let startDate: Date;
@@ -140,8 +145,9 @@ const FilterSection: React.FC<FilterSectionProps> = ({
         return;
     }
 
-    setStartDate(startDate.toISOString().split("T")[0]);
-    setEndDate(endDate.toISOString().split("T")[0]);
+    // Use dateUtils for consistent formatting
+    setStartDate(formatToISODate(startDate));
+    setEndDate(formatToISODate(endDate));
     setCurrentPage(1); // Reset to first page when changing date range
   };
 
@@ -219,14 +225,14 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     hasDateFilter;
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white shadow-sm mb-2">
+    <div className="mb-2 bg-white border border-gray-200 rounded-lg shadow-sm">
       {/* Header with collapse/expand button */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 font-medium"
+              className="flex items-center gap-2 font-medium text-gray-700 hover:text-gray-900"
             >
               <svg
                 className={`w-5 h-5 transform transition-transform duration-200 ${
@@ -248,25 +254,30 @@ const FilterSection: React.FC<FilterSectionProps> = ({
 
             {/* Filter indicator badge */}
             {hasActiveFilters && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary text-white">
+              <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-white rounded-full bg-primary">
                 Active
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Results summary (always visible) */}
-            <p className="text-sm text-gray-600">
-              {filteredOrdersLength > 0
-                ? `${filteredOrdersLength} of ${totalOrdersLength}`
-                : "0"}{" "}
-              orders
-            </p>
+            {/* Results summary with timestamp */}
+            <div className="text-right">
+              <p className="text-sm text-gray-600">
+                {filteredOrdersLength > 0
+                  ? `${filteredOrdersLength} of ${totalOrdersLength}`
+                  : "0"}{" "}
+                orders
+              </p>
+              <p className="text-xs text-gray-500">
+                Updated: {getCurrentISODateTime()}
+              </p>
+            </div>
 
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-3 py-1 text-xs text-gray-700 transition-colors bg-gray-100 rounded-lg hover:bg-gray-200"
               >
                 Clear All
               </button>
@@ -290,7 +301,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 placeholder="Search by name, address, or contact..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
@@ -300,7 +311,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 placeholder="Search by tracking number..."
                 value={trackingSearch}
                 onChange={(e) => setTrackingSearch(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
@@ -317,22 +328,27 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               </button>
 
               {showDateFilter && (
-                <div className="absolute top-full mt-2 z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-96">
+                <div className="absolute z-50 p-4 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg top-full w-96">
                   <div className="space-y-4">
+                    {/* Filter timestamp */}
+                    <div className="text-xs text-center text-gray-500">
+                      Filter applied at: {createOrderTimestamp()}
+                    </div>
+
                     {/* Custom Date Inputs */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block mb-1 text-sm font-medium text-gray-700">
                         Start Date
                       </label>
                       <input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block mb-1 text-sm font-medium text-gray-700">
                         End Date
                       </label>
                       <input
@@ -340,19 +356,19 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         min={startDate}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>
                     <div className="flex justify-between pt-2">
                       <button
                         onClick={() => setShowDateFilter(false)}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded hover:bg-gray-200"
+                        className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => setShowDateFilter(false)}
-                        className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-primary/90"
+                        className="px-3 py-1 text-sm text-white rounded bg-primary hover:bg-primary/90"
                       >
                         Apply
                       </button>
@@ -365,7 +381,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
 
           {/* Quick Date Range Buttons */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block mb-2 text-sm font-medium text-gray-700">
               Quick Date Ranges
             </label>
             <div className="flex flex-wrap gap-2">
@@ -412,7 +428,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                       {selectedStatus.includes(status) &&
                         selectedStatus.length > 1 &&
                         status !== "All" && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
+                          <span className="absolute w-2 h-2 rounded-full -top-1 -right-1 bg-primary"></span>
                         )}
                     </button>
                   ))}
@@ -441,7 +457,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                         {selectedProduct.includes(product) &&
                           selectedProduct.length > 1 &&
                           product !== "All" && (
-                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
+                            <span className="absolute w-2 h-2 rounded-full -top-1 -right-1 bg-primary"></span>
                           )}
                       </button>
                     )
@@ -472,7 +488,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                       {selectedPaymentStatus.includes(paymentStatus) &&
                         selectedPaymentStatus.length > 1 &&
                         paymentStatus !== "All" && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full"></span>
+                          <span className="absolute w-2 h-2 rounded-full -top-1 -right-1 bg-primary"></span>
                         )}
                     </button>
                   ))}
@@ -482,7 +498,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <div className="flex items-center gap-4">
               <p className="text-sm text-gray-600">
                 Showing {filteredOrdersLength > 0 ? startItem : 0}-{endItem} of{" "}
