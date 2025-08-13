@@ -7,13 +7,20 @@ import {
   getExpenseSummary,
 } from "../assets/services/expenseService";
 import ExpenseForm from "./ExpenseForm";
+import {
+  createOrderTimestamp,
+  formatDisplayDateTime,
+  parseISODate,
+  extractDateFromDateTime,
+  formatToISODateTime,
+} from "../utils/dateUtils";
 
 interface Expense {
   id: string;
   type: "Shampoo" | "Conditioner" | "Marketing" | "Oil" | "Other";
   amount: number;
   note: string;
-  date: string;
+  date: string; // Now in YYYY-MM-DD HH:mm:ss format
 }
 
 interface ExpenseManagerProps {
@@ -53,6 +60,30 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     }).format(amount);
   };
 
+  // Utility to standardize expense dates to datetime format
+  const standardizeExpenseDate = (dateString: string): string => {
+    if (!dateString) return createOrderTimestamp();
+
+    // If already in datetime format, return as is
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+
+    // If date-only format, add current time
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const currentTime = new Date().toTimeString().slice(0, 8);
+      return `${dateString} ${currentTime}`;
+    }
+
+    // Try to parse any other format and convert to datetime
+    try {
+      const parsedDate = parseISODate(dateString);
+      return formatToISODateTime(parsedDate);
+    } catch (error) {
+      return createOrderTimestamp();
+    }
+  };
+
   // Load expenses from Google Sheets
   const loadExpenses = async () => {
     try {
@@ -64,7 +95,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
       if (result.success && result.data) {
         console.log("✅ Raw expenses data from Google Sheets:", result.data);
-        // Convert SheetExpense to Expense format
+        // Convert SheetExpense to Expense format with datetime standardization
         const convertedExpenses: Expense[] = result.data.map(
           (sheetExpense) => ({
             id: sheetExpense.id,
@@ -76,11 +107,11 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
               | "Other",
             amount: sheetExpense.amount,
             note: sheetExpense.note,
-            date: sheetExpense.date,
+            date: standardizeExpenseDate(sheetExpense.date),
           })
         );
 
-        console.log("✅ Converted expenses:", convertedExpenses);
+        console.log("✅ Converted expenses with datetime:", convertedExpenses);
         setExpenses(convertedExpenses);
 
         // Also load expense summary
@@ -126,11 +157,11 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
               | "Other",
             amount: sheetExpense.amount,
             note: sheetExpense.note,
-            date: sheetExpense.date,
+            date: standardizeExpenseDate(sheetExpense.date),
           })
         );
         console.log(
-          "✅ Force refresh - Converted expenses:",
+          "✅ Force refresh - Converted expenses with datetime:",
           convertedExpenses
         );
 
@@ -167,6 +198,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       const expenseToAdd = {
         ...expense,
         id: Date.now().toString(),
+        date: standardizeExpenseDate(expense.date), // Ensure datetime format
       };
 
       console.log("💾 Adding expense to Google Sheets:", expenseToAdd);
@@ -199,6 +231,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
       const updatedExpense = {
         ...expense,
         id: editingExpense.id,
+        date: standardizeExpenseDate(expense.date), // Ensure datetime format
       };
 
       console.log("💾 Updating expense in Google Sheets:", updatedExpense);
@@ -270,17 +303,22 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
     setEditingExpense(null);
   };
 
-  // Filter expenses by date range
+  // Filter expenses by date range with datetime support
   const filteredExpenses = expenses.filter((expense) => {
-    const expenseDate = new Date(expense.date);
-    const startDate = new Date(dateRange.startDate);
-    const endDate = new Date(dateRange.endDate);
+    try {
+      const expenseDate = parseISODate(expense.date);
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
 
-    // Set time to start/end of day for proper comparison
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+      // Set time to start/end of day for proper comparison
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
 
-    return expenseDate >= startDate && expenseDate <= endDate;
+      return expenseDate >= startDate && expenseDate <= endDate;
+    } catch (error) {
+      console.warn("Error parsing expense date:", expense.date, error);
+      return false;
+    }
   });
 
   // Debug logging
@@ -429,7 +467,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                 <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
-                      Date
+                      Date & Time
                     </th>
                     <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                       Type
@@ -449,12 +487,20 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
                   {filteredExpenses
                     .sort(
                       (a, b) =>
-                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                        parseISODate(b.date).getTime() -
+                        parseISODate(a.date).getTime()
                     )
                     .map((expense) => (
                       <tr key={expense.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 text-sm text-gray-900 whitespace-nowrap">
-                          {new Date(expense.date).toLocaleDateString()}
+                          <div>
+                            <div className="font-medium">
+                              {extractDateFromDateTime(expense.date)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {expense.date.split(" ")[1] || ""}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -541,7 +587,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
               type: "Shampoo",
               amount: 0,
               note: "",
-              date: new Date().toISOString().split("T")[0],
+              date: createOrderTimestamp(),
             }
           }
           onSave={editingExpense ? handleEditExpense : handleAddExpense}

@@ -1,4 +1,12 @@
 import React from "react";
+import {
+  formatDisplayDateTime,
+  extractDateFromDateTime,
+  extractDisplayTime,
+  getRelativeTimeDescription,
+  isToday,
+  isYesterday,
+} from "../utils/dateUtils";
 
 interface Order {
   name: string;
@@ -21,7 +29,7 @@ interface Order {
     | "Return"
     | "Transfer"
     | "Damaged";
-  orderDate: string;
+  orderDate: string; // Now in YYYY-MM-DD HH:mm:ss format
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
@@ -51,6 +59,27 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       .split(/[,\s\n]+/) // Split by comma, space, or newline
       .map((c) => c.trim())
       .filter((c) => c && /^\d+$/.test(c)); // Filter out empty strings and non-numeric
+  };
+
+  // Format order date/time for display
+  const formatOrderDateTime = (dateTime: string) => {
+    if (!dateTime) return "No date";
+
+    try {
+      if (isToday(dateTime)) {
+        return `Today ${extractDisplayTime(dateTime)}`;
+      } else if (isYesterday(dateTime)) {
+        return `Yesterday ${extractDisplayTime(dateTime)}`;
+      } else {
+        // Show date and time for older orders
+        const date = extractDateFromDateTime(dateTime);
+        const time = extractDisplayTime(dateTime);
+        return `${date} ${time}`;
+      }
+    } catch (error) {
+      // Fallback for any parsing errors
+      return dateTime.split(" ")[0] || dateTime;
+    }
   };
 
   const statusColors = {
@@ -307,8 +336,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           )}
         </div>
         <div className="flex justify-between flex-1 px-3 py-2 text-right bg-gray-100">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">{order.orderDate}</span>
+          <div className="flex flex-row items-center space-y-0.5">
+            <span className="flex mr-2 text-sm font-medium text-gray-900">
+              {order.orderDate.split(" ")[0]} {/* Shows only YYYY-MM-DD */}
+            </span>
+            <span className="pb-0.5 text-xs text-gray-500">
+              {order.orderDate.split(" ")[1]} {/* Shows only HH:mm:ss */}
+            </span>
           </div>
           {order.freeShipping && (
             <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
