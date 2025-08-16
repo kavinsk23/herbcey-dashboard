@@ -93,6 +93,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [suggestedTrackingId, setSuggestedTrackingId] = useState<string>("");
 
   // Confirmation dialog states
   const [confirmDialog, setConfirmDialog] = useState({
@@ -147,10 +148,29 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setLoadingProducts(false);
     };
 
+    // Generate suggested tracking ID for new orders
+    const generateSuggestedTrackingId = () => {
+      if (mode === "create") {
+        // Get the last used tracking ID from localStorage or generate a default
+        const lastTrackingId = localStorage.getItem("lastTrackingId");
+        if (lastTrackingId && /^\d{7}$/.test(lastTrackingId)) {
+          // Increment the last tracking ID by 1
+          const nextId = (parseInt(lastTrackingId) + 1)
+            .toString()
+            .padStart(7, "0");
+          setSuggestedTrackingId(nextId);
+        } else {
+          // Default starting tracking ID if none exists
+          setSuggestedTrackingId("1000001");
+        }
+      }
+    };
+
     if (isOpen) {
       loadProductPrices();
+      generateSuggestedTrackingId();
     }
-  }, [isOpen]);
+  }, [isOpen, mode]);
 
   // Initialize product state when prices are loaded
   useEffect(() => {
@@ -245,7 +265,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setFormData((prev) => ({
         ...prev,
         customerInfo: "",
-        trackingId: "",
+        trackingId: suggestedTrackingId, // Use suggested tracking ID
         status: "Preparing",
         paymentMethod: "COD",
         paymentReceived: false,
@@ -253,7 +273,14 @@ const OrderForm: React.FC<OrderFormProps> = ({
         products: productState,
       }));
     }
-  }, [initialOrder, mode, isOpen, productPrices, availableProducts]);
+  }, [
+    initialOrder,
+    mode,
+    isOpen,
+    productPrices,
+    availableProducts,
+    suggestedTrackingId,
+  ]);
 
   const parseCustomerInfo = (customerInfo: string) => {
     const lines = customerInfo.split("\n").filter((line) => line.trim());
@@ -416,6 +443,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
       };
 
       await onSubmit(orderData);
+
+      // Save the tracking ID as the last used one for future suggestions
+      if (mode === "create") {
+        localStorage.setItem("lastTrackingId", formData.trackingId);
+      }
+
       onClose();
     } catch (error) {
       console.error("Error submitting order:", error);
@@ -425,9 +458,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: any) => {
-    // For tracking ID, only allow digits and limit to 6 characters
+    // For tracking ID, only allow digits and limit to 7 characters
     if (field === "trackingId") {
-      value = value.replace(/\D/g, "").slice(0, 7); // Remove non-digits and limit to 6 chars
+      value = value.replace(/\D/g, "").slice(0, 7); // Remove non-digits and limit to 7 chars
     }
 
     // Automatically set paymentReceived to true if payment method is Bank Transfer
@@ -768,9 +801,25 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     </h3>
 
                     <div>
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        Tracking ID *
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Tracking ID *
+                        </label>
+                        {mode === "create" && suggestedTrackingId && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                trackingId: suggestedTrackingId,
+                              }))
+                            }
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            Use suggested: {suggestedTrackingId}
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={formData.trackingId}
@@ -782,11 +831,18 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             ? "border-red-500"
                             : "border-gray-300"
                         }`}
-                        placeholder="1234567"
-                        // maxLength={6}
+                        placeholder={
+                          mode === "create"
+                            ? suggestedTrackingId || "1234567"
+                            : "1234567"
+                        }
                         disabled={isSubmitting}
                       />
-
+                      {mode === "create" && suggestedTrackingId && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          Suggested next ID: {suggestedTrackingId} (editable)
+                        </div>
+                      )}
                       {errors.trackingId && (
                         <p className="mt-1 text-xs text-red-500">
                           {errors.trackingId}
