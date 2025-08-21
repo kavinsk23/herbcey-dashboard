@@ -40,6 +40,15 @@ const PaymentTracking = () => {
     new Set()
   );
 
+  // Bulk operations state
+  const [selectedTrackings, setSelectedTrackings] = useState<Set<string>>(
+    new Set()
+  );
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkOperation, setBulkOperation] = useState<
+    "retry" | "delete" | "resolve" | null
+  >(null);
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<
     "All" | "Failed" | "Retry" | "Resolved"
@@ -79,6 +88,232 @@ const PaymentTracking = () => {
       );
     } finally {
       setLoadingFailedTrackings(false);
+    }
+  };
+
+  // Bulk selection handlers
+  const handleSelectAll = () => {
+    if (selectedTrackings.size === filteredTrackings.length) {
+      setSelectedTrackings(new Set());
+    } else {
+      setSelectedTrackings(new Set(filteredTrackings.map((t) => t.id)));
+    }
+  };
+
+  const handleSelectTracking = (trackingId: string) => {
+    const newSelection = new Set(selectedTrackings);
+    if (newSelection.has(trackingId)) {
+      newSelection.delete(trackingId);
+    } else {
+      newSelection.add(trackingId);
+    }
+    setSelectedTrackings(newSelection);
+  };
+
+  // Bulk operations handlers
+  const handleBulkRetry = async () => {
+    if (selectedTrackings.size === 0) {
+      alert("Please select trackings to retry");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Are you sure you want to retry ${selectedTrackings.size} selected tracking(s)?`
+      )
+    ) {
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    setBulkOperation("retry");
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    try {
+      const selectedItems = failedTrackings.filter((t) =>
+        selectedTrackings.has(t.id)
+      );
+
+      for (const tracking of selectedItems) {
+        try {
+          const result = await retryFailedTracking(tracking.id);
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+            errors.push(`${tracking.trackingId}: ${result.error}`);
+          }
+        } catch (error) {
+          errorCount++;
+          errors.push(`${tracking.trackingId}: Unexpected error`);
+        }
+      }
+
+      // Show results
+      if (successCount > 0 && errorCount === 0) {
+        alert(`Successfully retried ${successCount} tracking(s)`);
+      } else if (successCount > 0 && errorCount > 0) {
+        alert(
+          `Retried ${successCount} tracking(s) successfully, ${errorCount} failed.\n\nErrors:\n${errors.join(
+            "\n"
+          )}`
+        );
+      } else {
+        alert(`Failed to retry trackings.\n\nErrors:\n${errors.join("\n")}`);
+      }
+
+      // Reload data and clear selection
+      await loadFailedTrackings();
+      setSelectedTrackings(new Set());
+    } catch (error) {
+      console.error("Error in bulk retry:", error);
+      alert("An unexpected error occurred during bulk retry");
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkOperation(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTrackings.size === 0) {
+      alert("Please select trackings to delete");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${selectedTrackings.size} selected tracking(s)? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    setBulkOperation("delete");
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    try {
+      const selectedItems = failedTrackings.filter((t) =>
+        selectedTrackings.has(t.id)
+      );
+
+      for (const tracking of selectedItems) {
+        try {
+          const result = await deleteFailedTracking(tracking.id);
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+            errors.push(`${tracking.trackingId}: ${result.error}`);
+          }
+        } catch (error) {
+          errorCount++;
+          errors.push(`${tracking.trackingId}: Unexpected error`);
+        }
+      }
+
+      // Show results
+      if (successCount > 0 && errorCount === 0) {
+        alert(`Successfully deleted ${successCount} tracking(s)`);
+      } else if (successCount > 0 && errorCount > 0) {
+        alert(
+          `Deleted ${successCount} tracking(s) successfully, ${errorCount} failed.\n\nErrors:\n${errors.join(
+            "\n"
+          )}`
+        );
+      } else {
+        alert(`Failed to delete trackings.\n\nErrors:\n${errors.join("\n")}`);
+      }
+
+      // Reload data and clear selection
+      await loadFailedTrackings();
+      setSelectedTrackings(new Set());
+    } catch (error) {
+      console.error("Error in bulk delete:", error);
+      alert("An unexpected error occurred during bulk delete");
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkOperation(null);
+    }
+  };
+
+  const handleBulkResolve = async () => {
+    if (selectedTrackings.size === 0) {
+      alert("Please select trackings to mark as resolved");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Are you sure you want to mark ${selectedTrackings.size} selected tracking(s) as resolved?`
+      )
+    ) {
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    setBulkOperation("resolve");
+
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
+    try {
+      const selectedItems = failedTrackings.filter((t) =>
+        selectedTrackings.has(t.id)
+      );
+
+      for (const tracking of selectedItems) {
+        try {
+          const result = await updateFailedTracking(tracking.id, {
+            ...tracking,
+            status: "Resolved",
+            lastAttempt: new Date().toISOString(),
+          });
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+            errors.push(`${tracking.trackingId}: ${result.error}`);
+          }
+        } catch (error) {
+          errorCount++;
+          errors.push(`${tracking.trackingId}: Unexpected error`);
+        }
+      }
+
+      // Show results
+      if (successCount > 0 && errorCount === 0) {
+        alert(`Successfully marked ${successCount} tracking(s) as resolved`);
+      } else if (successCount > 0 && errorCount > 0) {
+        alert(
+          `Marked ${successCount} tracking(s) as resolved, ${errorCount} failed.\n\nErrors:\n${errors.join(
+            "\n"
+          )}`
+        );
+      } else {
+        alert(
+          `Failed to mark trackings as resolved.\n\nErrors:\n${errors.join(
+            "\n"
+          )}`
+        );
+      }
+
+      // Reload data and clear selection
+      await loadFailedTrackings();
+      setSelectedTrackings(new Set());
+    } catch (error) {
+      console.error("Error in bulk resolve:", error);
+      alert("An unexpected error occurred during bulk resolve");
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkOperation(null);
     }
   };
 
@@ -145,7 +380,7 @@ const PaymentTracking = () => {
     }
   };
 
-  // Retry failed tracking
+  // Individual operations (existing handlers)
   const handleRetryTracking = async (tracking: FailedTracking) => {
     try {
       setRetryingTrackings((prev) => new Set(prev).add(tracking.id));
@@ -153,7 +388,6 @@ const PaymentTracking = () => {
       const result = await retryFailedTracking(tracking.id);
 
       if (result.success) {
-        // Reload failed trackings to get updated status
         await loadFailedTrackings();
         alert(`Successfully retried tracking ${tracking.trackingId}`);
       } else {
@@ -171,7 +405,6 @@ const PaymentTracking = () => {
     }
   };
 
-  // Mark tracking as resolved
   const handleMarkResolved = async (tracking: FailedTracking) => {
     try {
       const result = await updateFailedTracking(tracking.id, {
@@ -192,7 +425,6 @@ const PaymentTracking = () => {
     }
   };
 
-  // Delete tracking
   const handleDeleteTracking = async (tracking: FailedTracking) => {
     if (
       // eslint-disable-next-line no-restricted-globals
@@ -255,7 +487,7 @@ const PaymentTracking = () => {
       />
 
       {/* Main Content */}
-      <div className=" py-4 mx-auto max-w-7xl">
+      <div className="py-4 mx-auto max-w-7xl">
         <div className="space-y-8">
           {/* CSV Upload Status Card */}
           {uploadResults && (
@@ -339,6 +571,11 @@ const PaymentTracking = () => {
                   <h2 className="text-lg font-semibold text-gray-900">
                     Failed Tracking Numbers
                   </h2>
+                  {selectedTrackings.size > 0 && (
+                    <p className="mt-1 text-sm text-gray-600">
+                      {selectedTrackings.size} item(s) selected
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-4">
                   {/* CSV Upload Button */}
@@ -423,35 +660,71 @@ const PaymentTracking = () => {
                 </div>
               </div>
 
-              {/* Filters */}
-              <div className="flex items-center mt-4 space-x-4">
-                <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Status Filter
-                  </label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="All">All</option>
-                    <option value="Failed">Failed</option>
-                    <option value="Retry">Retry</option>
-                    <option value="Resolved">Resolved</option>
-                  </select>
+              {/* Filters and Bulk Actions */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Status Filter
+                    </label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="All">All</option>
+                      <option value="Failed">Failed</option>
+                      <option value="Retry">Retry</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                      Search
+                    </label>
+                    <input
+                      type="text"
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      placeholder="Search by tracking ID or reason..."
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Search
-                  </label>
-                  <input
-                    type="text"
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                    placeholder="Search by tracking ID or reason..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+
+                {/* Bulk Actions */}
+                {selectedTrackings.size > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Bulk Actions:</span>
+                    <button
+                      onClick={handleBulkRetry}
+                      disabled={isBulkProcessing}
+                      className="px-3 py-1 text-xs text-blue-600 transition-colors border border-blue-300 rounded hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      {isBulkProcessing && bulkOperation === "retry"
+                        ? "Retrying..."
+                        : "Retry Selected"}
+                    </button>
+                    <button
+                      onClick={handleBulkResolve}
+                      disabled={isBulkProcessing}
+                      className="px-3 py-1 text-xs text-green-600 transition-colors border border-green-300 rounded hover:bg-green-50 disabled:opacity-50"
+                    >
+                      {isBulkProcessing && bulkOperation === "resolve"
+                        ? "Resolving..."
+                        : "Resolve Selected"}
+                    </button>
+                    <button
+                      onClick={handleBulkDelete}
+                      disabled={isBulkProcessing}
+                      className="px-3 py-1 text-xs text-red-600 transition-colors border border-red-300 rounded hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {isBulkProcessing && bulkOperation === "delete"
+                        ? "Deleting..."
+                        : "Delete Selected"}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -468,7 +741,7 @@ const PaymentTracking = () => {
 
               {/* Error state */}
               {errorLoadingTrackings && (
-                <div className="p-4 text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-4 text-red-700 border border-red-200 rounded-lg bg-red-50">
                   <p>Error loading failed trackings: {errorLoadingTrackings}</p>
                   <button
                     onClick={loadFailedTrackings}
@@ -491,22 +764,34 @@ const PaymentTracking = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-gray-200">
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-left">
+                              <input
+                                type="checkbox"
+                                checked={
+                                  selectedTrackings.size ===
+                                    filteredTrackings.length &&
+                                  filteredTrackings.length > 0
+                                }
+                                onChange={handleSelectAll}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                            </th>
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Tracking ID
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Status
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Reason
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Attempts
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Last Attempt
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Actions
                             </th>
                           </tr>
@@ -514,6 +799,16 @@ const PaymentTracking = () => {
                         <tbody className="divide-y divide-gray-200">
                           {filteredTrackings.map((tracking) => (
                             <tr key={tracking.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTrackings.has(tracking.id)}
+                                  onChange={() =>
+                                    handleSelectTracking(tracking.id)
+                                  }
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                              </td>
                               <td className="px-4 py-3 text-sm font-medium text-gray-900">
                                 {tracking.trackingId}
                               </td>
