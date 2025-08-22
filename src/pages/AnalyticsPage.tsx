@@ -273,30 +273,27 @@ const AnalyticsPage: React.FC = () => {
             const contact = customerLines[customerLines.length - 1] || "";
 
             // Reconstruct products array using real product prices
-            const products = [];
-
+            const products: Array<{
+              name: string;
+              quantity: number;
+              price: number;
+            }> = [];
             // Handle legacy column-based products
-            if (sheetOrder.oilQty > 0) {
-              products.push({
-                name: "Oil",
-                quantity: sheetOrder.oilQty,
-                price: productPrices["Oil"] || 950,
-              });
-            }
-            if (sheetOrder.shampooQty > 0) {
-              products.push({
-                name: "Shampoo",
-                quantity: sheetOrder.shampooQty,
-                price: productPrices["Shampoo"] || 1350,
-              });
-            }
-            if (sheetOrder.conditionerQty > 0) {
-              products.push({
-                name: "Conditioner",
-                quantity: sheetOrder.conditionerQty,
-                price: productPrices["Conditioner"] || 1350,
-              });
-            }
+            availableProducts.forEach((productName) => {
+              if (productName === "all") return; // Skip the "all" filter option
+
+              // Check for quantity in various possible formats
+              const qtyKey = `${productName.toLowerCase()}Qty`;
+              const quantity = sheetOrder[qtyKey] || 0;
+
+              if (quantity > 0) {
+                products.push({
+                  name: productName,
+                  quantity: quantity,
+                  price: productPrices[productName] || 0,
+                });
+              }
+            });
 
             return {
               name,
@@ -446,28 +443,26 @@ const AnalyticsPage: React.FC = () => {
               const address = customerLines.slice(1, -1).join(", ") || "";
               const contact = customerLines[customerLines.length - 1] || "";
 
-              const products = [];
-              if (sheetOrder.oilQty > 0) {
-                products.push({
-                  name: "Oil",
-                  quantity: sheetOrder.oilQty,
-                  price: productPrices["Oil"] || 950,
-                });
-              }
-              if (sheetOrder.shampooQty > 0) {
-                products.push({
-                  name: "Shampoo",
-                  quantity: sheetOrder.shampooQty,
-                  price: productPrices["Shampoo"] || 1350,
-                });
-              }
-              if (sheetOrder.conditionerQty > 0) {
-                products.push({
-                  name: "Conditioner",
-                  quantity: sheetOrder.conditionerQty,
-                  price: productPrices["Conditioner"] || 1350,
-                });
-              }
+              const products: Array<{
+                name: string;
+                quantity: number;
+                price: number;
+              }> = [];
+
+              availableProducts.forEach((productName) => {
+                if (productName === "all") return;
+
+                const qtyKey = `${productName.toLowerCase()}Qty`;
+                const quantity = sheetOrder[qtyKey] || 0;
+
+                if (quantity > 0) {
+                  products.push({
+                    name: productName,
+                    quantity: quantity,
+                    price: productPrices[productName] || 0,
+                  });
+                }
+              });
 
               return {
                 name,
