@@ -6,6 +6,10 @@ import {
   updateProductInSheet,
   deleteProductFromSheet,
 } from "../assets/services/productService";
+import {
+  addProductColumn,
+  removeProductColumn,
+} from "../assets/services/dynamicColumnsService";
 
 interface ProductCost {
   id: string;
@@ -33,27 +37,28 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<string>("Loading...");
+  const [isAddingColumn, setIsAddingColumn] = useState<boolean>(false);
 
   // Default products to initialize if sheet is empty
   const defaultProducts: ProductCost[] = [
     {
       id: "oil",
       name: "Oil",
-      cost: 350,
+      cost: 300,
       price: 950,
       lastUpdated: new Date().toISOString(),
     },
     {
       id: "shampoo",
       name: "Shampoo",
-      cost: 800,
+      cost: 400,
       price: 1350,
       lastUpdated: new Date().toISOString(),
     },
     {
       id: "conditioner",
       name: "Conditioner",
-      cost: 850,
+      cost: 450,
       price: 1350,
       lastUpdated: new Date().toISOString(),
     },
@@ -104,6 +109,66 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     setLoading(false);
   };
 
+  // Check if product needs column in orders sheet
+  const needsOrdersColumn = (productName: string): boolean => {
+    // Static products (Oil, Shampoo, Conditioner) already have columns
+    const staticProducts = ["Oil", "Shampoo", "Conditioner"];
+    return !staticProducts.includes(productName);
+  };
+
+  // Add product column to orders sheet
+  const addOrdersColumn = async (productName: string): Promise<boolean> => {
+    if (!needsOrdersColumn(productName)) {
+      return true; // No column needed
+    }
+
+    try {
+      setIsAddingColumn(true);
+      setSyncStatus("Adding column to orders sheet...");
+
+      const result = await addProductColumn(productName);
+
+      if (result.success) {
+        console.log(`Successfully added ${productName} column to orders sheet`);
+        return true;
+      } else {
+        console.error(`Failed to add ${productName} column:`, result.error);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error adding orders column:", error);
+      return false;
+    } finally {
+      setIsAddingColumn(false);
+    }
+  };
+
+  // Remove product column from orders sheet
+  const removeOrdersColumn = async (productName: string): Promise<boolean> => {
+    if (!needsOrdersColumn(productName)) {
+      return true; // No column to remove
+    }
+
+    try {
+      setSyncStatus("Removing column from orders sheet...");
+
+      const result = await removeProductColumn(productName);
+
+      if (result.success) {
+        console.log(
+          `Successfully removed ${productName} column from orders sheet`
+        );
+        return true;
+      } else {
+        console.error(`Failed to remove ${productName} column:`, result.error);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error removing orders column:", error);
+      return false;
+    }
+  };
+
   // Update individual product in Google Sheets
   const updateProductInSheets = async (updatedProduct: ProductCost) => {
     try {
@@ -127,15 +192,25 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     }
   };
 
-  // Add new product to Google Sheets
+  // Add new product to Google Sheets and orders sheet
   const addProductToSheets = async (newProduct: ProductCost) => {
     try {
-      setSyncStatus("Syncing...");
+      setSyncStatus("Adding product...");
+
+      // First add to products sheet
       const result = await addProductToSheet(newProduct);
 
       if (result.success) {
-        setSyncStatus("Synced");
-        return true;
+        // Then add column to orders sheet if needed
+        const columnAdded = await addOrdersColumn(newProduct.name);
+
+        if (columnAdded) {
+          setSyncStatus("Synced");
+          return true;
+        } else {
+          setSyncStatus("Product added, but column creation failed");
+          return false;
+        }
       } else {
         setSyncStatus("Sync failed");
         return false;
@@ -147,15 +222,28 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     }
   };
 
-  // Delete product from Google Sheets
-  const deleteProductFromSheets = async (productId: string) => {
+  // Delete product from Google Sheets and orders sheet
+  const deleteProductFromSheets = async (
+    productId: string,
+    productName: string
+  ) => {
     try {
-      setSyncStatus("Syncing...");
+      setSyncStatus("Deleting product...");
+
+      // First delete from products sheet
       const result = await deleteProductFromSheet(productId);
 
       if (result.success) {
-        setSyncStatus("Synced");
-        return true;
+        // Then remove column from orders sheet if needed
+        const columnRemoved = await removeOrdersColumn(productName);
+
+        if (columnRemoved) {
+          setSyncStatus("Synced");
+          return true;
+        } else {
+          setSyncStatus("Product deleted, but column removal failed");
+          return false;
+        }
       } else {
         setSyncStatus("Sync failed");
         return false;
@@ -317,7 +405,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
       lastUpdated: new Date().toISOString(),
     };
 
-    // Add to Google Sheets first
+    // Add to Google Sheets and create orders column
     const success = await addProductToSheets(productToAdd);
 
     if (success) {
@@ -325,24 +413,53 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
       setProducts((prev) => [...prev, productToAdd]);
       setNewProduct({ name: "", cost: 0, price: 0 });
       setShowAddProduct(false);
+
+      // Show success message with column info
+      if (needsOrdersColumn(productToAdd.name)) {
+        alert(
+          `Product "${productToAdd.name}" added successfully!\nA new "${productToAdd.name} Qty" column has been added to your orders sheet.`
+        );
+      } else {
+        alert(`Product "${productToAdd.name}" added successfully!`);
+      }
     } else {
-      alert("Failed to add product to Google Sheets");
+      alert(
+        "Failed to add product. Please check your connection and try again."
+      );
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${product.name}"?\n\nThis will also remove the "${product.name} Qty" column from your orders sheet if it exists.`
+      )
+    ) {
       return;
     }
 
-    // Delete from Google Sheets first
-    const success = await deleteProductFromSheets(productId);
+    // Delete from Google Sheets and remove orders column
+    const success = await deleteProductFromSheets(productId, product.name);
 
     if (success) {
       // Update local state only if Google Sheets delete was successful
       setProducts((prev) => prev.filter((p) => p.id !== productId));
+
+      // Show success message
+      if (needsOrdersColumn(product.name)) {
+        alert(
+          `Product "${product.name}" deleted successfully!\nThe "${product.name} Qty" column has been removed from your orders sheet.`
+        );
+      } else {
+        alert(`Product "${product.name}" deleted successfully!`);
+      }
     } else {
-      alert("Failed to delete product from Google Sheets");
+      alert(
+        "Failed to delete product. Please check your connection and try again."
+      );
     }
   };
 
@@ -365,29 +482,37 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
               Update product costs and prices to calculate accurate profit
               margins
             </p>
+            {isAddingColumn && (
+              <p className="mt-1 text-sm text-blue-600">
+                ⚡ Adding new column to orders sheet...
+              </p>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowAddProduct(!showAddProduct)}
               className="px-4 py-2 text-sm font-medium text-white transition-colors rounded-lg bg-primary hover:bg-primary/90"
-              disabled={loading}
+              disabled={loading || isAddingColumn}
             >
               {showAddProduct ? "Cancel" : "Add Product"}
             </button>
 
-            {/* <div
+            <div
               className={`px-3 py-1 text-xs font-medium rounded-full ${
                 syncStatus === "Synced"
                   ? "text-green-700 bg-green-100"
-                  : syncStatus === "Syncing..."
+                  : syncStatus === "Syncing..." ||
+                    syncStatus.includes("Adding") ||
+                    syncStatus.includes("Removing")
                   ? "text-blue-700 bg-blue-100"
-                  : syncStatus === "Sync failed"
+                  : syncStatus === "Sync failed" ||
+                    syncStatus.includes("failed")
                   ? "text-red-700 bg-red-100"
                   : "text-gray-700 bg-gray-100"
               }`}
             >
               {loading ? "Loading..." : syncStatus}
-            </div> */}
+            </div>
           </div>
         </div>
       </div>
@@ -413,6 +538,12 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Enter product name"
                 />
+                {newProduct.name && needsOrdersColumn(newProduct.name) && (
+                  <p className="mt-1 text-xs text-blue-600">
+                    ℹ️ This will add a "{newProduct.name} Qty" column to your
+                    orders sheet
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block mb-1 text-sm font-medium text-gray-700">
@@ -452,9 +583,9 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                 <button
                   onClick={handleAddProduct}
                   className="w-full px-4 py-2 text-sm font-medium text-white transition-colors bg-green-600 rounded-md hover:bg-green-700"
-                  disabled={loading}
+                  disabled={loading || isAddingColumn}
                 >
-                  Add Product
+                  {isAddingColumn ? "Adding..." : "Add Product"}
                 </button>
               </div>
             </div>
@@ -466,6 +597,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
           {products.map((product, index) => {
             const margin = calculateMargin(product.cost, product.price);
             const profit = product.price - product.cost;
+            const isStaticProduct = !needsOrdersColumn(product.name);
 
             return (
               <div
@@ -484,6 +616,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                     <h4 className="font-semibold text-gray-900">
                       {product.name}
                     </h4>
+                    {!isStaticProduct && (
+                      <span className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
+                        Custom
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     <span
@@ -497,8 +634,12 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                       <button
                         onClick={() => handleDeleteProduct(product.id)}
                         className="p-1 text-red-400 hover:text-red-600"
-                        title="Delete product"
-                        disabled={loading}
+                        title={`Delete product${
+                          !isStaticProduct
+                            ? " and remove column from orders sheet"
+                            : ""
+                        }`}
+                        disabled={loading || isAddingColumn}
                       >
                         <svg
                           className="w-4 h-4"
@@ -711,6 +852,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                 {/* Last Updated */}
                 <div className="text-xs text-gray-500">
                   Updated: {new Date(product.lastUpdated).toLocaleDateString()}
+                  {!isStaticProduct && (
+                    <div className="mt-1 text-xs text-blue-600">
+                      📊 Has orders column
+                    </div>
+                  )}
                 </div>
               </div>
             );

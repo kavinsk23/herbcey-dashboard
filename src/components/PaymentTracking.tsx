@@ -455,7 +455,7 @@ const PaymentTracking = () => {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 max-h-[500px] overflow-y-auto">
               {/* Loading state */}
               {loadingFailedTrackings && (
                 <div className="flex items-center justify-center py-8">
