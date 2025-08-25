@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ProductManager from "../components/ProductManager";
 import ExpenseManager from "../components/ExpenseManager";
 import PaymentTracking from "../components/PaymentTracking";
+import StockManager from "../components/StockManager";
 
 const Management = () => {
   // Set default date range to current month
@@ -40,16 +41,14 @@ const Management = () => {
       {/* Main Content */}
       <div className="pb-8 mx-auto max-w-7xl">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="mb-4 text-2xl font-bold text-gray-900">
             Management Dashboard
           </h1>
         </div>
         <div className="space-y-8">
-          {/* Payment Tracking Section */}
           <div>
-            <PaymentTracking />
+            <StockManager products={[]} />
           </div>
-
           {/* Product Management Section */}
           <div>
             <ProductManager onCostsUpdate={handleCostsUpdate} />
@@ -61,6 +60,10 @@ const Management = () => {
               dateRange={dateRange}
               onExpensesUpdate={handleExpensesUpdate}
             />
+          </div>
+          {/* Payment Tracking Section */}
+          <div>
+            <PaymentTracking />
           </div>
         </div>
       </div>
