@@ -5,6 +5,7 @@ import {
   createOrderTimestamp,
   formatDisplayDateTime,
 } from "../utils/dateUtils";
+import { getSheetStructure } from "../assets/services/dynamicColumnsService";
 
 interface Order {
   name: string;
@@ -111,39 +112,59 @@ const OrderForm: React.FC<OrderFormProps> = ({
     const loadProductPrices = async () => {
       setLoadingProducts(true);
       try {
-        const result = await getAllProductsFromSheet();
+        // Get products from ProductManager
+        const productResult = await getAllProductsFromSheet();
 
-        if (result.success && result.data && result.data.length > 0) {
-          const prices: ProductPrices = {};
-          const products: string[] = [];
+        // Get dynamic product columns from Orders sheet
+        const sheetStructure = await getSheetStructure();
 
-          result.data.forEach((product) => {
+        const prices: ProductPrices = {};
+        const products: string[] = [];
+
+        // Add products from ProductManager
+        if (
+          productResult.success &&
+          productResult.data &&
+          productResult.data.length > 0
+        ) {
+          productResult.data.forEach((product) => {
             prices[product.name] = product.price;
             products.push(product.name);
           });
-
-          setProductPrices(prices);
-          setAvailableProducts(products);
-        } else {
-          // Fallback to localStorage
-          const savedProducts = localStorage.getItem("all_products");
-          if (savedProducts) {
-            const parsedProducts = JSON.parse(savedProducts);
-            const prices: ProductPrices = {};
-            const products: string[] = [];
-
-            parsedProducts.forEach((product: any) => {
-              prices[product.name] = product.price;
-              products.push(product.name);
-            });
-
-            setProductPrices(prices);
-            setAvailableProducts(products);
-          }
         }
+
+        // Add products from dynamic columns (products that exist in orders)
+        if (
+          sheetStructure.success &&
+          sheetStructure.data &&
+          sheetStructure.data.productColumns
+        ) {
+          sheetStructure.data.productColumns.forEach((column) => {
+            if (!products.includes(column.name)) {
+              products.push(column.name);
+              prices[column.name] = prices[column.name] || 0;
+            }
+          });
+        }
+
+        // Fallbacks
+        if (products.length === 0) {
+          const defaults = ["Oil", "Shampoo", "Conditioner"];
+          const defaultPrices: ProductPrices = {
+            Oil: 950,
+            Shampoo: 1350,
+            Conditioner: 1350,
+          };
+          defaults.forEach((name) => {
+            prices[name] = defaultPrices[name];
+            products.push(name);
+          });
+        }
+
+        setProductPrices(prices);
+        setAvailableProducts(products);
       } catch (error) {
         console.error("Failed to load product prices:", error);
-        // Keep default prices as fallback
       }
       setLoadingProducts(false);
     };
@@ -172,7 +193,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   }, [isOpen, mode]);
 
-  // Initialize product state when prices are loaded
+  // Initialize product state when prices are loaded or when initialOrder changes
   useEffect(() => {
     if (availableProducts.length > 0) {
       const productState: Record<
@@ -180,6 +201,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         { selected: boolean; quantity: number; price: number }
       > = {};
 
+      // Initialize all available products
       availableProducts.forEach((productName) => {
         productState[productName] = {
           selected: false,
@@ -188,41 +210,46 @@ const OrderForm: React.FC<OrderFormProps> = ({
         };
       });
 
+      // If we're updating an existing order, set the selected products
+      if (initialOrder && mode === "update") {
+        initialOrder.products.forEach((product) => {
+          if (product.name in productState) {
+            productState[product.name] = {
+              selected: true,
+              quantity: product.quantity,
+              price: product.price,
+            };
+          } else {
+            // Handle case where product exists in order but not in available products
+            productState[product.name] = {
+              selected: true,
+              quantity: product.quantity,
+              price: product.price,
+            };
+            // Add to available products
+            setAvailableProducts((prev) => [...prev, product.name]);
+            setProductPrices((prev) => ({
+              ...prev,
+              [product.name]: product.price,
+            }));
+          }
+        });
+      }
+
       setFormData((prev) => ({
         ...prev,
         products: productState,
       }));
     }
-  }, [availableProducts, productPrices]);
+  }, [availableProducts, productPrices, initialOrder, mode]);
 
+  // Set form data when initialOrder changes or when mode changes
   useEffect(() => {
     if (
       initialOrder &&
       mode === "update" &&
       Object.keys(formData.products).length > 0
     ) {
-      const productState = { ...formData.products };
-
-      // Reset all products to unselected
-      Object.keys(productState).forEach((productName) => {
-        productState[productName] = {
-          selected: false,
-          quantity: 1,
-          price: productPrices[productName] || 0,
-        };
-      });
-
-      // Set selected products from initial order
-      initialOrder.products.forEach((product) => {
-        if (product.name in productState) {
-          productState[product.name] = {
-            selected: true,
-            quantity: product.quantity,
-            price: product.price,
-          };
-        }
-      });
-
       const addressParts = [];
       if (initialOrder.addressLine1)
         addressParts.push(initialOrder.addressLine1);
@@ -246,22 +273,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
             ? true
             : initialOrder.paymentReceived || false,
         freeShipping: initialOrder.freeShipping || false,
-        products: productState,
       }));
     } else if (mode === "create" && Object.keys(formData.products).length > 0) {
-      const productState: Record<
-        string,
-        { selected: boolean; quantity: number; price: number }
-      > = {};
-
-      availableProducts.forEach((productName) => {
-        productState[productName] = {
-          selected: false,
-          quantity: 1,
-          price: productPrices[productName] || 0,
-        };
-      });
-
       setFormData((prev) => ({
         ...prev,
         customerInfo: "",
@@ -270,17 +283,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
         paymentMethod: "COD",
         paymentReceived: false,
         freeShipping: false,
-        products: productState,
       }));
     }
-  }, [
-    initialOrder,
-    mode,
-    isOpen,
-    productPrices,
-    availableProducts,
-    suggestedTrackingId,
-  ]);
+  }, [initialOrder, mode, isOpen, suggestedTrackingId]);
 
   const parseCustomerInfo = (customerInfo: string) => {
     const lines = customerInfo.split("\n").filter((line) => line.trim());
