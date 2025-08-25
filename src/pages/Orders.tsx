@@ -8,6 +8,11 @@ import {
   updateOrderInSheet,
   deleteOrderFromSheet,
 } from "../assets/services/googleSheetsService";
+import {
+  reduceStockForOrder,
+  restoreStockForDeletedOrder,
+  adjustStockForUpdatedOrder,
+} from "../assets/services/stockService";
 
 type StatusType =
   | "All"
@@ -270,34 +275,101 @@ const Orders: React.FC = () => {
     setShowOrderForm(true);
   };
 
-  // Handle form submission
+  // ENHANCED Handle form submission with full stock management
   const handleOrderSubmit = async (orderData: Order) => {
     try {
       if (formMode === "create") {
         const result = await addOrderToSheet(orderData);
 
         if (result.success) {
-          alert(
-            `Order created successfully! Tracking ID: ${result.trackingId}`
-          );
-          // Reload orders from Google Sheets
+          // Automatically reduce stock for the new order
+          try {
+            const stockReductionResult = await reduceStockForOrder(
+              orderData.products.map((product) => ({
+                name: product.name,
+                quantity: product.quantity,
+              }))
+            );
+
+            if (stockReductionResult.success) {
+              console.log("Stock reduced successfully for new order");
+              alert(
+                `Order created successfully! Tracking ID: ${result.trackingId}\nStock has been updated automatically.`
+              );
+            } else {
+              console.error(
+                "Failed to reduce stock:",
+                stockReductionResult.error
+              );
+              alert(
+                `Order created successfully! Tracking ID: ${result.trackingId}\nWarning: Failed to update stock - ${stockReductionResult.error}`
+              );
+            }
+          } catch (stockError) {
+            console.error("Error reducing stock:", stockError);
+            alert(
+              `Order created successfully! Tracking ID: ${result.trackingId}\nWarning: Failed to update stock automatically.`
+            );
+          }
+
           await loadOrdersFromSheets();
         } else {
           alert(`Error creating order: ${result.error}`);
         }
       } else {
+        // Handle order updates with stock adjustments
         if (editingOrder?.tracking) {
-          const result = await updateOrderInSheet(
-            editingOrder.tracking,
-            orderData
-          );
+          try {
+            // Update the order first
+            const result = await updateOrderInSheet(
+              editingOrder.tracking,
+              orderData
+            );
 
-          if (result.success) {
-            alert("Order updated successfully!");
-            // Reload orders from Google Sheets
-            await loadOrdersFromSheets();
-          } else {
-            alert(`Error updating order: ${result.error}`);
+            if (result.success) {
+              // Adjust stock based on changes between old and new order
+              try {
+                const oldProducts = editingOrder.products.map((product) => ({
+                  name: product.name,
+                  quantity: product.quantity,
+                }));
+
+                const newProducts = orderData.products.map((product) => ({
+                  name: product.name,
+                  quantity: product.quantity,
+                }));
+
+                const stockAdjustmentResult = await adjustStockForUpdatedOrder(
+                  oldProducts,
+                  newProducts
+                );
+
+                if (stockAdjustmentResult.success) {
+                  console.log("Stock adjusted successfully for updated order");
+                  alert("Order and stock updated successfully!");
+                } else {
+                  console.error(
+                    "Failed to adjust stock:",
+                    stockAdjustmentResult.error
+                  );
+                  alert(
+                    `Order updated successfully!\nWarning: Failed to adjust stock - ${stockAdjustmentResult.error}`
+                  );
+                }
+              } catch (stockError) {
+                console.error("Error adjusting stock:", stockError);
+                alert(
+                  "Order updated successfully!\nWarning: Failed to adjust stock automatically."
+                );
+              }
+
+              await loadOrdersFromSheets();
+            } else {
+              alert(`Error updating order: ${result.error}`);
+            }
+          } catch (error) {
+            console.error("Error updating order:", error);
+            alert("Failed to update order. Please try again.");
           }
         }
       }
@@ -305,8 +377,13 @@ const Orders: React.FC = () => {
       console.error("Error submitting order:", error);
       alert("An unexpected error occurred. Please try again.");
     }
+
+    // Close the form
+    setShowOrderForm(false);
+    setEditingOrder(null);
   };
 
+  // ENHANCED Handle order deletion with stock restoration
   const handleOrderDelete = async () => {
     if (!editingOrder?.tracking) return;
 
@@ -319,12 +396,94 @@ const Orders: React.FC = () => {
     }
 
     try {
+      // Delete the order from the sheet
       const result = await deleteOrderFromSheet(editingOrder.tracking);
 
       if (result.success) {
-        alert("Order deleted successfully!");
+        // Restore stock for the deleted order
+        try {
+          const stockRestorationResult = await restoreStockForDeletedOrder(
+            editingOrder.products.map((product) => ({
+              name: product.name,
+              quantity: product.quantity,
+            }))
+          );
+
+          if (stockRestorationResult.success) {
+            console.log("Stock restored successfully for deleted order");
+            alert("Order deleted and stock restored successfully!");
+          } else {
+            console.error(
+              "Failed to restore stock:",
+              stockRestorationResult.error
+            );
+            alert(
+              `Order deleted successfully!\nWarning: Failed to restore stock - ${stockRestorationResult.error}`
+            );
+          }
+        } catch (stockError) {
+          console.error("Error restoring stock:", stockError);
+          alert(
+            "Order deleted successfully!\nWarning: Failed to restore stock automatically."
+          );
+        }
+
         setShowOrderForm(false);
         setEditingOrder(null);
+        await loadOrdersFromSheets();
+      } else {
+        alert(`Error deleting order: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("An unexpected error occurred while deleting the order.");
+    }
+  };
+
+  // NEW: Enhanced function for direct delete from order cards (if needed)
+  const handleDeleteOrderFromCard = async (order: Order) => {
+    if (!order.tracking) return;
+
+    if (
+      !window.confirm(
+        `Are you sure you want to delete order ${order.tracking}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await deleteOrderFromSheet(order.tracking);
+
+      if (result.success) {
+        // Restore stock for the deleted order
+        try {
+          const stockRestorationResult = await restoreStockForDeletedOrder(
+            order.products.map((product) => ({
+              name: product.name,
+              quantity: product.quantity,
+            }))
+          );
+
+          if (stockRestorationResult.success) {
+            console.log("Stock restored successfully for deleted order");
+            alert("Order deleted and stock restored successfully!");
+          } else {
+            console.error(
+              "Failed to restore stock:",
+              stockRestorationResult.error
+            );
+            alert(
+              `Order deleted successfully!\nWarning: Failed to restore stock - ${stockRestorationResult.error}`
+            );
+          }
+        } catch (stockError) {
+          console.error("Error restoring stock:", stockError);
+          alert(
+            "Order deleted successfully!\nWarning: Failed to restore stock automatically."
+          );
+        }
+
         await loadOrdersFromSheets();
       } else {
         alert(`Error deleting order: ${result.error}`);

@@ -45,6 +45,7 @@ interface SheetOrder {
   freeShipping: boolean;
   orderDate: string;
   lastUpdated: string;
+  [key: string]: any;
 }
 
 interface ApiResponse<T = any> {

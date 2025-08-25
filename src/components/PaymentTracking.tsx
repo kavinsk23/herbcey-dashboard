@@ -244,7 +244,7 @@ const PaymentTracking = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Hidden file input for CSV upload */}
       <input
         ref={fileInputRef}
@@ -255,7 +255,7 @@ const PaymentTracking = () => {
       />
 
       {/* Main Content */}
-      <div className=" py-4 mx-auto max-w-7xl">
+      <div className="py-4 mx-auto  max-w-7xl">
         <div className="space-y-8">
           {/* CSV Upload Status Card */}
           {uploadResults && (
@@ -455,7 +455,7 @@ const PaymentTracking = () => {
               </div>
             </div>
 
-            <div className="p-6">
+            <div className="p-6 max-h-[500px] overflow-y-auto">
               {/* Loading state */}
               {loadingFailedTrackings && (
                 <div className="flex items-center justify-center py-8">
@@ -468,7 +468,7 @@ const PaymentTracking = () => {
 
               {/* Error state */}
               {errorLoadingTrackings && (
-                <div className="p-4 text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                <div className="p-4 text-red-700 border border-red-200 rounded-lg bg-red-50">
                   <p>Error loading failed trackings: {errorLoadingTrackings}</p>
                   <button
                     onClick={loadFailedTrackings}
@@ -491,22 +491,22 @@ const PaymentTracking = () => {
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-gray-200">
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Tracking ID
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Status
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Reason
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Attempts
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Last Attempt
                             </th>
-                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">
+                            <th className="px-4 py-3 text-sm font-medium text-left text-gray-900">
                               Actions
                             </th>
                           </tr>
