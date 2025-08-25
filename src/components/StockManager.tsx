@@ -4,14 +4,15 @@ import {
   syncAllStockToSheet,
   updateStockInSheet,
   addStockToSheet,
-  syncStockWithProducts, // NEW IMPORT
+  syncStockWithProducts,
+  fillBottles, // NEW: Import fill bottles function
 } from "../assets/services/stockService";
 
 interface StockItem {
   id: string;
   productName: string;
-  currentStock: number;
-  minimumStock: number;
+  emptyStock: number; // NEW: Empty bottles
+  filledStock: number; // RENAMED: Was currentStock, now filledStock
   lastUpdated: string;
   lastRestocked?: string;
   restockQuantity?: number;
@@ -24,20 +25,29 @@ interface Product {
 }
 
 interface StockManagerProps {
-  products?: Product[]; // Made optional since we'll get from Products sheet
+  products?: Product[];
   onStockUpdate?: (stock: Record<string, number>) => void;
 }
 
 const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
   const [stock, setStock] = useState<StockItem[]>([]);
-  const [isEditingStock, setIsEditingStock] = useState<string | null>(null);
-  const [isEditingMinStock, setIsEditingMinStock] = useState<string | null>(
+
+  // Editing states
+  const [isEditingEmptyStock, setIsEditingEmptyStock] = useState<string | null>(
     null
   );
-  const [tempStock, setTempStock] = useState<number>(0);
-  const [tempMinStock, setTempMinStock] = useState<number>(0);
+  const [isEditingFilledStock, setIsEditingFilledStock] = useState<
+    string | null
+  >(null);
+  const [tempEmptyStock, setTempEmptyStock] = useState<number>(0);
+  const [tempFilledStock, setTempFilledStock] = useState<number>(0);
+
+  // Restock and Fill states
   const [showRestock, setShowRestock] = useState<string | null>(null);
+  const [showFill, setShowFill] = useState<string | null>(null); // NEW: Fill bottles
   const [restockQuantity, setRestockQuantity] = useState<number>(0);
+  const [fillQuantity, setFillQuantity] = useState<number>(0); // NEW: Fill quantity
+
   const [loading, setLoading] = useState<boolean>(false);
   const [syncStatus, setSyncStatus] = useState<string>("Loading...");
   const [showLowStockOnly, setShowLowStockOnly] = useState<boolean>(false);
@@ -47,24 +57,22 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
     loadAndSyncStock();
   }, []);
 
-  // Update parent component when stock changes
+  // Update parent component when stock changes (send filled stock as that's what's sellable)
   useEffect(() => {
     if (stock.length > 0) {
       const stockMap = stock.reduce((acc, item) => {
-        acc[item.productName] = item.currentStock;
+        acc[item.productName] = item.filledStock; // Send filled stock to parent
         return acc;
       }, {} as Record<string, number>);
       onStockUpdate?.(stockMap);
     }
   }, [stock, onStockUpdate]);
 
-  // NEW: Enhanced load function that syncs with Products sheet
   const loadAndSyncStock = async () => {
     setLoading(true);
     setSyncStatus("Syncing with Products sheet...");
 
     try {
-      // Sync stock with products from Products sheet
       const result = await syncStockWithProducts();
 
       if (result.success && result.data && result.data.length > 0) {
@@ -83,12 +91,10 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
     setLoading(false);
   };
 
-  // NEW: Manual sync button function
   const handleManualSync = async () => {
     await loadAndSyncStock();
   };
 
-  // Update stock in Google Sheets
   const updateStockInSheets = async (updatedStock: StockItem) => {
     try {
       setSyncStatus("Updating...");
@@ -108,113 +114,23 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
     }
   };
 
-  // Reduce stock for products in an order
-  const reduceStockForOrder = async (
-    orderProducts: { name: string; quantity: number }[]
-  ) => {
-    try {
-      setSyncStatus("Updating stock for order...");
-
-      const updatedStock = [...stock];
-      let needsUpdate = false;
-
-      for (const orderProduct of orderProducts) {
-        const stockItemIndex = updatedStock.findIndex(
-          (item) => item.productName === orderProduct.name
-        );
-
-        if (stockItemIndex !== -1) {
-          updatedStock[stockItemIndex] = {
-            ...updatedStock[stockItemIndex],
-            currentStock: Math.max(
-              0,
-              updatedStock[stockItemIndex].currentStock - orderProduct.quantity
-            ),
-            lastUpdated: new Date().toISOString(),
-          };
-          needsUpdate = true;
-        }
-      }
-
-      if (needsUpdate) {
-        const success = await syncAllStockToSheet(updatedStock);
-        if (success.success) {
-          setStock(updatedStock);
-          setSyncStatus("Stock updated for order");
-          return true;
-        } else {
-          setSyncStatus("Failed to update stock for order");
-          return false;
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error reducing stock for order:", error);
-      setSyncStatus("Error updating stock");
-      return false;
-    }
-  };
-
-  // Stock editing functions
-  const handleStockEditStart = (stockId: string, currentStock: number) => {
-    setIsEditingStock(stockId);
-    setTempStock(currentStock);
-  };
-
-  const handleStockEditCancel = () => {
-    setIsEditingStock(null);
-    setTempStock(0);
-  };
-
-  const handleStockEditSave = async (stockId: string) => {
-    if (tempStock < 0) {
-      alert("Stock cannot be negative");
-      return;
-    }
-
-    const updatedStockItem = stock.find((item) => item.id === stockId);
-    if (!updatedStockItem) return;
-
-    const newStockItem = {
-      ...updatedStockItem,
-      currentStock: tempStock,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    // Update in Google Sheets first
-    const success = await updateStockInSheets(newStockItem);
-
-    if (success) {
-      // Update local state only if Google Sheets update was successful
-      setStock((prevStock) =>
-        prevStock.map((item) => (item.id === stockId ? newStockItem : item))
-      );
-    } else {
-      alert("Failed to update stock in Google Sheets");
-    }
-
-    setIsEditingStock(null);
-    setTempStock(0);
-  };
-
-  // Minimum stock editing functions
-  const handleMinStockEditStart = (
+  // Empty Stock editing functions
+  const handleEmptyStockEditStart = (
     stockId: string,
-    currentMinStock: number
+    currentEmptyStock: number
   ) => {
-    setIsEditingMinStock(stockId);
-    setTempMinStock(currentMinStock);
+    setIsEditingEmptyStock(stockId);
+    setTempEmptyStock(currentEmptyStock);
   };
 
-  const handleMinStockEditCancel = () => {
-    setIsEditingMinStock(null);
-    setTempMinStock(0);
+  const handleEmptyStockEditCancel = () => {
+    setIsEditingEmptyStock(null);
+    setTempEmptyStock(0);
   };
 
-  const handleMinStockEditSave = async (stockId: string) => {
-    if (tempMinStock < 0) {
-      alert("Minimum stock cannot be negative");
+  const handleEmptyStockEditSave = async (stockId: string) => {
+    if (tempEmptyStock < 0) {
+      alert("Empty stock cannot be negative");
       return;
     }
 
@@ -223,27 +139,68 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
 
     const newStockItem = {
       ...updatedStockItem,
-      minimumStock: tempMinStock,
+      emptyStock: tempEmptyStock,
       lastUpdated: new Date().toISOString(),
     };
 
-    // Update in Google Sheets first
     const success = await updateStockInSheets(newStockItem);
 
     if (success) {
-      // Update local state only if Google Sheets update was successful
       setStock((prevStock) =>
         prevStock.map((item) => (item.id === stockId ? newStockItem : item))
       );
     } else {
-      alert("Failed to update minimum stock in Google Sheets");
+      alert("Failed to update empty stock in Google Sheets");
     }
 
-    setIsEditingMinStock(null);
-    setTempMinStock(0);
+    setIsEditingEmptyStock(null);
+    setTempEmptyStock(0);
   };
 
-  // Restock functions
+  // Filled Stock editing functions
+  const handleFilledStockEditStart = (
+    stockId: string,
+    currentFilledStock: number
+  ) => {
+    setIsEditingFilledStock(stockId);
+    setTempFilledStock(currentFilledStock);
+  };
+
+  const handleFilledStockEditCancel = () => {
+    setIsEditingFilledStock(null);
+    setTempFilledStock(0);
+  };
+
+  const handleFilledStockEditSave = async (stockId: string) => {
+    if (tempFilledStock < 0) {
+      alert("Filled stock cannot be negative");
+      return;
+    }
+
+    const updatedStockItem = stock.find((item) => item.id === stockId);
+    if (!updatedStockItem) return;
+
+    const newStockItem = {
+      ...updatedStockItem,
+      filledStock: tempFilledStock,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const success = await updateStockInSheets(newStockItem);
+
+    if (success) {
+      setStock((prevStock) =>
+        prevStock.map((item) => (item.id === stockId ? newStockItem : item))
+      );
+    } else {
+      alert("Failed to update filled stock in Google Sheets");
+    }
+
+    setIsEditingFilledStock(null);
+    setTempFilledStock(0);
+  };
+
+  // Restock function (adds to EMPTY stock)
   const handleRestock = async (stockId: string) => {
     if (restockQuantity <= 0) {
       alert("Restock quantity must be greater than 0");
@@ -255,17 +212,15 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
 
     const newStockItem = {
       ...updatedStockItem,
-      currentStock: updatedStockItem.currentStock + restockQuantity,
+      emptyStock: updatedStockItem.emptyStock + restockQuantity, // Add to empty stock
       lastUpdated: new Date().toISOString(),
       lastRestocked: new Date().toISOString(),
       restockQuantity: restockQuantity,
     };
 
-    // Update in Google Sheets first
     const success = await updateStockInSheets(newStockItem);
 
     if (success) {
-      // Update local state only if Google Sheets update was successful
       setStock((prevStock) =>
         prevStock.map((item) => (item.id === stockId ? newStockItem : item))
       );
@@ -276,20 +231,54 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
     }
   };
 
-  const getStockStatusColor = (currentStock: number, minimumStock: number) => {
-    if (currentStock === 0) return "bg-red-100 text-red-800";
-    if (currentStock <= minimumStock) return "bg-yellow-100 text-yellow-800";
+  // NEW: Fill bottles function (converts empty to filled)
+  const handleFill = async (stockId: string) => {
+    if (fillQuantity <= 0) {
+      alert("Fill quantity must be greater than 0");
+      return;
+    }
+
+    const stockItem = stock.find((item) => item.id === stockId);
+    if (!stockItem) return;
+
+    const result = await fillBottles(stockItem.productName, fillQuantity);
+
+    if (result.success) {
+      // Update local state
+      setStock((prevStock) =>
+        prevStock.map((item) =>
+          item.id === stockId
+            ? {
+                ...item,
+                emptyStock: item.emptyStock - fillQuantity,
+                filledStock: item.filledStock + fillQuantity,
+                lastUpdated: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+      setShowFill(null);
+      setFillQuantity(0);
+      setSyncStatus("Bottles filled successfully");
+    } else {
+      alert(`Failed to fill bottles: ${result.error}`);
+    }
+  };
+
+  const getStockStatusColor = (filledStock: number) => {
+    if (filledStock === 0) return "bg-red-100 text-red-800";
+    if (filledStock <= 10) return "bg-yellow-100 text-yellow-800"; // Low filled stock threshold
     return "bg-green-100 text-green-800";
   };
 
-  const getStockStatusText = (currentStock: number, minimumStock: number) => {
-    if (currentStock === 0) return "Out of Stock";
-    if (currentStock <= minimumStock) return "Low Stock";
-    return "In Stock";
+  const getStockStatusText = (filledStock: number) => {
+    if (filledStock === 0) return "No Filled Stock";
+    if (filledStock <= 10) return "Low Filled Stock";
+    return "Good Stock";
   };
 
   const filteredStock = showLowStockOnly
-    ? stock.filter((item) => item.currentStock <= item.minimumStock)
+    ? stock.filter((item) => item.filledStock <= 10) // Filter by filled stock
     : stock;
 
   return (
@@ -298,10 +287,10 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
-              Stock Management
+              Stock Management - Empty/Filled System
             </h3>
             <p className="text-sm text-gray-500">
-              Manage inventory levels synced with Products sheet
+              Track empty bottles (raw) and filled bottles (ready to sell)
             </p>
           </div>
           <div className="flex items-center space-x-4">
@@ -312,10 +301,11 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                 onChange={(e) => setShowLowStockOnly(e.target.checked)}
                 className="border-gray-300 rounded text-primary focus:ring-primary"
               />
-              <span className="text-sm text-gray-700">Show low stock only</span>
+              <span className="text-sm text-gray-700">
+                Show low filled stock only
+              </span>
             </label>
 
-            {/* NEW: Manual sync button */}
             <button
               onClick={handleManualSync}
               className="px-3 py-1 text-xs text-blue-600 bg-blue-100 rounded hover:bg-blue-200"
@@ -344,45 +334,26 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
       </div>
 
       <div className="p-6">
-        {/* Stock Table */}
         <div className="overflow-hidden border border-gray-200 rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                >
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                   Product
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                >
-                  Current Stock
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Empty Stock
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                >
-                  Minimum Stock
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
+                  Filled Stock
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                >
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                   Status
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase"
-                >
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">
                   Last Updated
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase"
-                >
+                <th className="px-6 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">
                   Actions
                 </th>
               </tr>
@@ -391,34 +362,37 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
               {filteredStock.map((item) => (
                 <tr
                   key={item.id}
-                  className={
-                    item.currentStock <= item.minimumStock ? "bg-yellow-50" : ""
-                  }
+                  className={item.filledStock <= 10 ? "bg-yellow-50" : ""}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="ml-4">
+                  <td className="px-6 py-4 text-left whitespace-nowrap">
+                    <div className="flex items-center justify-start">
+                      <div>
                         <div className="text-sm font-medium text-gray-900">
                           {item.productName}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Total: {item.emptyStock + item.filledStock} bottles
                         </div>
                       </div>
                     </div>
                   </td>
+
+                  {/* Empty Stock Column */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {isEditingStock === item.id ? (
+                    {isEditingEmptyStock === item.id ? (
                       <div className="flex items-center space-x-2">
                         <input
                           type="number"
-                          value={tempStock}
+                          value={tempEmptyStock}
                           onChange={(e) =>
-                            setTempStock(parseInt(e.target.value) || 0)
+                            setTempEmptyStock(parseInt(e.target.value) || 0)
                           }
                           className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                           autoFocus
                           min="0"
                         />
                         <button
-                          onClick={() => handleStockEditSave(item.id)}
+                          onClick={() => handleEmptyStockEditSave(item.id)}
                           className="p-1 text-green-600 hover:text-green-800"
                           title="Save"
                           disabled={loading}
@@ -438,7 +412,7 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                           </svg>
                         </button>
                         <button
-                          onClick={handleStockEditCancel}
+                          onClick={handleEmptyStockEditCancel}
                           className="p-1 text-red-600 hover:text-red-800"
                           title="Cancel"
                         >
@@ -459,15 +433,15 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-900">
-                          {item.currentStock}
+                        <span className="text-sm font-medium text-blue-600">
+                          {item.emptyStock}
                         </span>
                         <button
                           onClick={() =>
-                            handleStockEditStart(item.id, item.currentStock)
+                            handleEmptyStockEditStart(item.id, item.emptyStock)
                           }
                           className="p-1 text-gray-400 hover:text-gray-600"
-                          title="Edit stock"
+                          title="Edit empty stock"
                           disabled={loading}
                         >
                           <svg
@@ -487,21 +461,23 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                       </div>
                     )}
                   </td>
+
+                  {/* Filled Stock Column */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {isEditingMinStock === item.id ? (
+                    {isEditingFilledStock === item.id ? (
                       <div className="flex items-center space-x-2">
                         <input
                           type="number"
-                          value={tempMinStock}
+                          value={tempFilledStock}
                           onChange={(e) =>
-                            setTempMinStock(parseInt(e.target.value) || 0)
+                            setTempFilledStock(parseInt(e.target.value) || 0)
                           }
                           className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                           autoFocus
                           min="0"
                         />
                         <button
-                          onClick={() => handleMinStockEditSave(item.id)}
+                          onClick={() => handleFilledStockEditSave(item.id)}
                           className="p-1 text-green-600 hover:text-green-800"
                           title="Save"
                           disabled={loading}
@@ -521,7 +497,7 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                           </svg>
                         </button>
                         <button
-                          onClick={handleMinStockEditCancel}
+                          onClick={handleFilledStockEditCancel}
                           className="p-1 text-red-600 hover:text-red-800"
                           title="Cancel"
                         >
@@ -542,15 +518,18 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-900">
-                          {item.minimumStock}
+                        <span className="text-sm font-medium text-green-600">
+                          {item.filledStock}
                         </span>
                         <button
                           onClick={() =>
-                            handleMinStockEditStart(item.id, item.minimumStock)
+                            handleFilledStockEditStart(
+                              item.id,
+                              item.filledStock
+                            )
                           }
                           className="p-1 text-gray-400 hover:text-gray-600"
-                          title="Edit minimum stock"
+                          title="Edit filled stock"
                           disabled={loading}
                         >
                           <svg
@@ -570,55 +549,108 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
                       </div>
                     )}
                   </td>
+
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStockStatusColor(
-                        item.currentStock,
-                        item.minimumStock
+                        item.filledStock
                       )}`}
                     >
-                      {getStockStatusText(item.currentStock, item.minimumStock)}
+                      {getStockStatusText(item.filledStock)}
                     </span>
                   </td>
+
                   <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                     {new Date(item.lastUpdated).toLocaleDateString()}
                   </td>
+
                   <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
-                    {showRestock === item.id ? (
-                      <div className="flex items-center justify-end space-x-2">
-                        <input
-                          type="number"
-                          value={restockQuantity}
-                          onChange={(e) =>
-                            setRestockQuantity(parseInt(e.target.value) || 0)
-                          }
-                          className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                          placeholder="Qty"
-                          min="1"
-                        />
+                    <div className="flex justify-end space-x-2">
+                      {/* Restock Button (adds to empty stock) */}
+                      {showRestock === item.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            value={restockQuantity}
+                            onChange={(e) =>
+                              setRestockQuantity(parseInt(e.target.value) || 0)
+                            }
+                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Qty"
+                            min="1"
+                          />
+                          <button
+                            onClick={() => handleRestock(item.id)}
+                            className="px-2 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
+                            disabled={loading}
+                          >
+                            Add Empty
+                          </button>
+                          <button
+                            onClick={() => setShowRestock(null)}
+                            className="px-2 py-1 text-xs text-gray-600 bg-gray-200 rounded hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={() => handleRestock(item.id)}
-                          className="px-2 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
+                          onClick={() => setShowRestock(item.id)}
+                          className="px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
                           disabled={loading}
+                          title="Add empty bottles"
                         >
-                          Confirm
+                          + Empty
                         </button>
+                      )}
+
+                      {/* Fill Button (converts empty to filled) */}
+                      {showFill === item.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            value={fillQuantity}
+                            onChange={(e) =>
+                              setFillQuantity(parseInt(e.target.value) || 0)
+                            }
+                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Qty"
+                            min="1"
+                            max={item.emptyStock}
+                          />
+                          <button
+                            onClick={() => handleFill(item.id)}
+                            className="px-2 py-1 text-xs text-white bg-green-600 rounded hover:bg-green-700"
+                            disabled={loading || item.emptyStock === 0}
+                          >
+                            Fill
+                          </button>
+                          <button
+                            onClick={() => setShowFill(null)}
+                            className="px-2 py-1 text-xs text-gray-600 bg-gray-200 rounded hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={() => setShowRestock(null)}
-                          className="px-2 py-1 text-xs text-gray-600 bg-gray-200 rounded hover:bg-gray-300"
+                          onClick={() => setShowFill(item.id)}
+                          className={`px-3 py-1 text-xs rounded ${
+                            item.emptyStock > 0
+                              ? "text-white bg-green-600 hover:bg-green-700"
+                              : "text-gray-400 bg-gray-200 cursor-not-allowed"
+                          }`}
+                          disabled={loading || item.emptyStock === 0}
+                          title={
+                            item.emptyStock > 0
+                              ? "Fill bottles from empty stock"
+                              : "No empty bottles to fill"
+                          }
                         >
-                          Cancel
+                          Fill
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setShowRestock(item.id)}
-                        className="px-3 py-1 text-xs text-white bg-blue-600 rounded hover:bg-blue-700"
-                        disabled={loading}
-                      >
-                        Restock
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -629,7 +661,7 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
         {filteredStock.length === 0 && (
           <div className="p-4 text-center text-gray-500">
             {showLowStockOnly
-              ? "No products with low stock levels"
+              ? "No products with low filled stock levels"
               : "No stock items found. Try syncing with Products sheet."}
           </div>
         )}

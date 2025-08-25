@@ -1,12 +1,12 @@
-// stockService.ts - Enhanced with Order Update/Delete Stock Adjustments
+// stockService.ts - Updated for Empty/Filled Bottle System
 
 import { getAllProductsFromSheet } from "./productService";
 
 export interface StockItem {
   id: string;
   productName: string;
-  currentStock: number;
-  minimumStock: number;
+  emptyStock: number; // NEW: Empty bottles (raw inventory)
+  filledStock: number; // RENAMED: Current stock is now filled stock (ready to sell)
   lastUpdated: string;
   lastRestocked?: string;
   restockQuantity?: number;
@@ -17,33 +17,27 @@ export interface ProductQuantity {
   quantity: number;
 }
 
-// Order interface for stock calculations
-interface OrderForStock {
-  products: ProductQuantity[];
-}
-
 const SPREADSHEET_ID =
   process.env.REACT_APP_GOOGLE_SHEET_ID || "YOUR_GOOGLE_SHEET_ID";
 const STOCK_SHEET_NAME = "Stock";
 
 // Helper function to get default stock levels for different products
-function getDefaultStockLevel(productName: string): number {
+function getDefaultEmptyStock(productName: string): number {
+  const defaults: Record<string, number> = {
+    Oil: 50,
+    Shampoo: 30,
+    Conditioner: 30,
+  };
+  return defaults[productName] || 20;
+}
+
+function getDefaultFilledStock(productName: string): number {
   const defaults: Record<string, number> = {
     Oil: 100,
     Shampoo: 50,
     Conditioner: 50,
   };
   return defaults[productName] || 25;
-}
-
-// Helper function to get default minimum stock levels
-function getDefaultMinimumStock(productName: string): number {
-  const defaults: Record<string, number> = {
-    Oil: 20,
-    Shampoo: 10,
-    Conditioner: 10,
-  };
-  return defaults[productName] || 5;
 }
 
 // Get all products from Products sheet and create/sync stock items
@@ -80,8 +74,8 @@ export async function syncStockWithProducts(): Promise<{
         return {
           id: `stock_${product.name.toLowerCase().replace(/\s+/g, "_")}`,
           productName: product.name,
-          currentStock: getDefaultStockLevel(product.name),
-          minimumStock: getDefaultMinimumStock(product.name),
+          emptyStock: getDefaultEmptyStock(product.name),
+          filledStock: getDefaultFilledStock(product.name),
           lastUpdated: new Date().toISOString(),
         };
       }
@@ -137,8 +131,8 @@ export async function getAllStockFromSheet(): Promise<{
       .map((row: any[], index: number) => ({
         id: row[0] || `stock_${index}`,
         productName: row[1] || "",
-        currentStock: parseInt(row[2]) || 0,
-        minimumStock: parseInt(row[3]) || 0,
+        emptyStock: parseInt(row[2]) || 0, // Column C: Empty Stock
+        filledStock: parseInt(row[3]) || 0, // Column D: Filled Stock (was Current Stock)
         lastUpdated: row[4] || new Date().toISOString(),
         lastRestocked: row[5] || "",
         restockQuantity: parseInt(row[6]) || 0,
@@ -194,8 +188,8 @@ export async function updateStockInSheet(
     const updatedRowData = [
       stockItem.id,
       stockItem.productName,
-      stockItem.currentStock,
-      stockItem.minimumStock,
+      stockItem.emptyStock, // Column C
+      stockItem.filledStock, // Column D
       stockItem.lastUpdated,
       stockItem.lastRestocked || "",
       stockItem.restockQuantity || 0,
@@ -243,8 +237,8 @@ export async function addStockToSheet(
     const newRowData = [
       stockItem.id,
       stockItem.productName,
-      stockItem.currentStock,
-      stockItem.minimumStock,
+      stockItem.emptyStock,
+      stockItem.filledStock,
       stockItem.lastUpdated,
       stockItem.lastRestocked || "",
       stockItem.restockQuantity || 0,
@@ -292,8 +286,8 @@ export async function syncAllStockToSheet(
     const headerRow = [
       "ID",
       "Product Name",
-      "Current Stock",
-      "Minimum Stock",
+      "Empty Stock", // NEW: Column C
+      "Filled Stock", // UPDATED: Column D (was "Current Stock")
       "Last Updated",
       "Last Restocked",
       "Restock Quantity",
@@ -302,8 +296,8 @@ export async function syncAllStockToSheet(
     const dataRows = stockItems.map((item) => [
       item.id,
       item.productName,
-      item.currentStock,
-      item.minimumStock,
+      item.emptyStock,
+      item.filledStock,
       item.lastUpdated,
       item.lastRestocked || "",
       item.restockQuantity || 0,
@@ -337,7 +331,69 @@ export async function syncAllStockToSheet(
   }
 }
 
-// Reduce stock for products in an order (for new orders)
+// NEW: Fill bottles (convert empty stock to filled stock)
+export async function fillBottles(
+  productName: string,
+  quantity: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`Filling ${quantity} bottles of ${productName}`);
+
+    const syncResult = await syncStockWithProducts();
+    if (!syncResult.success || !syncResult.data) {
+      return {
+        success: false,
+        error: syncResult.error || "Failed to sync stock with products",
+      };
+    }
+
+    const stockItem = syncResult.data.find(
+      (item) => item.productName === productName
+    );
+    if (!stockItem) {
+      return {
+        success: false,
+        error: `Product ${productName} not found in stock`,
+      };
+    }
+
+    // Check if we have enough empty bottles
+    if (stockItem.emptyStock < quantity) {
+      return {
+        success: false,
+        error: `Not enough empty bottles. Available: ${stockItem.emptyStock}, Requested: ${quantity}`,
+      };
+    }
+
+    // Update the stock item
+    const updatedStockItem = {
+      ...stockItem,
+      emptyStock: stockItem.emptyStock - quantity, // Reduce empty stock
+      filledStock: stockItem.filledStock + quantity, // Increase filled stock
+      lastUpdated: new Date().toISOString(),
+    };
+
+    // Update in sheets
+    const updateResult = await updateStockInSheet(
+      stockItem.id,
+      updatedStockItem
+    );
+
+    if (updateResult.success) {
+      console.log(`Successfully filled ${quantity} bottles of ${productName}`);
+    }
+
+    return updateResult;
+  } catch (error) {
+    console.error("Error filling bottles:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Reduce FILLED stock for products in an order (for new orders)
 export async function reduceStockForOrder(
   orderProducts: ProductQuantity[]
 ): Promise<{ success: boolean; error?: string }> {
@@ -357,7 +413,7 @@ export async function reduceStockForOrder(
       if (orderProduct) {
         return {
           ...item,
-          currentStock: Math.max(0, item.currentStock - orderProduct.quantity),
+          filledStock: Math.max(0, item.filledStock - orderProduct.quantity), // Only reduce filled stock
           lastUpdated: new Date().toISOString(),
         };
       }
@@ -375,7 +431,7 @@ export async function reduceStockForOrder(
   }
 }
 
-// NEW: Restore stock when an order is deleted
+// Restore FILLED stock when an order is deleted
 export async function restoreStockForDeletedOrder(
   orderProducts: ProductQuantity[]
 ): Promise<{ success: boolean; error?: string }> {
@@ -390,7 +446,7 @@ export async function restoreStockForDeletedOrder(
       };
     }
 
-    // Add back the quantities that were in the deleted order
+    // Add back the quantities to FILLED stock
     const updatedStock = syncResult.data.map((item) => {
       const orderProduct = orderProducts.find(
         (p) => p.name === item.productName
@@ -398,7 +454,7 @@ export async function restoreStockForDeletedOrder(
       if (orderProduct) {
         return {
           ...item,
-          currentStock: item.currentStock + orderProduct.quantity,
+          filledStock: item.filledStock + orderProduct.quantity, // Only restore filled stock
           lastUpdated: new Date().toISOString(),
         };
       }
@@ -421,7 +477,7 @@ export async function restoreStockForDeletedOrder(
   }
 }
 
-// NEW: Adjust stock when an order is updated (handle quantity changes)
+// Adjust FILLED stock when an order is updated (handle quantity changes)
 export async function adjustStockForUpdatedOrder(
   oldOrderProducts: ProductQuantity[],
   newOrderProducts: ProductQuantity[]
@@ -441,7 +497,6 @@ export async function adjustStockForUpdatedOrder(
 
     // Calculate the difference for each product
     const updatedStock = syncResult.data.map((item) => {
-      // Find quantities in old and new orders
       const oldProduct = oldOrderProducts.find(
         (p) => p.name === item.productName
       );
@@ -458,11 +513,11 @@ export async function adjustStockForUpdatedOrder(
           `${item.productName}: ${oldQty} -> ${newQty} (diff: ${quantityDifference})`
         );
 
-        // If difference is positive, reduce stock more
-        // If difference is negative, add stock back
+        // If difference is positive, reduce filled stock more
+        // If difference is negative, add filled stock back
         return {
           ...item,
-          currentStock: Math.max(0, item.currentStock - quantityDifference),
+          filledStock: Math.max(0, item.filledStock - quantityDifference), // Only adjust filled stock
           lastUpdated: new Date().toISOString(),
         };
       }
