@@ -4,6 +4,7 @@ import {
   syncAllStockToSheet,
   updateStockInSheet,
   addStockToSheet,
+  syncStockWithProducts, // NEW IMPORT
 } from "../assets/services/stockService";
 
 interface StockItem {
@@ -23,14 +24,11 @@ interface Product {
 }
 
 interface StockManagerProps {
-  products: Product[];
+  products?: Product[]; // Made optional since we'll get from Products sheet
   onStockUpdate?: (stock: Record<string, number>) => void;
 }
 
-const StockManager: React.FC<StockManagerProps> = ({
-  products,
-  onStockUpdate,
-}) => {
+const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
   const [stock, setStock] = useState<StockItem[]>([]);
   const [isEditingStock, setIsEditingStock] = useState<string | null>(null);
   const [isEditingMinStock, setIsEditingMinStock] = useState<string | null>(
@@ -44,20 +42,9 @@ const StockManager: React.FC<StockManagerProps> = ({
   const [syncStatus, setSyncStatus] = useState<string>("Loading...");
   const [showLowStockOnly, setShowLowStockOnly] = useState<boolean>(false);
 
-  // Default stock levels to initialize if sheet is empty
-  const getDefaultStock = (): StockItem[] => {
-    return products.map((product) => ({
-      id: `stock_${product.name.toLowerCase()}`,
-      productName: product.name,
-      currentStock: product.name === "Oil" ? 100 : 50,
-      minimumStock: product.name === "Oil" ? 20 : 10,
-      lastUpdated: new Date().toISOString(),
-    }));
-  };
-
-  // Load stock from Google Sheets on component mount
+  // Load and sync stock with products from Google Sheets on component mount
   useEffect(() => {
-    loadStockFromSheet();
+    loadAndSyncStock();
   }, []);
 
   // Update parent component when stock changes
@@ -71,72 +58,52 @@ const StockManager: React.FC<StockManagerProps> = ({
     }
   }, [stock, onStockUpdate]);
 
-  // Load stock from Google Sheets
-  const loadStockFromSheet = async () => {
+  // NEW: Enhanced load function that syncs with Products sheet
+  const loadAndSyncStock = async () => {
     setLoading(true);
-    setSyncStatus("Loading...");
+    setSyncStatus("Syncing with Products sheet...");
 
     try {
-      const result = await getAllStockFromSheet();
+      // Sync stock with products from Products sheet
+      const result = await syncStockWithProducts();
 
       if (result.success && result.data && result.data.length > 0) {
-        // Use data from Google Sheets
         setStock(result.data);
         setSyncStatus("Synced");
+        console.log("Stock synced with products successfully");
       } else {
-        // Initialize with default stock if sheet is empty
-        const defaultStock = getDefaultStock();
-        setStock(defaultStock);
-        // Sync default stock to sheet
-        await syncAllStockToSheet(defaultStock);
-        setSyncStatus("Initialized");
+        console.error("Failed to sync stock with products:", result.error);
+        setSyncStatus("Sync failed - " + (result.error || "Unknown error"));
       }
     } catch (error) {
-      console.error("Failed to load stock from sheet:", error);
-      // Use default stock as fallback
-      setStock(getDefaultStock());
-      setSyncStatus("Offline");
+      console.error("Failed to sync stock:", error);
+      setSyncStatus("Sync failed");
     }
 
     setLoading(false);
   };
 
+  // NEW: Manual sync button function
+  const handleManualSync = async () => {
+    await loadAndSyncStock();
+  };
+
   // Update stock in Google Sheets
   const updateStockInSheets = async (updatedStock: StockItem) => {
     try {
-      setSyncStatus("Syncing...");
+      setSyncStatus("Updating...");
       const result = await updateStockInSheet(updatedStock.id, updatedStock);
 
       if (result.success) {
         setSyncStatus("Synced");
         return true;
       } else {
-        setSyncStatus("Sync failed");
+        setSyncStatus("Update failed");
         return false;
       }
     } catch (error) {
       console.error("Failed to update stock in sheet:", error);
-      setSyncStatus("Sync failed");
-      return false;
-    }
-  };
-
-  // Add new stock item to Google Sheets
-  const addStockToSheets = async (newStock: StockItem) => {
-    try {
-      setSyncStatus("Adding stock...");
-      const result = await addStockToSheet(newStock);
-
-      if (result.success) {
-        setSyncStatus("Synced");
-        return true;
-      } else {
-        setSyncStatus("Sync failed");
-        return false;
-      }
-    } catch (error) {
-      console.error("Failed to add stock to sheet:", error);
-      setSyncStatus("Sync failed");
+      setSyncStatus("Update failed");
       return false;
     }
   };
@@ -171,7 +138,7 @@ const StockManager: React.FC<StockManagerProps> = ({
 
       if (needsUpdate) {
         const success = await syncAllStockToSheet(updatedStock);
-        if (success) {
+        if (success.success) {
           setStock(updatedStock);
           setSyncStatus("Stock updated for order");
           return true;
@@ -334,7 +301,7 @@ const StockManager: React.FC<StockManagerProps> = ({
               Stock Management
             </h3>
             <p className="text-sm text-gray-500">
-              Manage inventory levels and set restock alerts
+              Manage inventory levels synced with Products sheet
             </p>
           </div>
           <div className="flex items-center space-x-4">
@@ -348,15 +315,24 @@ const StockManager: React.FC<StockManagerProps> = ({
               <span className="text-sm text-gray-700">Show low stock only</span>
             </label>
 
+            {/* NEW: Manual sync button */}
+            <button
+              onClick={handleManualSync}
+              className="px-3 py-1 text-xs text-blue-600 bg-blue-100 rounded hover:bg-blue-200"
+              disabled={loading}
+            >
+              🔄 Sync Products
+            </button>
+
             <div
               className={`px-3 py-1 text-xs font-medium rounded-full ${
                 syncStatus === "Synced"
                   ? "text-green-700 bg-green-100"
-                  : syncStatus === "Syncing..." ||
+                  : syncStatus.includes("Syncing") ||
                     syncStatus.includes("Updating")
                   ? "text-blue-700 bg-blue-100"
-                  : syncStatus === "Sync failed" ||
-                    syncStatus.includes("failed")
+                  : syncStatus.includes("failed") ||
+                    syncStatus.includes("Failed")
                   ? "text-red-700 bg-red-100"
                   : "text-gray-700 bg-gray-100"
               }`}
@@ -654,7 +630,7 @@ const StockManager: React.FC<StockManagerProps> = ({
           <div className="p-4 text-center text-gray-500">
             {showLowStockOnly
               ? "No products with low stock levels"
-              : "No stock items found"}
+              : "No stock items found. Try syncing with Products sheet."}
           </div>
         )}
       </div>
