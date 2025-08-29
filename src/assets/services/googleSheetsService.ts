@@ -38,6 +38,7 @@ interface SheetOrder {
   oilQty: number;
   shampooQty: number;
   conditionerQty: number;
+  sprayQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -65,11 +66,12 @@ const SPREADSHEET_ID =
   process.env.REACT_APP_GOOGLE_SHEET_ID || "YOUR_GOOGLE_SHEET_ID";
 const SHEET_NAME = "Orders"; // Change this to your sheet name
 
-// Product prices (as defined in your React code)
+// Product prices (UPDATED to include Spray)
 const PRODUCT_PRICES: Record<string, number> = {
   Oil: 950,
   Shampoo: 1350,
   Conditioner: 1350,
+  Spray: 980, // ADDED Spray
 };
 
 const SHIPPING_COST: number = 350;
@@ -106,6 +108,9 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Shampoo")?.quantity || 0;
   const conditionerQty =
     order.products.find((p) => p.name === "Conditioner")?.quantity || 0;
+  const sprayQty =
+    order.products.find((p) => p.name === "Spray")?.quantity || 0;
+
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
   return [
@@ -121,6 +126,7 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.freeShipping ? "Yes" : "No",
     order.orderDate,
     new Date().toISOString().split("T")[0],
+    sprayQty,
   ];
 }
 
@@ -224,7 +230,7 @@ export async function updateOrderInSheet(
 
     // Update the row - USE ACCESS TOKEN HERE TOO
     const updateResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:L${actualRowNumber}?valueInputOption=RAW`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:M${actualRowNumber}?valueInputOption=RAW`,
       {
         method: "PUT",
         headers: {
@@ -364,7 +370,7 @@ export async function deleteOrderFromSheet(
   }
 }
 
-// Function to get all orders from the sheet
+// Function to get all orders from the sheet - FIXED to include sprayQty and correct column indices
 export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
   try {
     // First try with access token (for authenticated requests)
@@ -394,13 +400,14 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
     const data = await response.json();
     const rows = data.values || [];
 
-    // Skip header row and convert to SheetOrder format
+    // Skip header row and convert to SheetOrder format - CORRECTED INDICES
     const orders: SheetOrder[] = rows.slice(1).map((row: any[]) => ({
       trackingId: row[0] || "",
       customerInfo: row[1] || "",
       oilQty: parseInt(row[2]) || 0,
       shampooQty: parseInt(row[3]) || 0,
       conditionerQty: parseInt(row[4]) || 0,
+      sprayQty: parseInt(row[12]) || 0,
       totalAmount: parseFloat(row[5]) || 0,
       orderStatus: row[6] || "",
       paymentMethod: row[7] || "",

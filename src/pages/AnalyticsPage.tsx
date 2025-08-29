@@ -225,25 +225,53 @@ const AnalyticsPage: React.FC = () => {
         } else {
           console.warn("⚠️ No products found, using defaults");
           // Fallback defaults
-          setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
-          setProductPrices({ Oil: 950, Shampoo: 1350, Conditioner: 1350 });
-          setProductCosts({ Oil: 300, Shampoo: 350, Conditioner: 400 });
+          setAvailableProducts([
+            "all",
+            "Oil",
+            "Shampoo",
+            "Conditioner",
+            "Spray",
+          ]);
+          setProductPrices({
+            Oil: 950,
+            Shampoo: 1350,
+            Conditioner: 1350,
+            Spray: 980,
+          });
+          setProductCosts({
+            Oil: 300,
+            Shampoo: 350,
+            Conditioner: 400,
+            Spray: 100,
+          });
           setProductColors({
             Oil: "#10b981",
             Shampoo: "#06b6d4",
             Conditioner: "#ec4899",
+            Spray: "#f97316",
           });
         }
       } catch (error) {
         console.error("❌ Failed to load products:", error);
         // Keep defaults
-        setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner"]);
-        setProductPrices({ Oil: 950, Shampoo: 1350, Conditioner: 1350 });
-        setProductCosts({ Oil: 300, Shampoo: 350, Conditioner: 400 });
+        setAvailableProducts(["all", "Oil", "Shampoo", "Conditioner", "Spray"]);
+        setProductPrices({
+          Oil: 950,
+          Shampoo: 1350,
+          Conditioner: 1350,
+          Spray: 980,
+        });
+        setProductCosts({
+          Oil: 300,
+          Shampoo: 350,
+          Conditioner: 400,
+          Spray: 100,
+        });
         setProductColors({
           Oil: "#10b981",
           Shampoo: "#06b6d4",
           Conditioner: "#ec4899",
+          Spray: "#f97316",
         });
       }
     };
@@ -853,7 +881,9 @@ const AnalyticsPage: React.FC = () => {
 
         if (expense.type === "Marketing") {
           acc[key].marketingExpenses += expense.amount;
-        } else if (["Shampoo", "Conditioner", "Oil"].includes(expense.type)) {
+        } else if (
+          ["Shampoo", "Conditioner", "Oil", "Spray"].includes(expense.type)
+        ) {
           acc[key].productionExpenses += expense.amount;
         } else {
           acc[key].otherExpenses += expense.amount;
@@ -1073,7 +1103,7 @@ const AnalyticsPage: React.FC = () => {
     error: "#ef5350",
     oil: "#10b981",
     shampoo: "#06b6d4",
-    conditioner: "#ec4899",
+    Spray: "#f97316",
     expense: "#ef4444",
     profit: "#10b981",
   };

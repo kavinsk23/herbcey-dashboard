@@ -25,7 +25,7 @@ type StatusType =
   | "Return"
   | "Transfer"
   | "Damaged";
-type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner";
+type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner" | "Spray";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -128,6 +128,13 @@ const Orders: React.FC = () => {
               name: "Conditioner",
               quantity: sheetOrder.conditionerQty,
               price: 1350,
+            });
+          }
+          if (sheetOrder.sprayQty > 0) {
+            products.push({
+              name: "Spray",
+              quantity: sheetOrder.sprayQty,
+              price: 980,
             });
           }
 
