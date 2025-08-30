@@ -3,6 +3,7 @@ import ProductManager from "../components/ProductManager";
 import ExpenseManager from "../components/ExpenseManager";
 import PaymentTracking from "../components/PaymentTracking";
 import StockManager from "../components/StockManager";
+import GoogleSheetBranchLookup from "../components/GoogleSheetBranchLookup";
 
 const Management = () => {
   // Set default date range to current month
@@ -53,7 +54,6 @@ const Management = () => {
           <div>
             <ProductManager onCostsUpdate={handleCostsUpdate} />
           </div>
-
           {/* Expense Management Section */}
           <div>
             <ExpenseManager
@@ -61,6 +61,7 @@ const Management = () => {
               onExpensesUpdate={handleExpensesUpdate}
             />
           </div>
+          <GoogleSheetBranchLookup />
           {/* Payment Tracking Section */}
           <div>
             <PaymentTracking />
