@@ -16,7 +16,13 @@ type StatusType =
   | "Return"
   | "Transfer"
   | "Damaged";
-type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner" | "Spray";
+type ProductType =
+  | "All"
+  | "Oil"
+  | "Shampoo"
+  | "Conditioner"
+  | "Spray"
+  | "Serum";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface FilterSectionProps {
@@ -93,6 +99,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     Shampoo: "bg-cyan-700 text-white",
     Conditioner: "bg-pink-700 text-white",
     Spray: "bg-yellow-600 text-white",
+    Serum: "bg-purple-700 text-white",
   };
 
   const paymentStatusColors: Record<PaymentStatusType, string> = {

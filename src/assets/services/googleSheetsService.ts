@@ -39,6 +39,7 @@ interface SheetOrder {
   shampooQty: number;
   conditionerQty: number;
   sprayQty: number;
+  serumQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -66,12 +67,13 @@ const SPREADSHEET_ID =
   process.env.REACT_APP_GOOGLE_SHEET_ID || "YOUR_GOOGLE_SHEET_ID";
 const SHEET_NAME = "Orders"; // Change this to your sheet name
 
-// Product prices (UPDATED to include Spray)
+// Product prices (UPDATED to include Spray and Serum)
 const PRODUCT_PRICES: Record<string, number> = {
   Oil: 950,
   Shampoo: 1350,
   Conditioner: 1350,
-  Spray: 980, // ADDED Spray
+  Spray: 980,
+  Serum: 1600, // ADDED Serum
 };
 
 const SHIPPING_COST: number = 350;
@@ -110,6 +112,8 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Conditioner")?.quantity || 0;
   const sprayQty =
     order.products.find((p) => p.name === "Spray")?.quantity || 0;
+  const serumQty =
+    order.products.find((p) => p.name === "Serum")?.quantity || 0;
 
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
@@ -127,6 +131,7 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.orderDate,
     new Date().toISOString().split("T")[0],
     sprayQty,
+    serumQty,
   ];
 }
 
@@ -230,7 +235,7 @@ export async function updateOrderInSheet(
 
     // Update the row - USE ACCESS TOKEN HERE TOO
     const updateResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:M${actualRowNumber}?valueInputOption=RAW`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:N${actualRowNumber}?valueInputOption=RAW`,
       {
         method: "PUT",
         headers: {
@@ -370,7 +375,7 @@ export async function deleteOrderFromSheet(
   }
 }
 
-// Function to get all orders from the sheet - FIXED to include sprayQty and correct column indices
+// Function to get all orders from the sheet - FIXED to include sprayQty and serumQty and correct column indices
 export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
   try {
     // First try with access token (for authenticated requests)
@@ -408,6 +413,7 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       shampooQty: parseInt(row[3]) || 0,
       conditionerQty: parseInt(row[4]) || 0,
       sprayQty: parseInt(row[12]) || 0,
+      serumQty: parseInt(row[13]) || 0,
       totalAmount: parseFloat(row[5]) || 0,
       orderStatus: row[6] || "",
       paymentMethod: row[7] || "",

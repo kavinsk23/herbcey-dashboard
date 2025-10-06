@@ -25,7 +25,13 @@ type StatusType =
   | "Return"
   | "Transfer"
   | "Damaged";
-type ProductType = "All" | "Oil" | "Shampoo" | "Conditioner" | "Spray";
+type ProductType =
+  | "All"
+  | "Oil"
+  | "Shampoo"
+  | "Conditioner"
+  | "Spray"
+  | "Serum";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -135,6 +141,13 @@ const Orders: React.FC = () => {
               name: "Spray",
               quantity: sheetOrder.sprayQty,
               price: 980,
+            });
+          }
+          if (sheetOrder.serumQty > 0) {
+            products.push({
+              name: "Serum",
+              quantity: sheetOrder.serumQty,
+              price: 1600,
             });
           }
 
