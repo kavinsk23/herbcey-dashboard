@@ -76,7 +76,7 @@ export async function sendSMS(
       },
       body: JSON.stringify({
         recipient: formattedPhone,
-        sender_id: "TextLKDemo", // Your sender ID (must be registered with Text.lk)
+        sender_id: "HerbCey",
         message: message,
       }),
     });
