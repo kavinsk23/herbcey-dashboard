@@ -483,6 +483,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
               trackingId: formData.trackingId,
               products: selectedProducts,
               totalAmount: totalAmount,
+              paymentMethod: formData.paymentMethod,
             })
               .then((smsResult) => {
                 if (smsResult.success) {

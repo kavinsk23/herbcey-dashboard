@@ -17,6 +17,7 @@ interface OrderDetails {
     quantity: number;
   }>;
   totalAmount: number;
+  paymentMethod?: "COD" | "Bank Transfer";
 }
 
 // Configuration
@@ -48,11 +49,12 @@ function createThankYouMessage(orderDetails: OrderDetails): string {
     .map((p) => `${p.quantity}x ${p.name}`)
     .join(", ");
 
-  return `Dear ${
-    orderDetails.customerName
-  },\n\nThank you for your order! \n\nWaybill ID: ${
-    orderDetails.trackingId
-  }\nProducts: ${productList}\nTotal: Rs. ${orderDetails.totalAmount.toLocaleString()}\n\nFor delivery updates, contact Farder Express Courier Service: 0112 812 512\n\n-HerbCey Team-`;
+  const totalDisplay =
+    orderDetails.paymentMethod === "Bank Transfer"
+      ? `Rs. ${orderDetails.totalAmount.toLocaleString()} (Paid)`
+      : `Rs. ${orderDetails.totalAmount.toLocaleString()}`;
+
+  return `Dear ${orderDetails.customerName},\n\nThank you for your order! \n\nWaybill ID: ${orderDetails.trackingId}\nProducts: ${productList}\nTotal: ${totalDisplay}\n\nFor delivery updates, contact Farder Express Courier Service: 0112 812 512\n\n-HerbCey Team-`;
 }
 
 /**
