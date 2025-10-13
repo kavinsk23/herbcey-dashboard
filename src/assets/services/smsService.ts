@@ -27,15 +27,12 @@ const TEXT_LK_BASE_URL = "https://app.text.lk/api/v3";
 
 // Helper function to format phone number for Sri Lanka
 function formatPhoneNumber(phone: string): string {
-  // Remove any spaces, dashes, or special characters
   let cleaned = phone.replace(/[\s\-\(\)]/g, "");
 
-  // If it starts with 0, replace with 94
   if (cleaned.startsWith("0")) {
     cleaned = "94" + cleaned.substring(1);
   }
 
-  // If it doesn't start with 94, add it
   if (!cleaned.startsWith("94")) {
     cleaned = "94" + cleaned;
   }
@@ -54,11 +51,11 @@ function createThankYouMessage(orderDetails: OrderDetails): string {
       ? `Rs. ${orderDetails.totalAmount.toLocaleString()} (Paid)`
       : `Rs. ${orderDetails.totalAmount.toLocaleString()}`;
 
-  return `Dear ${orderDetails.customerName},\n\nThank you for your order! \n\nWaybill ID: ${orderDetails.trackingId}\nProducts: ${productList}\nTotal: ${totalDisplay}\n\nFor delivery updates, contact Farder Express Courier Service: 0112 812 512\n\n-HerbCey Team-`;
+  return `Dear ${orderDetails.customerName},\n\nThank you for your order! We are processing it now.\n\nWaybill ID: ${orderDetails.trackingId}\nProducts: ${productList}\nTotal: ${totalDisplay}\n\nFor delivery updates, contact Farder Express Courier Service: 0112 812 512\n\n-HerbCey Team-`;
 }
 
 /**
- * Send a simple SMS message using Text.lk API (OAuth 2.0 method)
+ * Send a simple SMS message using Text.lk API with CORS proxy
  */
 export async function sendSMS(
   phoneNumber: string,
@@ -67,7 +64,12 @@ export async function sendSMS(
   try {
     const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    const response = await fetch(`${TEXT_LK_BASE_URL}/sms/send`, {
+    // Use CORS proxy for browser requests
+    const apiUrl =
+      "https://corsproxy.io/?" +
+      encodeURIComponent(`${TEXT_LK_BASE_URL}/sms/send`);
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${TEXT_LK_API_TOKEN}`,
@@ -77,6 +79,7 @@ export async function sendSMS(
       body: JSON.stringify({
         recipient: formattedPhone,
         sender_id: "HerbCey",
+        type: "plain",
         message: message,
       }),
     });
@@ -137,65 +140,12 @@ export async function sendOrderConfirmationSMS(
 }
 
 /**
- * Send custom SMS with order tracking info
- */
-export async function sendOrderStatusUpdateSMS(
-  phoneNumber: string,
-  trackingId: string,
-  status: string,
-  customMessage?: string
-): Promise<SMSResponse> {
-  try {
-    const message =
-      customMessage ||
-      `Dear Customer,\n\nYour order ${trackingId} status has been updated to: ${status}\n\nThank you for choosing HerbCey! 🌿`;
-
-    return await sendSMS(phoneNumber, message);
-  } catch (error) {
-    console.error("Error sending order status update SMS:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    };
-  }
-}
-
-/**
- * Send delivery notification SMS
- */
-export async function sendDeliveryNotificationSMS(
-  phoneNumber: string,
-  trackingId: string,
-  deliveryDate?: string
-): Promise<SMSResponse> {
-  try {
-    const dateInfo = deliveryDate
-      ? `Expected delivery: ${deliveryDate}`
-      : "Your order is out for delivery!";
-
-    const message = `Dear Customer,\n\n${dateInfo}\n\nOrder ID: ${trackingId}\n\nThank you for choosing HerbCey! 🌿`;
-
-    return await sendSMS(phoneNumber, message);
-  } catch (error) {
-    console.error("Error sending delivery notification SMS:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    };
-  }
-}
-
-/**
  * Validate phone number format
  */
 export function isValidPhoneNumber(phone: string): boolean {
-  // Remove any spaces, dashes, or special characters
   const cleaned = phone.replace(/[\s\-\(\)]/g, "");
-
-  // Check if it's a valid Sri Lankan phone number
-  // Should be 10 digits starting with 0, or 11/12 digits starting with 94
-  const localPattern = /^0[0-9]{9}$/; // 0XXXXXXXXX
-  const internationalPattern = /^94[0-9]{9}$/; // 94XXXXXXXXX
+  const localPattern = /^0[0-9]{9}$/;
+  const internationalPattern = /^94[0-9]{9}$/;
 
   return localPattern.test(cleaned) || internationalPattern.test(cleaned);
 }
