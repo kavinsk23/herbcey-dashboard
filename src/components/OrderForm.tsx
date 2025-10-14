@@ -6,6 +6,10 @@ import {
   formatDisplayDateTime,
 } from "../utils/dateUtils";
 import { getSheetStructure } from "../assets/services/dynamicColumnsService";
+import {
+  isValidPhoneNumber,
+  sendOrderConfirmationSMS,
+} from "../assets/services/smsService";
 
 interface Order {
   name: string;
@@ -447,7 +451,60 @@ const OrderForm: React.FC<OrderFormProps> = ({
         lastUpdated: currentTimestamp, // Always update this to current time
       };
 
+      // Submit the order
       await onSubmit(orderData);
+
+      // ====== SEND SMS FOR NEW ORDERS ======
+      if (mode === "create") {
+        try {
+          // Extract first phone number
+          const contacts = contact
+            .split(/[,\s\n]+/)
+            .map((c) => c.trim())
+            .filter((c) => c);
+
+          const primaryContact = contacts[0];
+
+          if (primaryContact && isValidPhoneNumber(primaryContact)) {
+            // Calculate total
+            const subtotal = selectedProducts.reduce(
+              (sum, product) => sum + product.price * product.quantity,
+              0
+            );
+
+            const totalAmount = formData.freeShipping
+              ? subtotal
+              : subtotal + 350;
+
+            // Send SMS
+            sendOrderConfirmationSMS({
+              customerName: name,
+              phoneNumber: primaryContact,
+              trackingId: formData.trackingId,
+              products: selectedProducts,
+              totalAmount: totalAmount,
+              paymentMethod: formData.paymentMethod,
+            })
+              .then((smsResult) => {
+                if (smsResult.success) {
+                  console.log("✅ SMS sent to:", primaryContact);
+                } else {
+                  console.error("⚠️ SMS failed:", smsResult.error);
+                }
+              })
+              .catch((error) => {
+                console.error("⚠️ SMS error:", error);
+              });
+
+            console.log(`📱 SMS queued for ${primaryContact}`);
+          } else {
+            console.warn("⚠️ Invalid phone number, SMS not sent");
+          }
+        } catch (smsError) {
+          console.error("Error in SMS process:", smsError);
+        }
+      }
+      // ====== END SMS CODE ======
 
       // Save the tracking ID as the last used one for future suggestions
       if (mode === "create") {
