@@ -40,6 +40,7 @@ interface Order {
     | "Shipped"
     | "Delivered"
     | "Return"
+    | "Return Complete"
     | "Damaged"
     | "Transfer";
   orderDate: string;
@@ -650,7 +651,7 @@ const AnalyticsPage: React.FC = () => {
       const startDate = new Date(dateRange.startDate);
       const endDate = new Date(dateRange.endDate);
       const dateMatch = orderDate >= startDate && orderDate <= endDate;
-      return dateMatch && order.status === "Return";
+      return dateMatch && order.status === "Return Complete";
     });
 
     const totalReturns = returnedOrders.length;
