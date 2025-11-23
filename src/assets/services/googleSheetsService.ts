@@ -40,6 +40,7 @@ interface SheetOrder {
   conditionerQty: number;
   sprayQty: number;
   serumQty: number;
+  premiumQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -73,7 +74,8 @@ const PRODUCT_PRICES: Record<string, number> = {
   Shampoo: 1350,
   Conditioner: 1350,
   Spray: 980,
-  Serum: 1600, // ADDED Serum
+  Serum: 1600,
+  Premium: 2600,
 };
 
 const SHIPPING_COST: number = 350;
@@ -114,6 +116,8 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Spray")?.quantity || 0;
   const serumQty =
     order.products.find((p) => p.name === "Serum")?.quantity || 0;
+  const premiumQty =
+    order.products.find((p) => p.name === "Premium")?.quantity || 0;
 
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
@@ -132,6 +136,7 @@ function orderToSheetRow(order: Order): (string | number)[] {
     new Date().toISOString().split("T")[0],
     sprayQty,
     serumQty,
+    premiumQty,
   ];
 }
 
@@ -235,7 +240,7 @@ export async function updateOrderInSheet(
 
     // Update the row - USE ACCESS TOKEN HERE TOO
     const updateResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:N${actualRowNumber}?valueInputOption=RAW`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:O${actualRowNumber}?valueInputOption=RAW`,
       {
         method: "PUT",
         headers: {
@@ -414,6 +419,8 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       conditionerQty: parseInt(row[4]) || 0,
       sprayQty: parseInt(row[12]) || 0,
       serumQty: parseInt(row[13]) || 0,
+      premiumQty: parseInt(row[14]) || 0,
+
       totalAmount: parseFloat(row[5]) || 0,
       orderStatus: row[6] || "",
       paymentMethod: row[7] || "",

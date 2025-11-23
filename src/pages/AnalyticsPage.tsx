@@ -233,6 +233,7 @@ const AnalyticsPage: React.FC = () => {
             "Conditioner",
             "Spray",
             "Serum",
+            "Premium",
           ]);
           setProductPrices({
             Oil: 950,
@@ -240,6 +241,7 @@ const AnalyticsPage: React.FC = () => {
             Conditioner: 1350,
             Spray: 980,
             Serum: 1600,
+            Premium: 2600,
           });
           setProductCosts({
             Oil: 300,
@@ -247,13 +249,15 @@ const AnalyticsPage: React.FC = () => {
             Conditioner: 400,
             Spray: 100,
             Serum: 250,
+            Premium: 300,
           });
           setProductColors({
             Oil: "#10b981",
             Shampoo: "#06b6d4",
             Conditioner: "#ec4899",
-            Spray: "#f97316",
+            Spray: "#2596be",
             Serum: "#a78bfa",
+            Premium: "#3b82f6",
           });
         }
       } catch (error) {
@@ -266,6 +270,7 @@ const AnalyticsPage: React.FC = () => {
           "Conditioner",
           "Spray",
           "Serum",
+          "Premium",
         ]);
         setProductPrices({
           Oil: 950,
@@ -273,6 +278,7 @@ const AnalyticsPage: React.FC = () => {
           Conditioner: 1350,
           Spray: 980,
           Serum: 1600,
+          Premium: 2600,
         });
         setProductCosts({
           Oil: 300,
@@ -280,13 +286,15 @@ const AnalyticsPage: React.FC = () => {
           Conditioner: 400,
           Spray: 100,
           Serum: 250,
+          Premium: 300,
         });
         setProductColors({
           Oil: "#10b981",
           Shampoo: "#06b6d4",
           Conditioner: "#ec4899",
-          Spray: "#f97316",
+          Spray: "#d97706",
           Serum: "#a78bfa",
+          Premium: "#3b82f6",
         });
       }
     };
@@ -897,9 +905,14 @@ const AnalyticsPage: React.FC = () => {
         if (expense.type === "Marketing") {
           acc[key].marketingExpenses += expense.amount;
         } else if (
-          ["Shampoo", "Conditioner", "Oil", "Spray", "Serum"].includes(
-            expense.type
-          )
+          [
+            "Shampoo",
+            "Conditioner",
+            "Oil",
+            "Spray",
+            "Serum",
+            "Premium",
+          ].includes(expense.type)
         ) {
           acc[key].productionExpenses += expense.amount;
         } else {
@@ -1120,8 +1133,9 @@ const AnalyticsPage: React.FC = () => {
     error: "#ef5350",
     oil: "#10b981",
     shampoo: "#06b6d4",
-    Spray: "#f97316",
+    Spray: "#f59e0b",
     Serum: "#a78bfa",
+    Premium: "#3b82f6",
     expense: "#ef4444",
     profit: "#10b981",
   };

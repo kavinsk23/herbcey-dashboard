@@ -103,8 +103,9 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Oil: "bg-emerald-700 text-white",
     Shampoo: "bg-cyan-700 text-white",
     Conditioner: "bg-pink-700 text-white",
-    Spray: "bg-yellow-600 text-white",
+    Spray: "bg-blue-600 text-white",
     Serum: "bg-purple-700 text-white",
+    Premium: "bg-amber-600 text-white",
   };
 
   // Calculate total the same way as OrderForm - with delivery charges

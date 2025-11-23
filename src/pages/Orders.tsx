@@ -31,7 +31,8 @@ type ProductType =
   | "Shampoo"
   | "Conditioner"
   | "Spray"
-  | "Serum";
+  | "Serum"
+  | "Premium";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -148,6 +149,13 @@ const Orders: React.FC = () => {
               name: "Serum",
               quantity: sheetOrder.serumQty,
               price: 1600,
+            });
+          }
+          if (sheetOrder.premiumQty > 0) {
+            products.push({
+              name: "Premium",
+              quantity: sheetOrder.premiumQty,
+              price: 2600,
             });
           }
 
