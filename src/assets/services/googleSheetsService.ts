@@ -240,7 +240,7 @@ export async function updateOrderInSheet(
 
     // Update the row - USE ACCESS TOKEN HERE TOO
     const updateResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:N${actualRowNumber}?valueInputOption=RAW`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:O${actualRowNumber}?valueInputOption=RAW`,
       {
         method: "PUT",
         headers: {
