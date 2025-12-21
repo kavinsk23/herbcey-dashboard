@@ -178,15 +178,15 @@ const OrderForm: React.FC<OrderFormProps> = ({
       if (mode === "create") {
         // Get the last used tracking ID from localStorage or generate a default
         const lastTrackingId = localStorage.getItem("lastTrackingId");
-        if (lastTrackingId && /^\d{7}$/.test(lastTrackingId)) {
+        if (lastTrackingId && /^\d{8}$/.test(lastTrackingId)) {
           // Increment the last tracking ID by 1
           const nextId = (parseInt(lastTrackingId) + 1)
             .toString()
-            .padStart(7, "0");
+            .padStart(8, "0");
           setSuggestedTrackingId(nextId);
         } else {
           // Default starting tracking ID if none exists
-          setSuggestedTrackingId("1000001");
+          setSuggestedTrackingId("10000001");
         }
       }
     };
@@ -347,8 +347,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
     if (!formData.trackingId.trim()) {
       newErrors.trackingId = "Tracking ID is required";
-    } else if (!/^\d{7}$/.test(formData.trackingId.trim())) {
-      newErrors.trackingId = "Tracking ID must be exactly 7 digits";
+    } else if (!/^\d{8}$/.test(formData.trackingId.trim())) {
+      newErrors.trackingId = "Tracking ID must be exactly 8 digits";
     }
 
     const hasSelectedProduct = Object.values(formData.products).some(
@@ -520,9 +520,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: any) => {
-    // For tracking ID, only allow digits and limit to 7 characters
+    // For tracking ID, only allow digits and limit to 8 characters
     if (field === "trackingId") {
-      value = value.replace(/\D/g, "").slice(0, 7); // Remove non-digits and limit to 7 chars
+      value = value.replace(/\D/g, "").slice(0, 8); // Remove non-digits and limit to 8 chars
     }
 
     // Automatically set paymentReceived to true if payment method is Bank Transfer
@@ -895,8 +895,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         }`}
                         placeholder={
                           mode === "create"
-                            ? suggestedTrackingId || "1234567"
-                            : "1234567"
+                            ? suggestedTrackingId || "12345678"
+                            : "12345678"
                         }
                         disabled={isSubmitting}
                       />
