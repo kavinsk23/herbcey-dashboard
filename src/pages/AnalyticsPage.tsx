@@ -100,11 +100,11 @@ const getAllProductsFromSheet = async (): Promise<{
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       );
     } else {
       response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${PRODUCTS_SHEET_NAME}?key=${GOOGLE_API_KEY}`
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${PRODUCTS_SHEET_NAME}?key=${GOOGLE_API_KEY}`,
       );
     }
 
@@ -137,7 +137,7 @@ const getAllProductsFromSheet = async (): Promise<{
 
 const AnalyticsPage: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<"daily" | "monthly" | "yearly">(
-    "daily"
+    "daily",
   );
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [dateRange, setDateRange] = useState(() => {
@@ -174,11 +174,11 @@ const AnalyticsPage: React.FC = () => {
   const [, setProducts] = useState<ProductData[]>([]);
   const [availableProducts, setAvailableProducts] = useState<string[]>(["all"]);
   const [productPrices, setProductPrices] = useState<Record<string, number>>(
-    {}
+    {},
   );
   const [productCosts, setProductCosts] = useState<Record<string, number>>({});
   const [productColors, setProductColors] = useState<Record<string, string>>(
-    {}
+    {},
   );
 
   const SHIPPING_COST = 350;
@@ -234,6 +234,7 @@ const AnalyticsPage: React.FC = () => {
             "Spray",
             "Serum",
             "Premium",
+            "Castor",
           ]);
           setProductPrices({
             Oil: 950,
@@ -242,6 +243,7 @@ const AnalyticsPage: React.FC = () => {
             Spray: 980,
             Serum: 1600,
             Premium: 2600,
+            Castor: 2400,
           });
           setProductCosts({
             Oil: 300,
@@ -250,6 +252,7 @@ const AnalyticsPage: React.FC = () => {
             Spray: 100,
             Serum: 250,
             Premium: 300,
+            Castor: 350,
           });
           setProductColors({
             Oil: "#10b981",
@@ -258,6 +261,7 @@ const AnalyticsPage: React.FC = () => {
             Spray: "#2596be",
             Serum: "#a78bfa",
             Premium: "#3b82f6",
+            Castor: "#713f12",
           });
         }
       } catch (error) {
@@ -271,6 +275,7 @@ const AnalyticsPage: React.FC = () => {
           "Spray",
           "Serum",
           "Premium",
+          "Castor",
         ]);
         setProductPrices({
           Oil: 950,
@@ -279,6 +284,7 @@ const AnalyticsPage: React.FC = () => {
           Spray: 980,
           Serum: 1600,
           Premium: 2600,
+          Castor: 2400,
         });
         setProductCosts({
           Oil: 300,
@@ -287,6 +293,7 @@ const AnalyticsPage: React.FC = () => {
           Spray: 100,
           Serum: 250,
           Premium: 300,
+          Castor: 350,
         });
         setProductColors({
           Oil: "#10b981",
@@ -295,6 +302,7 @@ const AnalyticsPage: React.FC = () => {
           Spray: "#d97706",
           Serum: "#a78bfa",
           Premium: "#3b82f6",
+          Castor: "#713f12",
         });
       }
     };
@@ -403,7 +411,7 @@ const AnalyticsPage: React.FC = () => {
               note: sheetExpense.note,
               date: sheetExpense.date,
               timestamp: sheetExpense.timestamp,
-            })
+            }),
           );
           setExpenses(convertedExpenses);
         } else {
@@ -448,7 +456,7 @@ const AnalyticsPage: React.FC = () => {
             note: sheetExpense.note,
             date: sheetExpense.date,
             timestamp: sheetExpense.timestamp,
-          })
+          }),
         );
         setExpenses(convertedExpenses);
       }
@@ -464,7 +472,7 @@ const AnalyticsPage: React.FC = () => {
         console.log("🔄 Loading expense summary...");
         const summaryResult = await getExpenseSummary(
           dateRange.startDate,
-          dateRange.endDate
+          dateRange.endDate,
         );
         if (summaryResult.success && summaryResult.data) {
           console.log("✅ Expense summary loaded");
@@ -551,7 +559,7 @@ const AnalyticsPage: React.FC = () => {
                 note: sheetExpense.note,
                 date: sheetExpense.date,
                 timestamp: sheetExpense.timestamp,
-              })
+              }),
             );
             setExpenses(convertedExpenses);
           }
@@ -563,7 +571,7 @@ const AnalyticsPage: React.FC = () => {
             if (summaryResult.success && summaryResult.data) {
               setExpenseSummary(summaryResult.data);
             }
-          }
+          },
         );
       }
     }, REFRESH_INTERVAL);
@@ -585,7 +593,7 @@ const AnalyticsPage: React.FC = () => {
   const calculateOrderRevenue = (order: Order) => {
     const productTotal = order.products.reduce(
       (sum, product) => sum + product.price * product.quantity,
-      0
+      0,
     );
 
     if (order.freeShipping) {
@@ -626,7 +634,7 @@ const AnalyticsPage: React.FC = () => {
     // Basic revenue calculations
     const totalRevenue = filteredOrders.reduce(
       (sum, order) => sum + calculateOrderRevenue(order),
-      0
+      0,
     );
 
     const codReceivedAmount = filteredOrders
@@ -636,7 +644,7 @@ const AnalyticsPage: React.FC = () => {
     const bankTransferAmount = filteredOrders
       .filter(
         (order) =>
-          order.paymentMethod === "Bank Transfer" && order.paymentReceived
+          order.paymentMethod === "Bank Transfer" && order.paymentReceived,
       )
       .reduce((sum, order) => sum + calculateOrderRevenue(order), 0);
 
@@ -706,13 +714,13 @@ const AnalyticsPage: React.FC = () => {
           profit: number;
           profitMargin: number;
         }
-      >
+      >,
     );
 
     // Calculate total product costs
     const totalProductCosts = Object.values(productSales).reduce(
       (sum, product) => sum + product.cost,
-      0
+      0,
     );
 
     // Calculate total gross profit (revenue - product costs only)
@@ -724,7 +732,7 @@ const AnalyticsPage: React.FC = () => {
         (expense) =>
           expense.type === "Marketing" ||
           (expense.type === "Other" &&
-            expense.note.toLowerCase().includes("marketing"))
+            expense.note.toLowerCase().includes("marketing")),
       )
       .reduce((sum, expense) => sum + expense.amount, 0);
 
@@ -735,7 +743,7 @@ const AnalyticsPage: React.FC = () => {
           !(
             expense.type === "Other" &&
             expense.note.toLowerCase().includes("marketing")
-          )
+          ),
       )
       .reduce((sum, expense) => sum + expense.amount, 0);
 
@@ -769,7 +777,7 @@ const AnalyticsPage: React.FC = () => {
         } else if (timePeriod === "monthly") {
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
             2,
-            "0"
+            "0",
           )}`;
         } else {
           key = date.getFullYear().toString();
@@ -808,14 +816,14 @@ const AnalyticsPage: React.FC = () => {
           grossProfit: number;
           netProfit: number;
         }
-      >
+      >,
     );
 
     // Calculate net profit for each time period
     const timeDataArray = Object.values(timeData);
     const totalTimeRevenue = timeDataArray.reduce(
       (sum, item) => sum + item.revenue,
-      0
+      0,
     );
 
     timeDataArray.forEach((item) => {
@@ -828,14 +836,17 @@ const AnalyticsPage: React.FC = () => {
       }
     });
 
-    const paymentMethods = filteredOrders.reduce((acc, order) => {
-      if (!acc[order.paymentMethod]) {
-        acc[order.paymentMethod] = { count: 0, revenue: 0 };
-      }
-      acc[order.paymentMethod].count += 1;
-      acc[order.paymentMethod].revenue += calculateOrderRevenue(order);
-      return acc;
-    }, {} as Record<string, { count: number; revenue: number }>);
+    const paymentMethods = filteredOrders.reduce(
+      (acc, order) => {
+        if (!acc[order.paymentMethod]) {
+          acc[order.paymentMethod] = { count: 0, revenue: 0 };
+        }
+        acc[order.paymentMethod].count += 1;
+        acc[order.paymentMethod].revenue += calculateOrderRevenue(order);
+        return acc;
+      },
+      {} as Record<string, { count: number; revenue: number }>,
+    );
 
     return {
       // Existing metrics
@@ -886,7 +897,7 @@ const AnalyticsPage: React.FC = () => {
         } else if (timePeriod === "monthly") {
           key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
             2,
-            "0"
+            "0",
           )}`;
         } else {
           key = date.getFullYear().toString();
@@ -912,6 +923,7 @@ const AnalyticsPage: React.FC = () => {
             "Spray",
             "Serum",
             "Premium",
+            "Castor",
           ].includes(expense.type)
         ) {
           acc[key].productionExpenses += expense.amount;
@@ -932,21 +944,24 @@ const AnalyticsPage: React.FC = () => {
           productionExpenses: number;
           otherExpenses: number;
         }
-      >
+      >,
     );
 
     // Expense by type
-    const expensesByType = filteredExpenses.reduce((acc, expense) => {
-      if (!acc[expense.type]) {
-        acc[expense.type] = 0;
-      }
-      acc[expense.type] += expense.amount;
-      return acc;
-    }, {} as Record<string, number>);
+    const expensesByType = filteredExpenses.reduce(
+      (acc, expense) => {
+        if (!acc[expense.type]) {
+          acc[expense.type] = 0;
+        }
+        acc[expense.type] += expense.amount;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       timeData: Object.values(expenseTimeData).sort((a, b) =>
-        a.date.localeCompare(b.date)
+        a.date.localeCompare(b.date),
       ),
       byType: expensesByType,
     };
@@ -987,7 +1002,7 @@ const AnalyticsPage: React.FC = () => {
     });
 
     return Array.from(combinedData.values()).sort((a, b) =>
-      a.date.localeCompare(b.date)
+      a.date.localeCompare(b.date),
     );
   }, [analyticsData.timeData, expenseAnalytics.timeData]);
 
@@ -1002,7 +1017,7 @@ const AnalyticsPage: React.FC = () => {
         bgColor: "bg-primary/10",
         iconColor: "text-primary",
         subtitle: `${formatCurrency(
-          analyticsData.totalReceivedFunds
+          analyticsData.totalReceivedFunds,
         )} Received`,
         icon: (
           <svg
@@ -1136,6 +1151,7 @@ const AnalyticsPage: React.FC = () => {
     Spray: "#f59e0b",
     Serum: "#a78bfa",
     Premium: "#3b82f6",
+    Castor: "#713f12",
     expense: "#ef4444",
     profit: "#10b981",
   };
@@ -1486,7 +1502,7 @@ const AnalyticsPage: React.FC = () => {
                   ([type, amount]) => ({
                     name: type,
                     value: amount,
-                  })
+                  }),
                 )}
                 cx="50%"
                 cy="50%"
@@ -1508,7 +1524,7 @@ const AnalyticsPage: React.FC = () => {
                         ] || chartColors.error
                       }
                     />
-                  )
+                  ),
                 )}
               </Pie>
               <Tooltip
@@ -1704,7 +1720,7 @@ const AnalyticsPage: React.FC = () => {
                       <div className="flex items-center">
                         <div
                           className={`w-3 h-3 rounded-full mr-3 ${getProductDisplayColor(
-                            product
+                            product,
                           )}`}
                         ></div>
                         <span className="text-sm font-medium text-gray-900">
@@ -1737,10 +1753,10 @@ const AnalyticsPage: React.FC = () => {
                             data.profitMargin >= 50
                               ? "bg-green-100 text-green-800"
                               : data.profitMargin >= 30
-                              ? "bg-yellow-100 text-yellow-800"
-                              : data.profitMargin >= 10
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-red-100 text-red-800"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : data.profitMargin >= 10
+                                  ? "bg-orange-100 text-orange-800"
+                                  : "bg-red-100 text-red-800"
                           }`}
                         >
                           {data.profitMargin.toFixed(1)}%
@@ -1761,7 +1777,7 @@ const AnalyticsPage: React.FC = () => {
                         <div className="w-16 h-2 ml-2 bg-gray-200 rounded-full">
                           <div
                             className={`h-2 rounded-full ${getProductDisplayColor(
-                              product
+                              product,
                             )}`}
                             style={{
                               width: `${
@@ -1777,7 +1793,7 @@ const AnalyticsPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                )
+                ),
               )}
               {/* Totals Row */}
               <tr className="font-semibold border-t-2 border-gray-300 bg-gray-50">
@@ -1810,10 +1826,10 @@ const AnalyticsPage: React.FC = () => {
                       analyticsData.grossProfitMargin >= 50
                         ? "bg-green-100 text-green-800"
                         : analyticsData.grossProfitMargin >= 30
-                        ? "bg-yellow-100 text-yellow-800"
-                        : analyticsData.grossProfitMargin >= 10
-                        ? "bg-orange-100 text-orange-800"
-                        : "bg-red-100 text-red-800"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : analyticsData.grossProfitMargin >= 10
+                            ? "bg-orange-100 text-orange-800"
+                            : "bg-red-100 text-red-800"
                     }`}
                   >
                     {analyticsData.grossProfitMargin.toFixed(1)}%
@@ -1841,7 +1857,7 @@ const AnalyticsPage: React.FC = () => {
                   name,
                   value: data.revenue,
                   quantity: data.quantity,
-                })
+                }),
               )}
               cx="50%"
               cy="50%"
@@ -1859,7 +1875,7 @@ const AnalyticsPage: React.FC = () => {
                     key={`cell-${index}`}
                     fill={productColors[name] || chartColors.oil}
                   />
-                )
+                ),
               )}
             </Pie>
             <Tooltip
@@ -1884,7 +1900,7 @@ const AnalyticsPage: React.FC = () => {
                   method,
                   value: data.revenue,
                   count: data.count,
-                })
+                }),
               )}
               cx="50%"
               cy="50%"
@@ -1905,7 +1921,7 @@ const AnalyticsPage: React.FC = () => {
                       method === "COD" ? chartColors.warning : chartColors.info
                     }
                   />
-                )
+                ),
               )}
             </Pie>
             <Tooltip

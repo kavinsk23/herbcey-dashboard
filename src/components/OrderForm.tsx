@@ -323,7 +323,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       newErrors.customerInfo = "Customer information is required";
     } else {
       const { name, addressLine1, contact } = parseCustomerInfo(
-        formData.customerInfo
+        formData.customerInfo,
       );
       if (!name.trim()) newErrors.customerInfo = "Name is required";
       if (!addressLine1.trim())
@@ -337,7 +337,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           .map((c) => c.trim())
           .filter((c) => c);
         const invalidContacts = contacts.filter(
-          (c) => !/^\d{10}$/.test(c.replace(/\D/g, ""))
+          (c) => !/^\d{10}$/.test(c.replace(/\D/g, "")),
         );
         if (invalidContacts.length > 0) {
           newErrors.customerInfo = "All contact numbers must be 10 digits";
@@ -352,7 +352,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
 
     const hasSelectedProduct = Object.values(formData.products).some(
-      (product) => product.selected
+      (product) => product.selected,
     );
     if (!hasSelectedProduct) {
       newErrors.products = "Please select at least one product";
@@ -469,7 +469,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             // Calculate total
             const subtotal = selectedProducts.reduce(
               (sum, product) => sum + product.price * product.quantity,
-              0
+              0,
             );
 
             const totalAmount = formData.freeShipping
@@ -544,7 +544,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const handleProductChange = (
     productName: string,
     field: string,
-    value: any
+    value: any,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -596,7 +596,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
 
     const selectedProducts = Object.entries(formData.products).filter(
-      ([_, product]) => product.selected
+      ([_, product]) => product.selected,
     );
 
     if (selectedProducts.length === 0) {
@@ -687,8 +687,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
       <div class="customer-info">
         <div class="bold">${name}</div>
         <div class="bold">${addressLine1}${
-      addressLine2 ? `<br/>${addressLine2}` : ""
-    }</div>
+          addressLine2 ? `<br/>${addressLine2}` : ""
+        }</div>
         ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
         <div class="bold">${contact}</div>
       </div>
@@ -702,7 +702,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             <span>${product.quantity} x ${name}</span>
             <span>${formatCurrency(product.price * product.quantity)}</span>
           </div>
-        `
+        `,
           )
           .join("")}
       </div>
@@ -997,7 +997,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                           onChange={(e) =>
                             handleInputChange(
                               "paymentReceived",
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
@@ -1030,78 +1030,84 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <p className="text-sm text-red-500">{errors.products}</p>
                     )}
 
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-3">
                       {Object.entries(formData.products).map(
                         ([productName, product]) => (
                           <div
                             key={productName}
-                            className={`p-3 border rounded-lg transition-all ${
+                            className={`p-3 border rounded-lg transition-all h-full ${
                               product.selected
                                 ? "border-primary bg-primary/10"
                                 : "border-gray-200"
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <input
-                                  type="checkbox"
-                                  checked={product.selected}
-                                  onChange={(e) =>
-                                    handleProductChange(
-                                      productName,
-                                      "selected",
-                                      e.target.checked
-                                    )
-                                  }
-                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  disabled={isSubmitting}
-                                />
-                                <div>
-                                  <span className="text-sm font-medium text-gray-800">
-                                    {productName}
-                                  </span>
-                                  <div className="flex items-center mt-1 space-x-2">
-                                    <span className="text-xs font-medium text-gray-900">
-                                      {formatCurrency(product.price)}
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={product.selected}
+                                    onChange={(e) =>
+                                      handleProductChange(
+                                        productName,
+                                        "selected",
+                                        e.target.checked,
+                                      )
+                                    }
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-0.5"
+                                    disabled={isSubmitting}
+                                  />
+                                  <div>
+                                    <span className="text-sm font-bold text-gray-800">
+                                      {productName}
                                     </span>
-                                    <span className="text-xs text-gray-600">
-                                      each
-                                    </span>
+                                    <div className="flex items-center mt-0.5 space-x-2">
+                                      <span className="text-xs font-medium text-gray-900">
+                                        {formatCurrency(product.price)}
+                                      </span>
+                                      <span className="text-xs text-gray-600">
+                                        each
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
 
                               {product.selected && (
-                                <div className="flex items-center space-x-2">
-                                  <label className="text-xs text-gray-700">
-                                    Qty:
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="99"
-                                    value={product.quantity}
-                                    onChange={(e) =>
-                                      handleProductChange(
-                                        productName,
-                                        "quantity",
-                                        parseInt(e.target.value) || 1
-                                      )
-                                    }
-                                    className="px-2 py-1 text-xs text-center border border-gray-300 rounded w-14 focus:outline-none focus:ring-2 focus:ring-primary"
-                                    disabled={isSubmitting}
-                                  />
-                                  <span className="text-xs font-medium text-gray-800 min-w-20">
-                                    ={" "}
-                                    {formatCurrency(
-                                      product.price * product.quantity
-                                    )}
-                                  </span>
+                                <div className="mt-auto pt-2 border-t border-gray-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                      <label className="text-xs text-gray-700">
+                                        Qty:
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="99"
+                                        value={product.quantity}
+                                        onChange={(e) =>
+                                          handleProductChange(
+                                            productName,
+                                            "quantity",
+                                            parseInt(e.target.value) || 1,
+                                          )
+                                        }
+                                        className="px-2 py-1 text-xs text-center border border-gray-300 rounded w-14 focus:outline-none focus:ring-2 focus:ring-primary"
+                                        disabled={isSubmitting}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-medium text-gray-800">
+                                      ={" "}
+                                      {formatCurrency(
+                                        product.price * product.quantity,
+                                      )}
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </div>
@@ -1202,8 +1208,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                   ? "Creating..."
                   : "Updating..."
                 : mode === "create"
-                ? "Create Order"
-                : "Update Order"}
+                  ? "Create Order"
+                  : "Update Order"}
             </button>
           </div>
         </div>

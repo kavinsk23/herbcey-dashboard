@@ -106,13 +106,14 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Spray: "bg-blue-600 text-white",
     Serum: "bg-purple-700 text-white",
     Premium: "bg-amber-600 text-white",
+    Castor: "bg-yellow-800 text-white",
   };
 
   // Calculate total the same way as OrderForm - with delivery charges
   const calculateTotal = () => {
     const subtotal = order.products.reduce(
       (sum, product) => sum + product.price * product.quantity,
-      0
+      0,
     );
     return order.freeShipping ? subtotal : subtotal + 350;
   };
@@ -120,7 +121,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   const totalAmount = calculateTotal();
   const subtotal = order.products.reduce(
     (sum, product) => sum + product.price * product.quantity,
-    0
+    0,
   );
 
   const contacts = parseContacts(order.contact);
@@ -208,8 +209,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       <div class="customer-info">
         <div class="bold">${order.name}</div>
         <div class="bold">${order.addressLine1}${
-      order.addressLine2 ? `<br/>${order.addressLine2}` : ""
-    }</div>
+          order.addressLine2 ? `<br/>${order.addressLine2}` : ""
+        }</div>
         ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
         <div class="bold">${contacts.join(", ")}</div>
       </div>
@@ -222,7 +223,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div class="flex-row product-line">                
             <span>${product.quantity} x ${product.name}</span>
             <span>${formatCurrency(product.price * product.quantity)}</span>
-          </div>`
+          </div>`,
           )
           .join("")}
       </div>
