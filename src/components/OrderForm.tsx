@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getAllProductsFromSheet } from "../assets/services/productService";
+import { getAllOrders } from "../assets/services/googleSheetsService";
 import ConfirmationDialog from "./ConfirmationDialog";
 import {
   createOrderTimestamp,
@@ -99,6 +100,13 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [suggestedTrackingId, setSuggestedTrackingId] = useState<string>("");
+  const [returnWarning, setReturnWarning] = useState<{
+    show: boolean;
+    orders: { trackingId: string; name: string; status: string }[];
+  }>({ show: false, orders: [] });
+  const cachedOrdersRef = useRef<
+    { trackingId: string; customerInfo: string; orderStatus: string }[]
+  >([]);
 
   // Confirmation dialog states
   const [confirmDialog, setConfirmDialog] = useState({
@@ -165,6 +173,21 @@ const OrderForm: React.FC<OrderFormProps> = ({
           });
         }
 
+        const preferredOrder = [
+          "Oil",
+          "Serum",
+          "Spray",
+          "Shampoo",
+          "Conditioner",
+          "Premium",
+          "Castor",
+        ];
+        products.sort((a, b) => {
+          const idxA = preferredOrder.indexOf(a);
+          const idxB = preferredOrder.indexOf(b);
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+        });
+
         setProductPrices(prices);
         setAvailableProducts(products);
       } catch (error) {
@@ -191,9 +214,27 @@ const OrderForm: React.FC<OrderFormProps> = ({
       }
     };
 
+    const loadAllOrders = async () => {
+      try {
+        const result = await getAllOrders();
+        if (result.success && result.data) {
+          cachedOrdersRef.current = result.data.map((o) => ({
+            trackingId: o.trackingId,
+            customerInfo: o.customerInfo,
+            orderStatus: o.orderStatus,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to load orders for return check:", error);
+      }
+    };
+
     if (isOpen) {
       loadProductPrices();
       generateSuggestedTrackingId();
+      loadAllOrders();
+    } else {
+      setReturnWarning({ show: false, orders: [] });
     }
   }, [isOpen, mode]);
 
@@ -291,6 +332,70 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   }, [initialOrder, mode, isOpen, suggestedTrackingId]);
 
+  // Check contact number against orders with return statuses
+  useEffect(() => {
+    if (!formData.customerInfo.trim() || cachedOrdersRef.current.length === 0) {
+      setReturnWarning({ show: false, orders: [] });
+      return;
+    }
+
+    const lines = formData.customerInfo.split("\n").filter((l) => l.trim());
+    if (lines.length < 2) return;
+
+    // Contact is the last line; extract all phone numbers from it
+    const contactLine = lines[lines.length - 1];
+    const contacts = contactLine
+      .split(/[,\s\n]+/)
+      .map((c) => c.trim().replace(/\D/g, ""))
+      .filter((c) => c.length >= 9);
+
+    if (contacts.length === 0) {
+      setReturnWarning({ show: false, orders: [] });
+      return;
+    }
+
+    // DEBUG: Log to help troubleshoot
+    const uniqueStatuses = Array.from(
+      new Set(cachedOrdersRef.current.map((o) => o.orderStatus)),
+    );
+    console.log(
+      "[Return Check] Cached orders:",
+      cachedOrdersRef.current.length,
+    );
+    console.log("[Return Check] Unique statuses in sheet:", uniqueStatuses);
+    console.log("[Return Check] Contacts extracted:", contacts);
+
+    const matchingOrders = cachedOrdersRef.current
+      .filter((order) => {
+        const status = order.orderStatus?.toLowerCase().trim();
+        if (
+          ![
+            "return complete",
+            "return transfer",
+            "return",
+            "return pending",
+          ].includes(status || "")
+        )
+          return false;
+
+        // Check if any entered contact appears in this order's customerInfo
+        return contacts.some((contact) => order.customerInfo.includes(contact));
+      })
+      .map((order) => {
+        const nameFromInfo = order.customerInfo.split("\n")[0] || "Unknown";
+        return {
+          trackingId: order.trackingId,
+          name: nameFromInfo,
+          status: order.orderStatus,
+        };
+      });
+
+    setReturnWarning({
+      show: matchingOrders.length > 0,
+      orders: matchingOrders,
+    });
+  }, [formData.customerInfo]);
+
   const parseCustomerInfo = (customerInfo: string) => {
     const lines = customerInfo.split("\n").filter((line) => line.trim());
 
@@ -323,7 +428,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       newErrors.customerInfo = "Customer information is required";
     } else {
       const { name, addressLine1, contact } = parseCustomerInfo(
-        formData.customerInfo
+        formData.customerInfo,
       );
       if (!name.trim()) newErrors.customerInfo = "Name is required";
       if (!addressLine1.trim())
@@ -337,7 +442,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           .map((c) => c.trim())
           .filter((c) => c);
         const invalidContacts = contacts.filter(
-          (c) => !/^\d{10}$/.test(c.replace(/\D/g, ""))
+          (c) => !/^\d{10}$/.test(c.replace(/\D/g, "")),
         );
         if (invalidContacts.length > 0) {
           newErrors.customerInfo = "All contact numbers must be 10 digits";
@@ -352,7 +457,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
 
     const hasSelectedProduct = Object.values(formData.products).some(
-      (product) => product.selected
+      (product) => product.selected,
     );
     if (!hasSelectedProduct) {
       newErrors.products = "Please select at least one product";
@@ -469,7 +574,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             // Calculate total
             const subtotal = selectedProducts.reduce(
               (sum, product) => sum + product.price * product.quantity,
-              0
+              0,
             );
 
             const totalAmount = formData.freeShipping
@@ -544,7 +649,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const handleProductChange = (
     productName: string,
     field: string,
-    value: any
+    value: any,
   ) => {
     setFormData((prev) => ({
       ...prev,
@@ -596,7 +701,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
 
     const selectedProducts = Object.entries(formData.products).filter(
-      ([_, product]) => product.selected
+      ([_, product]) => product.selected,
     );
 
     if (selectedProducts.length === 0) {
@@ -687,8 +792,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
       <div class="customer-info">
         <div class="bold">${name}</div>
         <div class="bold">${addressLine1}${
-      addressLine2 ? `<br/>${addressLine2}` : ""
-    }</div>
+          addressLine2 ? `<br/>${addressLine2}` : ""
+        }</div>
         ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
         <div class="bold">${contact}</div>
       </div>
@@ -702,7 +807,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             <span>${product.quantity} x ${name}</span>
             <span>${formatCurrency(product.price * product.quantity)}</span>
           </div>
-        `
+        `,
           )
           .join("")}
       </div>
@@ -839,7 +944,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("customerInfo", e.target.value)
                         }
-                        className={`w-full px-3 py-2 border rounded-lg min-h-36 focus:outline-none focus:ring-2 focus:ring-primary text-sm ${
+                        className={`w-full px-3 py-2 border rounded-lg min-h-36 text-sm ${
                           errors.customerInfo
                             ? "border-red-500"
                             : "border-gray-300"
@@ -852,6 +957,47 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         <p className="mt-1 text-xs text-red-500">
                           {errors.customerInfo}
                         </p>
+                      )}
+                      {returnWarning.show && (
+                        <div className="p-3 mt-2 border border-red-300 rounded-lg bg-red-50">
+                          <div className="flex items-start space-x-2">
+                            <svg
+                              className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-semibold text-red-800">
+                                Return - Previous Order Found
+                              </p>
+                              <p className="mt-1 text-xs text-red-700">
+                                This contact has{" "}
+                                {returnWarning.orders.length === 1
+                                  ? "a previous order"
+                                  : `${returnWarning.orders.length} previous orders`}{" "}
+                                with a return status:
+                              </p>
+                              <ul className="mt-1 space-y-0.5">
+                                {returnWarning.orders.map((order) => (
+                                  <li
+                                    key={order.trackingId}
+                                    className="text-xs text-red-700"
+                                  >
+                                    Tracking: {order.trackingId} ({order.name})
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -888,7 +1034,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("trackingId", e.target.value)
                         }
-                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                        className={`w-full px-3 py-2 text-sm border rounded-lg ${
                           errors.trackingId
                             ? "border-red-500"
                             : "border-gray-300"
@@ -928,7 +1074,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("status", e.target.value)
                         }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         disabled={isSubmitting}
                       >
                         <option value="Preparing">Preparing</option>
@@ -997,7 +1143,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                           onChange={(e) =>
                             handleInputChange(
                               "paymentReceived",
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
@@ -1030,18 +1176,28 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <p className="text-sm text-red-500">{errors.products}</p>
                     )}
 
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {Object.entries(formData.products).map(
-                        ([productName, product]) => (
-                          <div
-                            key={productName}
-                            className={`p-3 border rounded-lg transition-all ${
-                              product.selected
-                                ? "border-primary bg-primary/10"
-                                : "border-gray-200"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
+                        ([productName, product]) => {
+                          const productColorMap: Record<string, string> = {
+                            Oil: "border-emerald-700 bg-emerald-50",
+                            Shampoo: "border-cyan-700 bg-cyan-50",
+                            Conditioner: "border-pink-700 bg-pink-50",
+                            Spray: "border-blue-600 bg-blue-50",
+                            Serum: "border-purple-700 bg-purple-50",
+                            Premium: "border-amber-600 bg-amber-50",
+                            Castor: "border-lime-700 bg-lime-50",
+                          };
+                          const selectedColor =
+                            productColorMap[productName] ||
+                            "border-primary bg-primary/10";
+                          return (
+                            <div
+                              key={productName}
+                              className={`p-3 border rounded-lg transition-all ${selectedColor} ${
+                                product.selected ? "" : "opacity-70"
+                              }`}
+                            >
                               <div className="flex items-center space-x-3">
                                 <input
                                   type="checkbox"
@@ -1050,58 +1206,54 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                     handleProductChange(
                                       productName,
                                       "selected",
-                                      e.target.checked
+                                      e.target.checked,
                                     )
                                   }
                                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                   disabled={isSubmitting}
                                 />
-                                <div>
+                                <div className="flex-1 min-w-0">
                                   <span className="text-sm font-medium text-gray-800">
                                     {productName}
                                   </span>
-                                  <div className="flex items-center mt-1 space-x-2">
-                                    <span className="text-xs font-medium text-gray-900">
-                                      {formatCurrency(product.price)}
-                                    </span>
-                                    <span className="text-xs text-gray-600">
-                                      each
-                                    </span>
+                                  <div className="text-xs font-medium text-gray-900">
+                                    {formatCurrency(product.price)}
                                   </div>
                                 </div>
                               </div>
 
                               {product.selected && (
-                                <div className="flex items-center space-x-2">
-                                  <label className="text-xs text-gray-700">
-                                    Qty:
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="99"
-                                    value={product.quantity}
-                                    onChange={(e) =>
-                                      handleProductChange(
-                                        productName,
-                                        "quantity",
-                                        parseInt(e.target.value) || 1
-                                      )
-                                    }
-                                    className="px-2 py-1 text-xs text-center border border-gray-300 rounded w-14 focus:outline-none focus:ring-2 focus:ring-primary"
-                                    disabled={isSubmitting}
-                                  />
-                                  <span className="text-xs font-medium text-gray-800 min-w-20">
-                                    ={" "}
+                                <div className="flex items-center justify-between pt-2 mt-2 border-t border-black/10">
+                                  <div className="flex items-center space-x-2">
+                                    <label className="text-xs text-gray-700">
+                                      Qty:
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="99"
+                                      value={product.quantity}
+                                      onChange={(e) =>
+                                        handleProductChange(
+                                          productName,
+                                          "quantity",
+                                          parseInt(e.target.value) || 1,
+                                        )
+                                      }
+                                      className="w-12 px-2 py-1 text-xs text-center border border-gray-300 rounded focus:outline-none focus:ring-2"
+                                      disabled={isSubmitting}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-semibold text-gray-800">
                                     {formatCurrency(
-                                      product.price * product.quantity
+                                      product.price * product.quantity,
                                     )}
                                   </span>
                                 </div>
                               )}
                             </div>
-                          </div>
-                        )
+                          );
+                        },
                       )}
                     </div>
                   </div>
@@ -1202,8 +1354,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                   ? "Creating..."
                   : "Updating..."
                 : mode === "create"
-                ? "Create Order"
-                : "Update Order"}
+                  ? "Create Order"
+                  : "Update Order"}
             </button>
           </div>
         </div>
