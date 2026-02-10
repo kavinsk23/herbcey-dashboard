@@ -17,7 +17,6 @@ interface Order {
   addressLine1: string;
   addressLine2?: string;
   addressLine3?: string;
-  mainCity?: string;
   contact: string;
   products: {
     name: string;
@@ -77,7 +76,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   const [formData, setFormData] = useState({
     customerInfo: "",
-    mainCity: "",
     trackingId: "",
     status: "Preparing" as
       | "Preparing"
@@ -305,11 +303,13 @@ const OrderForm: React.FC<OrderFormProps> = ({
       if (initialOrder.addressLine3)
         addressParts.push(initialOrder.addressLine3);
 
-      const customerInfo = `${initialOrder.name}\n${addressParts.join("\n")}\n${initialOrder.contact}`;
+      const customerInfo = `${initialOrder.name}\n${addressParts.join("\n")}\n${
+        initialOrder.contact
+      }`;
+
       setFormData((prev) => ({
         ...prev,
         customerInfo,
-        mainCity: initialOrder.mainCity || "", // Set Main City
         trackingId: initialOrder.tracking || "",
         status: initialOrder.status,
         paymentMethod: initialOrder.paymentMethod,
@@ -323,7 +323,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setFormData((prev) => ({
         ...prev,
         customerInfo: "",
-        mainCity: "", // Initialize Main City as empty
         trackingId: suggestedTrackingId, // Use suggested tracking ID
         status: "Preparing",
         paymentMethod: "COD",
@@ -540,7 +539,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         addressLine1,
         addressLine2,
         addressLine3,
-        mainCity: formData.mainCity.trim(), // Include Main City
         contact: contact,
         products: selectedProducts,
         status: formData.status,
@@ -797,11 +795,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           addressLine2 ? `<br/>${addressLine2}` : ""
         }</div>
         ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
-        ${
-          formData.mainCity.trim()
-            ? `<div class="bold">${formData.mainCity.trim()}</div>`
-            : ""
-        }
         <div class="bold">${contact}</div>
       </div>
       <div class="gap">&nbsp;</div>
@@ -931,11 +924,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
             <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 gap-6 p-5">
                 {/* Left Column */}
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {/* Customer Information */}
                   <div className="space-y-3">
                     {returnWarning.show && (
-                      <div className="p-3 border border-red-300 rounded-lg bg-red-50">
+                      <div className="p-3 mt-2 border border-red-300 rounded-lg bg-red-50">
                         <div className="flex items-start space-x-2">
                           <svg
                             className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-600"
@@ -979,7 +972,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Customer Details *
                       </label>
-
+                      <div className="mb-1 text-xs text-gray-500">
+                        Format: Name, Address Line 1, Address Line 2 (optional),
+                        Contact(s)
+                      </div>
                       <textarea
                         value={formData.customerInfo}
                         onChange={(e) =>
@@ -999,23 +995,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
                           {errors.customerInfo}
                         </p>
                       )}
-                    </div>
-
-                    {/* Main City Input */}
-                    <div>
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        Main City
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.mainCity}
-                        onChange={(e) =>
-                          handleInputChange("mainCity", e.target.value)
-                        }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="e.g., Colombo, Kandy, Galle"
-                        disabled={isSubmitting}
-                      />
                     </div>
                   </div>
 
