@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   formatDisplayDateTime,
   extractDateFromDateTime,
@@ -42,6 +42,12 @@ interface OrderCardProps {
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
+  const [fdeStatus, setFdeStatus] = useState<{
+    loading: boolean;
+    success?: boolean;
+    message?: string;
+  }>({ loading: false });
+
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
   };
@@ -112,7 +118,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   const calculateTotal = () => {
     const subtotal = order.products.reduce(
       (sum, product) => sum + product.price * product.quantity,
-      0
+      0,
     );
     return order.freeShipping ? subtotal : subtotal + 350;
   };
@@ -120,10 +126,93 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   const totalAmount = calculateTotal();
   const subtotal = order.products.reduce(
     (sum, product) => sum + product.price * product.quantity,
-    0
+    0,
   );
 
   const contacts = parseContacts(order.contact);
+
+  // Handle FDE button click
+  const handleFDE = async () => {
+    if (!order.tracking) {
+      setFdeStatus({
+        loading: false,
+        success: false,
+        message: "No tracking ID",
+      });
+      return;
+    }
+
+    const apiUrl = `https://herbcey-v2.vercel.app/api/process-order/${order.tracking}`;
+
+    setFdeStatus({ loading: true });
+
+    try {
+      const response = await fetch(apiUrl, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      // Check if the API returned success: true in the response body
+      if (data.success) {
+        setFdeStatus({
+          loading: false,
+          success: true,
+          message: data.message || "Success",
+        });
+      } else {
+        // API returned success: false with an error message
+        setFdeStatus({
+          loading: false,
+          success: false,
+          message: data.message || data.error || "Failed",
+        });
+      }
+    } catch (error: any) {
+      console.error("FDE API error:", error);
+
+      // Only show "Network error" for actual network issues
+      let errorMessage = "Network error";
+      if (error.message && error.message.includes("fetch")) {
+        errorMessage = "Cannot connect to server";
+      }
+
+      setFdeStatus({
+        loading: false,
+        success: false,
+        message: errorMessage,
+      });
+    }
+
+    // Clear the status message after 5 seconds
+    setTimeout(() => {
+      setFdeStatus({ loading: false });
+    }, 5000);
+  };
+
+  // Get FDE button text based on status
+  const getFDEButtonText = () => {
+    if (fdeStatus.loading) return "Processing...";
+    if (fdeStatus.success === true) return fdeStatus.message || "Success!";
+    if (fdeStatus.success === false) return fdeStatus.message || "Failed";
+    return "FDE";
+  };
+
+  // Get FDE button styling based on status
+  const getFDEButtonStyle = () => {
+    if (fdeStatus.loading) {
+      return "bg-gray-400 text-white border-gray-400";
+    }
+    if (fdeStatus.success === true) {
+      return "bg-green-600 text-white border-green-600";
+    }
+    if (fdeStatus.success === false) {
+      return "bg-red-600 text-white border-red-600";
+    }
+    return "bg-blue-600 text-white border-blue-600 hover:bg-blue-700";
+  };
 
   // Print function
   const handlePrint = () => {
@@ -208,8 +297,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       <div class="customer-info">
         <div class="bold">${order.name}</div>
         <div class="bold">${order.addressLine1}${
-      order.addressLine2 ? `<br/>${order.addressLine2}` : ""
-    }</div>
+          order.addressLine2 ? `<br/>${order.addressLine2}` : ""
+        }</div>
         ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
         <div class="bold">${contacts.join(", ")}</div>
       </div>
@@ -222,7 +311,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div class="flex-row product-line">                
             <span>${product.quantity} x ${product.name}</span>
             <span>${formatCurrency(product.price * product.quantity)}</span>
-          </div>`
+          </div>`,
           )
           .join("")}
       </div>
@@ -466,6 +555,17 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
         {/* Action Buttons */}
         <div className="flex flex-col items-center justify-center flex-shrink-0 gap-2">
+          <button
+            onClick={handleFDE}
+            disabled={fdeStatus.loading || !order.tracking}
+            className={`w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${getFDEButtonStyle()} ${
+              fdeStatus.loading || !order.tracking
+                ? "opacity-50 cursor-not-allowed"
+                : ""
+            }`}
+          >
+            {getFDEButtonText()}
+          </button>
           <button
             onClick={handlePrint}
             className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
