@@ -173,6 +173,21 @@ const OrderForm: React.FC<OrderFormProps> = ({
           });
         }
 
+        const preferredOrder = [
+          "Oil",
+          "Serum",
+          "Spray",
+          "Shampoo",
+          "Conditioner",
+          "Premium",
+          "Castor",
+        ];
+        products.sort((a, b) => {
+          const idxA = preferredOrder.indexOf(a);
+          const idxB = preferredOrder.indexOf(b);
+          return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+        });
+
         setProductPrices(prices);
         setAvailableProducts(products);
       } catch (error) {
@@ -929,7 +944,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("customerInfo", e.target.value)
                         }
-                        className={`w-full px-3 py-2 border rounded-lg min-h-36 focus:outline-none focus:ring-2 focus:ring-primary text-sm ${
+                        className={`w-full px-3 py-2 border rounded-lg min-h-36 text-sm ${
                           errors.customerInfo
                             ? "border-red-500"
                             : "border-gray-300"
@@ -1019,7 +1034,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("trackingId", e.target.value)
                         }
-                        className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary ${
+                        className={`w-full px-3 py-2 text-sm border rounded-lg ${
                           errors.trackingId
                             ? "border-red-500"
                             : "border-gray-300"
@@ -1059,7 +1074,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         onChange={(e) =>
                           handleInputChange("status", e.target.value)
                         }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         disabled={isSubmitting}
                       >
                         <option value="Preparing">Preparing</option>
@@ -1161,18 +1176,28 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <p className="text-sm text-red-500">{errors.products}</p>
                     )}
 
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {Object.entries(formData.products).map(
-                        ([productName, product]) => (
-                          <div
-                            key={productName}
-                            className={`p-3 border rounded-lg transition-all ${
-                              product.selected
-                                ? "border-primary bg-primary/10"
-                                : "border-gray-200"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
+                        ([productName, product]) => {
+                          const productColorMap: Record<string, string> = {
+                            Oil: "border-emerald-700 bg-emerald-50",
+                            Shampoo: "border-cyan-700 bg-cyan-50",
+                            Conditioner: "border-pink-700 bg-pink-50",
+                            Spray: "border-blue-600 bg-blue-50",
+                            Serum: "border-purple-700 bg-purple-50",
+                            Premium: "border-amber-600 bg-amber-50",
+                            Castor: "border-lime-700 bg-lime-50",
+                          };
+                          const selectedColor =
+                            productColorMap[productName] ||
+                            "border-primary bg-primary/10";
+                          return (
+                            <div
+                              key={productName}
+                              className={`p-3 border rounded-lg transition-all ${selectedColor} ${
+                                product.selected ? "" : "opacity-70"
+                              }`}
+                            >
                               <div className="flex items-center space-x-3">
                                 <input
                                   type="checkbox"
@@ -1187,43 +1212,39 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                   disabled={isSubmitting}
                                 />
-                                <div>
+                                <div className="flex-1 min-w-0">
                                   <span className="text-sm font-medium text-gray-800">
                                     {productName}
                                   </span>
-                                  <div className="flex items-center mt-1 space-x-2">
-                                    <span className="text-xs font-medium text-gray-900">
-                                      {formatCurrency(product.price)}
-                                    </span>
-                                    <span className="text-xs text-gray-600">
-                                      each
-                                    </span>
+                                  <div className="text-xs font-medium text-gray-900">
+                                    {formatCurrency(product.price)}
                                   </div>
                                 </div>
                               </div>
 
                               {product.selected && (
-                                <div className="flex items-center space-x-2">
-                                  <label className="text-xs text-gray-700">
-                                    Qty:
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="99"
-                                    value={product.quantity}
-                                    onChange={(e) =>
-                                      handleProductChange(
-                                        productName,
-                                        "quantity",
-                                        parseInt(e.target.value) || 1,
-                                      )
-                                    }
-                                    className="px-2 py-1 text-xs text-center border border-gray-300 rounded w-14 focus:outline-none focus:ring-2 focus:ring-primary"
-                                    disabled={isSubmitting}
-                                  />
-                                  <span className="text-xs font-medium text-gray-800 min-w-20">
-                                    ={" "}
+                                <div className="flex items-center justify-between pt-2 mt-2 border-t border-black/10">
+                                  <div className="flex items-center space-x-2">
+                                    <label className="text-xs text-gray-700">
+                                      Qty:
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="99"
+                                      value={product.quantity}
+                                      onChange={(e) =>
+                                        handleProductChange(
+                                          productName,
+                                          "quantity",
+                                          parseInt(e.target.value) || 1,
+                                        )
+                                      }
+                                      className="w-12 px-2 py-1 text-xs text-center border border-gray-300 rounded focus:outline-none focus:ring-2"
+                                      disabled={isSubmitting}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-semibold text-gray-800">
                                     {formatCurrency(
                                       product.price * product.quantity,
                                     )}
@@ -1231,8 +1252,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                 </div>
                               )}
                             </div>
-                          </div>
-                        ),
+                          );
+                        },
                       )}
                     </div>
                   </div>
