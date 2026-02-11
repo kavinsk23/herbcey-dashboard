@@ -11,6 +11,7 @@ import {
   isValidPhoneNumber,
   sendOrderConfirmationSMS,
 } from "../assets/services/smsService";
+import { searchCities, City } from "../assets/services/cityService";
 
 interface Order {
   name: string;
@@ -110,6 +111,15 @@ const OrderForm: React.FC<OrderFormProps> = ({
     { trackingId: string; customerInfo: string; orderStatus: string }[]
   >([]);
 
+  // City services
+
+  const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [cityQuery, setCityQuery] = useState("");
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   // Confirmation dialog states
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -120,6 +130,66 @@ const OrderForm: React.FC<OrderFormProps> = ({
     type: "warning" as "warning" | "danger" | "info",
     onConfirm: () => {},
   });
+
+  // Add this useEffect for click outside detection
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        cityInputRef.current &&
+        !cityInputRef.current.contains(event.target as Node)
+      ) {
+        setShowCitySuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Add this function for city search
+  const handleCitySearch = async (query: string) => {
+    setCityQuery(query); // Set the query for tracking
+
+    if (query.trim().length < 2) {
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+      return;
+    }
+
+    setIsLoadingCities(true);
+    try {
+      const result = await searchCities(query);
+      if (result.success && result.data) {
+        setCitySuggestions(result.data);
+        setShowCitySuggestions(result.data.length > 0);
+      } else {
+        setCitySuggestions([]);
+        setShowCitySuggestions(false);
+      }
+    } catch (error) {
+      console.error("Error searching cities:", error);
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+    } finally {
+      setIsLoadingCities(false);
+    }
+  };
+
+  // Add this function for city selection
+  const handleCitySelect = (city: City) => {
+    setFormData((prev) => ({ ...prev, mainCity: city.name }));
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+
+    // Focus back on input after selection
+    if (cityInputRef.current) {
+      cityInputRef.current.focus();
+    }
+  };
 
   // Load product prices from ProductManager
   useEffect(() => {
@@ -1002,20 +1072,74 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     </div>
 
                     {/* Main City Input */}
-                    <div>
+                    <div className="relative">
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Main City
                       </label>
                       <input
+                        ref={cityInputRef}
                         type="text"
-                        value={formData.mainCity}
-                        onChange={(e) =>
-                          handleInputChange("mainCity", e.target.value)
-                        }
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg "
-                        placeholder="e.g., Colombo, Kandy, Galle"
+                        value={formData.mainCity} // CHANGE: Use only formData.mainCity
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData((prev) => ({ ...prev, mainCity: value }));
+                          handleCitySearch(value); // This will update cityQuery internally
+                        }}
+                        onFocus={() => {
+                          if (formData.mainCity.length >= 2) {
+                            handleCitySearch(formData.mainCity); // Trigger search on focus if text exists
+                          }
+                        }}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Start typing city name..."
                         disabled={isSubmitting}
                       />
+
+                      {isLoadingCities && (
+                        <div className="absolute right-3 top-8">
+                          <div className="w-4 h-4 border-b-2 rounded-full animate-spin border-primary"></div>
+                        </div>
+                      )}
+
+                      {/* City Suggestions Dropdown */}
+                      {showCitySuggestions && citySuggestions.length > 0 && (
+                        <div
+                          ref={suggestionsRef}
+                          className="absolute z-10 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg max-h-60"
+                        >
+                          {citySuggestions.map((city, index) => (
+                            <div
+                              key={`${city.name}-${index}`}
+                              onClick={() => handleCitySelect(city)}
+                              className="px-3 py-2 border-b border-gray-100 cursor-pointer hover:bg-blue-50 last:border-b-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {city.name}
+                                  </div>
+                                  {city.region && (
+                                    <div className="text-xs text-gray-500">
+                                      {city.region}
+                                    </div>
+                                  )}
+                                </div>
+                                {city.deliveryDays && (
+                                  <div className="text-xs text-blue-600">
+                                    {city.deliveryDays} day
+                                    {city.deliveryDays !== 1 ? "s" : ""}
+                                  </div>
+                                )}
+                              </div>
+                              {city.specialNotes && (
+                                <div className="mt-1 text-xs text-gray-400">
+                                  {city.specialNotes}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
