@@ -13,6 +13,7 @@ interface Order {
   addressLine1: string;
   addressLine2?: string;
   addressLine3?: string;
+  mainCity?: string; // ADDED: Main City field
   contact: string;
   products: Product[];
   status:
@@ -35,6 +36,7 @@ interface Order {
 interface SheetOrder {
   trackingId: string;
   customerInfo: string;
+  mainCity: string; // ADDED: Main City field
   oilQty: number;
   shampooQty: number;
   conditionerQty: number;
@@ -107,7 +109,7 @@ function formatCustomerInfo(order: Order): string {
   return `${order.name}\n${addressParts}\n${order.contact}`;
 }
 
-// Function to convert order to sheet row format
+// Function to convert order to sheet row format - UPDATED to include Main City at Column Q (index 16)
 function orderToSheetRow(order: Order): (string | number)[] {
   const oilQty = order.products.find((p) => p.name === "Oil")?.quantity || 0;
   const shampooQty =
@@ -125,24 +127,30 @@ function orderToSheetRow(order: Order): (string | number)[] {
 
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
-  return [
-    order.tracking || `LK${Date.now()}`,
-    formatCustomerInfo(order),
-    oilQty,
-    shampooQty,
-    conditionerQty,
-    totalAmount,
-    order.status,
-    order.paymentMethod,
-    order.paymentReceived ? "Yes" : "No",
-    order.freeShipping ? "Yes" : "No",
-    order.orderDate,
-    new Date().toISOString().split("T")[0],
-    sprayQty,
-    serumQty,
-    premiumQty,
-    castorQty,
+  // Base row data (columns A through P)
+  const rowData = [
+    order.tracking || `LK${Date.now()}`, // A (0): Tracking ID
+    formatCustomerInfo(order), // B (1): Customer Info
+    oilQty, // C (2): Oil Qty
+    shampooQty, // D (3): Shampoo Qty
+    conditionerQty, // E (4): Conditioner Qty
+    totalAmount, // F (5): Total Amount
+    order.status, // G (6): Order Status
+    order.paymentMethod, // H (7): Payment Method
+    order.paymentReceived ? "Yes" : "No", // I (8): Payment Received
+    order.freeShipping ? "Yes" : "No", // J (9): Free Shipping
+    order.orderDate, // K (10): Order Date
+    new Date().toISOString().split("T")[0], // L (11): Last Updated
+    sprayQty, // M (12): Spray Qty
+    serumQty, // N (13): Serum Qty
+    premiumQty, // O (14): Premium Qty
+    castorQty, // P (15): Castor Qty
   ];
+
+  // Add Main City at Column Q (index 16)
+  rowData.push(order.mainCity || ""); // Q (16): Main City
+
+  return rowData;
 }
 
 // Function to add a new order to Google Sheets
@@ -202,7 +210,7 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
   }
 }
 
-// Function to update an existing order - FIXED VERSION
+// Function to update an existing order - UPDATED to include Main City
 export async function updateOrderInSheet(
   trackingId: string,
   updatedOrder: Order,
@@ -213,7 +221,7 @@ export async function updateOrderInSheet(
       throw new Error("No access token found. Please sign in first.");
     }
 
-    // Get all data to find the row with the tracking ID - USE ACCESS TOKEN
+    // Get all data to find the row with the tracking ID
     const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
       {
@@ -243,14 +251,14 @@ export async function updateOrderInSheet(
     const updatedRowData = orderToSheetRow(updatedOrder);
     const actualRowNumber = rowIndex + 1; // Convert to 1-based indexing
 
-    // Update the row - USE ACCESS TOKEN HERE TOO
+    // Update the row - NOW INCLUDES COLUMN Q
     const updateResponse = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:O${actualRowNumber}?valueInputOption=RAW`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:Q${actualRowNumber}?valueInputOption=RAW`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`, // THIS WAS MISSING!
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           values: [updatedRowData],
@@ -385,7 +393,7 @@ export async function deleteOrderFromSheet(
   }
 }
 
-// Function to get all orders from the sheet - FIXED to include sprayQty and serumQty and correct column indices
+// Function to get all orders from the sheet - UPDATED to include Main City
 export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
   try {
     // First try with access token (for authenticated requests)
@@ -415,10 +423,11 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
     const data = await response.json();
     const rows = data.values || [];
 
-    // Skip header row and convert to SheetOrder format - CORRECTED INDICES
+    // Skip header row and convert to SheetOrder format - INCLUDING MAIN CITY
     const orders: SheetOrder[] = rows.slice(1).map((row: any[]) => ({
       trackingId: row[0] || "",
       customerInfo: row[1] || "",
+      mainCity: row[16] || "", // Q (16): Main City
       oilQty: parseInt(row[2]) || 0,
       shampooQty: parseInt(row[3]) || 0,
       conditionerQty: parseInt(row[4]) || 0,
@@ -426,7 +435,6 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       serumQty: parseInt(row[13]) || 0,
       premiumQty: parseInt(row[14]) || 0,
       castorQty: parseInt(row[15]) || 0,
-
       totalAmount: parseFloat(row[5]) || 0,
       orderStatus: row[6] || "",
       paymentMethod: row[7] || "",
