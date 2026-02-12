@@ -11,7 +11,11 @@ import {
   isValidPhoneNumber,
   sendOrderConfirmationSMS,
 } from "../assets/services/smsService";
-import { searchCities, City } from "../assets/services/cityService";
+import {
+  searchCities,
+  City,
+  testCityService,
+} from "../assets/services/cityService";
 
 interface Order {
   name: string;
@@ -112,7 +116,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
   >([]);
 
   // City services
-
   const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
@@ -131,7 +134,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     onConfirm: () => {},
   });
 
-  // Add this useEffect for click outside detection
+  // Click outside detection for city suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -150,9 +153,16 @@ const OrderForm: React.FC<OrderFormProps> = ({
     };
   }, []);
 
-  // Add this function for city search
+  // Test city service when form opens
+  useEffect(() => {
+    if (isOpen) {
+      testCityService();
+    }
+  }, [isOpen]);
+
+  // City search function
   const handleCitySearch = async (query: string) => {
-    setCityQuery(query); // Set the query for tracking
+    setCityQuery(query);
 
     if (query.trim().length < 2) {
       setCitySuggestions([]);
@@ -163,6 +173,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     setIsLoadingCities(true);
     try {
       const result = await searchCities(query);
+
       if (result.success && result.data) {
         setCitySuggestions(result.data);
         setShowCitySuggestions(result.data.length > 0);
@@ -179,25 +190,17 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   };
 
-  // Update this function in your OrderForm component
+  // City selection function
   const handleCitySelect = (city: City) => {
+    // Set the selected city
     setFormData((prev) => ({ ...prev, mainCity: city.name }));
 
-    // Optional: Store additional city information if needed
-    // You can add these to a separate state if you want to use them
-    console.log("Selected city details:", {
-      name: city.name,
-      district: city.district_name,
-      zone: city.zone_name,
-      districtId: city.district_id,
-      zoneId: city.zone_id,
-    });
-
+    // Clear suggestions and hide dropdown
     setCitySuggestions([]);
     setShowCitySuggestions(false);
-    setCityQuery(""); // Clear the query
+    setCityQuery("");
 
-    // Focus back on input after selection
+    // Focus back on input
     if (cityInputRef.current) {
       cityInputRef.current.focus();
     }
@@ -208,16 +211,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
     const loadProductPrices = async () => {
       setLoadingProducts(true);
       try {
-        // Get products from ProductManager
         const productResult = await getAllProductsFromSheet();
-
-        // Get dynamic product columns from Orders sheet
         const sheetStructure = await getSheetStructure();
 
         const prices: ProductPrices = {};
         const products: string[] = [];
 
-        // Add products from ProductManager
         if (
           productResult.success &&
           productResult.data &&
@@ -229,7 +228,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           });
         }
 
-        // Add products from dynamic columns (products that exist in orders)
         if (
           sheetStructure.success &&
           sheetStructure.data &&
@@ -243,7 +241,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           });
         }
 
-        // Fallbacks
         if (products.length === 0) {
           const defaults = ["Oil", "Shampoo", "Conditioner"];
           const defaultPrices: ProductPrices = {
@@ -280,19 +277,15 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setLoadingProducts(false);
     };
 
-    // Generate suggested tracking ID for new orders
     const generateSuggestedTrackingId = () => {
       if (mode === "create") {
-        // Get the last used tracking ID from localStorage or generate a default
         const lastTrackingId = localStorage.getItem("lastTrackingId");
         if (lastTrackingId && /^\d{8}$/.test(lastTrackingId)) {
-          // Increment the last tracking ID by 1
           const nextId = (parseInt(lastTrackingId) + 1)
             .toString()
             .padStart(8, "0");
           setSuggestedTrackingId(nextId);
         } else {
-          // Default starting tracking ID if none exists
           setSuggestedTrackingId("10000001");
         }
       }
@@ -322,7 +315,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   }, [isOpen, mode]);
 
-  // Initialize product state when prices are loaded or when initialOrder changes
+  // Initialize product state
   useEffect(() => {
     if (availableProducts.length > 0) {
       const productState: Record<
@@ -330,7 +323,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         { selected: boolean; quantity: number; price: number }
       > = {};
 
-      // Initialize all available products
       availableProducts.forEach((productName) => {
         productState[productName] = {
           selected: false,
@@ -339,7 +331,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         };
       });
 
-      // If we're updating an existing order, set the selected products
       if (initialOrder && mode === "update") {
         initialOrder.products.forEach((product) => {
           if (product.name in productState) {
@@ -349,13 +340,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
               price: product.price,
             };
           } else {
-            // Handle case where product exists in order but not in available products
             productState[product.name] = {
               selected: true,
               quantity: product.quantity,
               price: product.price,
             };
-            // Add to available products
             setAvailableProducts((prev) => [...prev, product.name]);
             setProductPrices((prev) => ({
               ...prev,
@@ -372,7 +361,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   }, [availableProducts, productPrices, initialOrder, mode]);
 
-  // Set form data when initialOrder changes or when mode changes
+  // Set form data for update mode
   useEffect(() => {
     if (
       initialOrder &&
@@ -391,7 +380,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setFormData((prev) => ({
         ...prev,
         customerInfo,
-        mainCity: initialOrder.mainCity || "", // Set Main City
+        mainCity: initialOrder.mainCity || "",
         trackingId: initialOrder.tracking || "",
         status: initialOrder.status,
         paymentMethod: initialOrder.paymentMethod,
@@ -405,15 +394,21 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setFormData((prev) => ({
         ...prev,
         customerInfo: "",
-        mainCity: "", // Initialize Main City as empty
-        trackingId: suggestedTrackingId, // Use suggested tracking ID
+        mainCity: "",
+        trackingId: suggestedTrackingId,
         status: "Preparing",
         paymentMethod: "COD",
         paymentReceived: false,
         freeShipping: false,
       }));
     }
-  }, [initialOrder, mode, isOpen, suggestedTrackingId]);
+  }, [
+    initialOrder,
+    mode,
+    isOpen,
+    suggestedTrackingId,
+    formData.products.length,
+  ]);
 
   // Check contact number against orders with return statuses
   useEffect(() => {
@@ -425,7 +420,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
     const lines = formData.customerInfo.split("\n").filter((l) => l.trim());
     if (lines.length < 2) return;
 
-    // Contact is the last line; extract all phone numbers from it
     const contactLine = lines[lines.length - 1];
     const contacts = contactLine
       .split(/[,\s\n]+/)
@@ -436,17 +430,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setReturnWarning({ show: false, orders: [] });
       return;
     }
-
-    // DEBUG: Log to help troubleshoot
-    const uniqueStatuses = Array.from(
-      new Set(cachedOrdersRef.current.map((o) => o.orderStatus)),
-    );
-    console.log(
-      "[Return Check] Cached orders:",
-      cachedOrdersRef.current.length,
-    );
-    console.log("[Return Check] Unique statuses in sheet:", uniqueStatuses);
-    console.log("[Return Check] Contacts extracted:", contacts);
 
     const matchingOrders = cachedOrdersRef.current
       .filter((order) => {
@@ -461,7 +444,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         )
           return false;
 
-        // Check if any entered contact appears in this order's customerInfo
         return contacts.some((contact) => order.customerInfo.includes(contact));
       })
       .map((order) => {
@@ -550,7 +532,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Confirmation dialog handlers
   const handleCloseConfirmation = () => {
     setConfirmDialog({
       isOpen: true,
@@ -616,13 +597,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
       const currentTimestamp = createOrderTimestamp();
 
-      // Localized date and time string
       const orderData: Order = {
         name,
         addressLine1,
         addressLine2,
         addressLine3,
-        mainCity: formData.mainCity.trim(), // Include Main City
+        mainCity: formData.mainCity.trim(),
         contact: contact,
         products: selectedProducts,
         status: formData.status,
@@ -637,16 +617,13 @@ const OrderForm: React.FC<OrderFormProps> = ({
             : formData.paymentReceived,
         freeShipping: formData.freeShipping,
         tracking: formData.trackingId,
-        lastUpdated: currentTimestamp, // Always update this to current time
+        lastUpdated: currentTimestamp,
       };
 
-      // Submit the order
       await onSubmit(orderData);
 
-      // ====== SEND SMS FOR NEW ORDERS ======
       if (mode === "create") {
         try {
-          // Extract first phone number
           const contacts = contact
             .split(/[,\s\n]+/)
             .map((c) => c.trim())
@@ -655,7 +632,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           const primaryContact = contacts[0];
 
           if (primaryContact && isValidPhoneNumber(primaryContact)) {
-            // Calculate total
             const subtotal = selectedProducts.reduce(
               (sum, product) => sum + product.price * product.quantity,
               0,
@@ -665,7 +641,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
               ? subtotal
               : subtotal + 350;
 
-            // Send SMS
             sendOrderConfirmationSMS({
               customerName: name,
               phoneNumber: primaryContact,
@@ -693,9 +668,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           console.error("Error in SMS process:", smsError);
         }
       }
-      // ====== END SMS CODE ======
 
-      // Save the tracking ID as the last used one for future suggestions
       if (mode === "create") {
         localStorage.setItem("lastTrackingId", formData.trackingId);
       }
@@ -709,12 +682,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: any) => {
-    // For tracking ID, only allow digits and limit to 8 characters
     if (field === "trackingId") {
-      value = value.replace(/\D/g, "").slice(0, 8); // Remove non-digits and limit to 8 chars
+      value = value.replace(/\D/g, "").slice(0, 8);
     }
 
-    // Automatically set paymentReceived to true if payment method is Bank Transfer
     if (field === "paymentMethod" && value === "Bank Transfer") {
       setFormData((prev) => ({
         ...prev,
@@ -769,7 +740,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   const totalAmount = calculateTotal();
 
-  // Print function with empty lines using non-breaking spaces
   const handlePrint = () => {
     if (!formData.trackingId.trim()) {
       alert("Please enter a tracking ID before printing");
@@ -792,9 +762,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       alert("Please select at least one product before printing");
       return;
     }
-    const currentTimestamp = createOrderTimestamp();
 
-    // Create print content with non-breaking space lines for gaps
     const printContent = `
   <!DOCTYPE html>
   <html>
@@ -945,20 +913,18 @@ const OrderForm: React.FC<OrderFormProps> = ({
       <div class="gap">&nbsp;</div>
       <div class="gap">&nbsp;</div>
       
-      <!-- 0.5 inch bottom margin before cut -->
       <div class="bottom-margin">&nbsp;</div>
       
     </body>
   </html>
 `;
-    // Open print window
+
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
       printWindow.focus();
 
-      // Auto print after content loads
       printWindow.addEventListener("load", () => {
         setTimeout(() => {
           printWindow.print();
@@ -1061,7 +1027,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Customer Details *
                       </label>
-
                       <textarea
                         value={formData.customerInfo}
                         onChange={(e) =>
@@ -1083,7 +1048,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       )}
                     </div>
 
-                    {/* Main City Input */}
+                    {/* Main City Input with Autocomplete */}
                     <div className="relative">
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Main City
@@ -1091,20 +1056,24 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <input
                         ref={cityInputRef}
                         type="text"
-                        value={formData.mainCity} // CHANGE: Use only formData.mainCity
+                        value={formData.mainCity}
                         onChange={(e) => {
                           const value = e.target.value;
                           setFormData((prev) => ({ ...prev, mainCity: value }));
-                          handleCitySearch(value); // This will update cityQuery internally
+                          handleCitySearch(value);
                         }}
                         onFocus={() => {
-                          if (formData.mainCity.length >= 2) {
-                            handleCitySearch(formData.mainCity); // Trigger search on focus if text exists
+                          if (
+                            formData.mainCity.length >= 2 &&
+                            citySuggestions.length > 0
+                          ) {
+                            setShowCitySuggestions(true);
                           }
                         }}
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         placeholder="Start typing city name..."
                         disabled={isSubmitting}
+                        autoComplete="off"
                       />
 
                       {isLoadingCities && (
@@ -1117,7 +1086,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       {showCitySuggestions && citySuggestions.length > 0 && (
                         <div
                           ref={suggestionsRef}
-                          className="absolute z-10 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg max-h-80"
+                          className="absolute z-50 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg max-h-80"
                         >
                           {citySuggestions.map((city, index) => (
                             <div
@@ -1133,12 +1102,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                   <div className="text-xs text-gray-600">
                                     {city.district_name && (
                                       <span className="mr-2">
-                                        District: {city.district_name}
+                                        📍 {city.district_name}
                                       </span>
                                     )}
                                     {city.zone_name && (
                                       <span className="text-blue-600">
-                                        Zone: {city.zone_name}
+                                        🏷️ {city.zone_name}
                                       </span>
                                     )}
                                   </div>
