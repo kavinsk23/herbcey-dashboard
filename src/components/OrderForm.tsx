@@ -179,11 +179,23 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   };
 
-  // Add this function for city selection
+  // Update this function in your OrderForm component
   const handleCitySelect = (city: City) => {
     setFormData((prev) => ({ ...prev, mainCity: city.name }));
+
+    // Optional: Store additional city information if needed
+    // You can add these to a separate state if you want to use them
+    console.log("Selected city details:", {
+      name: city.name,
+      district: city.district_name,
+      zone: city.zone_name,
+      districtId: city.district_id,
+      zoneId: city.zone_id,
+    });
+
     setCitySuggestions([]);
     setShowCitySuggestions(false);
+    setCityQuery(""); // Clear the query
 
     // Focus back on input after selection
     if (cityInputRef.current) {
@@ -1090,7 +1102,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             handleCitySearch(formData.mainCity); // Trigger search on focus if text exists
                           }
                         }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                         placeholder="Start typing city name..."
                         disabled={isSubmitting}
                       />
@@ -1105,11 +1117,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       {showCitySuggestions && citySuggestions.length > 0 && (
                         <div
                           ref={suggestionsRef}
-                          className="absolute z-10 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg max-h-60"
+                          className="absolute z-10 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg max-h-80"
                         >
                           {citySuggestions.map((city, index) => (
                             <div
-                              key={`${city.name}-${index}`}
+                              key={city.city_id || `${city.name}-${index}`}
                               onClick={() => handleCitySelect(city)}
                               className="px-3 py-2 border-b border-gray-100 cursor-pointer hover:bg-blue-50 last:border-b-0"
                             >
@@ -1118,24 +1130,25 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                   <div className="font-medium text-gray-900">
                                     {city.name}
                                   </div>
-                                  {city.region && (
-                                    <div className="text-xs text-gray-500">
-                                      {city.region}
-                                    </div>
-                                  )}
+                                  <div className="text-xs text-gray-600">
+                                    {city.district_name && (
+                                      <span className="mr-2">
+                                        District: {city.district_name}
+                                      </span>
+                                    )}
+                                    {city.zone_name && (
+                                      <span className="text-blue-600">
+                                        Zone: {city.zone_name}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                {city.deliveryDays && (
-                                  <div className="text-xs text-blue-600">
-                                    {city.deliveryDays} day
-                                    {city.deliveryDays !== 1 ? "s" : ""}
+                                {city.city_id && (
+                                  <div className="text-xs text-gray-400">
+                                    ID: {city.city_id}
                                   </div>
                                 )}
                               </div>
-                              {city.specialNotes && (
-                                <div className="mt-1 text-xs text-gray-400">
-                                  {city.specialNotes}
-                                </div>
-                              )}
                             </div>
                           ))}
                         </div>
