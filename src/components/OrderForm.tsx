@@ -14,8 +14,15 @@ import {
 import {
   searchCities,
   City,
-  testCityService,
+  detectCityFromAddress,
 } from "../assets/services/cityService";
+
+// Add this to declare the timeout property on window
+declare global {
+  interface Window {
+    cityDetectionTimeout?: NodeJS.Timeout;
+  }
+}
 
 interface Order {
   name: string;
@@ -119,6 +126,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [isDetectingCity, setIsDetectingCity] = useState(false);
   const [cityQuery, setCityQuery] = useState("");
   const cityInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -153,12 +161,14 @@ const OrderForm: React.FC<OrderFormProps> = ({
     };
   }, []);
 
-  // Test city service when form opens
+  // Cleanup timeout on unmount
   useEffect(() => {
-    if (isOpen) {
-      testCityService();
-    }
-  }, [isOpen]);
+    return () => {
+      if (window.cityDetectionTimeout) {
+        clearTimeout(window.cityDetectionTimeout);
+      }
+    };
+  }, []);
 
   // City search function
   const handleCitySearch = async (query: string) => {
@@ -192,17 +202,106 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   // City selection function
   const handleCitySelect = (city: City) => {
-    // Set the selected city
     setFormData((prev) => ({ ...prev, mainCity: city.name }));
-
-    // Clear suggestions and hide dropdown
     setCitySuggestions([]);
     setShowCitySuggestions(false);
     setCityQuery("");
 
-    // Focus back on input
     if (cityInputRef.current) {
       cityInputRef.current.focus();
+    }
+  };
+
+  /**
+   * Auto-detect city from address using Google Sheets data
+   */
+  const handleAutoDetectCity = async (address: string) => {
+    if (
+      !address.trim() ||
+      formData.mainCity.trim() ||
+      isDetectingCity ||
+      mode !== "create"
+    ) {
+      return;
+    }
+
+    setIsDetectingCity(true);
+    try {
+      console.log("🔍 Auto-detecting city from address...");
+      const result = await detectCityFromAddress(address);
+
+      if (result.success && result.data) {
+        const detectedCity = result.data;
+        console.log(`✅ Auto-detected city: ${detectedCity.name}`);
+
+        setFormData((prev) => ({ ...prev, mainCity: detectedCity.name }));
+        setCitySuggestions([detectedCity]);
+        setShowCitySuggestions(false);
+      } else {
+        console.log("❌ Could not auto-detect city");
+      }
+    } catch (error) {
+      console.error("Error in auto city detection:", error);
+    } finally {
+      setIsDetectingCity(false);
+    }
+  };
+
+  /**
+   * Manual detection button handler
+   */
+  const handleManualDetectCity = async () => {
+    if (!formData.customerInfo.trim()) {
+      alert("Please enter customer address first");
+      return;
+    }
+
+    setIsDetectingCity(true);
+    try {
+      const result = await detectCityFromAddress(formData.customerInfo);
+
+      if (result.success && result.data) {
+        const detectedCity = result.data;
+        setFormData((prev) => ({ ...prev, mainCity: detectedCity.name }));
+
+        const searchResult = await searchCities(detectedCity.name);
+        if (searchResult.success && searchResult.data) {
+          setCitySuggestions(searchResult.data);
+          setShowCitySuggestions(true);
+        }
+
+        if (cityInputRef.current) {
+          cityInputRef.current.focus();
+        }
+
+        console.log(`✅ Manually detected city: ${detectedCity.name}`);
+      } else {
+        alert(
+          "Could not detect a city from this address. Please type manually.",
+        );
+      }
+    } catch (error) {
+      console.error("Error detecting city:", error);
+      alert("Error detecting city. Please try again or type manually.");
+    } finally {
+      setIsDetectingCity(false);
+    }
+  };
+
+  /**
+   * Handle customer info change with debounced city detection
+   */
+  const handleCustomerInfoChange = (value: string) => {
+    handleInputChange("customerInfo", value);
+
+    if (mode === "create" && !formData.mainCity) {
+      if (window.cityDetectionTimeout) {
+        clearTimeout(window.cityDetectionTimeout);
+      }
+
+      window.cityDetectionTimeout = setTimeout(() => {
+        handleAutoDetectCity(value);
+      }, 800);
     }
   };
 
@@ -659,10 +758,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
               .catch((error) => {
                 console.error("⚠️ SMS error:", error);
               });
-
-            console.log(`📱 SMS queued for ${primaryContact}`);
-          } else {
-            console.warn("⚠️ Invalid phone number, SMS not sent");
           }
         } catch (smsError) {
           console.error("Error in SMS process:", smsError);
@@ -1023,6 +1118,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         </div>
                       </div>
                     )}
+
+                    {/* Customer Details Textarea */}
                     <div>
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Customer Details *
@@ -1030,7 +1127,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <textarea
                         value={formData.customerInfo}
                         onChange={(e) =>
-                          handleInputChange("customerInfo", e.target.value)
+                          handleCustomerInfoChange(e.target.value)
                         }
                         className={`w-full px-3 py-2 border rounded-lg min-h-36 text-sm ${
                           errors.customerInfo
@@ -1048,35 +1145,118 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       )}
                     </div>
 
-                    {/* Main City Input with Autocomplete */}
+                    {/* Main City Input with Auto-Detection */}
                     <div className="relative">
-                      <label className="block mb-1 text-sm font-medium text-gray-700">
-                        Main City
-                      </label>
-                      <input
-                        ref={cityInputRef}
-                        type="text"
-                        value={formData.mainCity}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setFormData((prev) => ({ ...prev, mainCity: value }));
-                          handleCitySearch(value);
-                        }}
-                        onFocus={() => {
-                          if (
-                            formData.mainCity.length >= 2 &&
-                            citySuggestions.length > 0
-                          ) {
-                            setShowCitySuggestions(true);
-                          }
-                        }}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
-                        placeholder="Start typing city name..."
-                        disabled={isSubmitting}
-                        autoComplete="off"
-                      />
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Main City
+                          {isDetectingCity && (
+                            <span className="ml-2 text-xs text-blue-500 animate-pulse">
+                              ⏳ Detecting...
+                            </span>
+                          )}
+                        </label>
+                        {mode === "create" && (
+                          <button
+                            type="button"
+                            onClick={handleManualDetectCity}
+                            disabled={
+                              isDetectingCity || !formData.customerInfo.trim()
+                            }
+                            className={`text-xs flex items-center ${
+                              isDetectingCity || !formData.customerInfo.trim()
+                                ? "text-gray-400 cursor-not-allowed"
+                                : "text-blue-600 hover:text-blue-800"
+                            }`}
+                          >
+                            <svg
+                              className={`w-3 h-3 mr-1 ${isDetectingCity ? "animate-spin" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                            {isDetectingCity ? "Detecting..." : "Detect City"}
+                          </button>
+                        )}
+                      </div>
 
-                      {isLoadingCities && (
+                      <div className="relative">
+                        <input
+                          ref={cityInputRef}
+                          type="text"
+                          value={formData.mainCity}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setFormData((prev) => ({
+                              ...prev,
+                              mainCity: value,
+                            }));
+                            handleCitySearch(value);
+                          }}
+                          onFocus={() => {
+                            if (
+                              formData.mainCity.length >= 2 &&
+                              citySuggestions.length > 0
+                            ) {
+                              setShowCitySuggestions(true);
+                            }
+                          }}
+                          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            formData.mainCity && !isDetectingCity
+                              ? "border-green-300 bg-green-50"
+                              : isDetectingCity
+                                ? "border-blue-300 bg-blue-50"
+                                : "border-gray-300"
+                          }`}
+                          placeholder={
+                            isDetectingCity
+                              ? "Detecting city from address..."
+                              : "City will auto-detect from address"
+                          }
+                          disabled={isSubmitting || isDetectingCity}
+                          autoComplete="off"
+                        />
+
+                        {formData.mainCity && !isDetectingCity && (
+                          <div className="absolute right-3 top-2.5">
+                            <svg
+                              className="w-4 h-4 text-green-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </div>
+                        )}
+
+                        {isDetectingCity && (
+                          <div className="absolute right-3 top-2.5">
+                            <div className="w-4 h-4 border-2 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Loading indicator for city search */}
+                      {isLoadingCities && !isDetectingCity && (
                         <div className="absolute right-3 top-8">
                           <div className="w-4 h-4 border-b-2 rounded-full animate-spin border-primary"></div>
                         </div>

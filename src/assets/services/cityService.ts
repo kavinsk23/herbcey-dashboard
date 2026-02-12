@@ -23,7 +23,7 @@ export interface ApiResponse<T = any> {
 // Configuration - Your sheet name is "Cities"
 const GOOGLE_API_KEY = process.env.REACT_APP_GOOGLE_API_KEY || "";
 const SPREADSHEET_ID = process.env.REACT_APP_GOOGLE_SHEET_ID || "";
-const CITY_SHEET_NAME = "Cities"; // ✅ Set to your actual sheet name
+const CITY_SHEET_NAME = "Cities"; // Your actual sheet name
 
 // Cache for cities to reduce API calls
 let citiesCache: City[] = [];
@@ -62,7 +62,6 @@ export async function getCitiesFromSheet(): Promise<ApiResponse<City[]>> {
     console.log("🔍 Fetching cities from Google Sheets...");
     console.log("📊 Sheet ID:", SPREADSHEET_ID);
     console.log("📑 Sheet Name:", CITY_SHEET_NAME);
-    console.log("🔑 API Key exists:", !!GOOGLE_API_KEY);
 
     // Get data from your "Cities" sheet
     const response = await getSheetData(CITY_SHEET_NAME);
@@ -359,6 +358,175 @@ export async function searchCities(
 }
 
 /**
+ * Detect city from address by matching against database
+ */
+export async function detectCityFromAddress(
+  address: string,
+): Promise<ApiResponse<City | null>> {
+  try {
+    if (!address || address.trim().length < 3) {
+      return { success: false, error: "Address too short" };
+    }
+
+    // Get all cities from cache or sheet
+    const result = await getCitiesFromSheet();
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      return { success: false, error: "No cities available" };
+    }
+
+    const cities = result.data;
+    const addressLower = address.toLowerCase();
+    const lines = address.split("\n").filter((line) => line.trim());
+    const words = address
+      .split(/[\s,\n]+/)
+      .filter((word) => word.trim().length > 2)
+      .map((word) => word.toLowerCase().replace(/[^\w\s]/g, ""));
+
+    // SCORING SYSTEM: Check different parts of address with priority
+    const cityScores: Map<City, number> = new Map();
+
+    cities.forEach((city) => {
+      let score = 0;
+      const cityNameLower = city.name.toLowerCase();
+      const districtLower = (city.district_name || "").toLowerCase();
+      const zoneLower = (city.zone_name || "").toLowerCase();
+
+      // PRIORITY 1: Exact match in last 2 lines (most likely to be city)
+      for (let i = lines.length - 1; i >= Math.max(0, lines.length - 2); i--) {
+        const line = lines[i].toLowerCase();
+        if (line.includes(cityNameLower)) {
+          score += 100;
+          // Bonus if it's the exact line or standalone
+          if (line.trim() === cityNameLower) {
+            score += 50;
+          }
+          // Bonus if it's at the end of the line
+          if (line.trim().endsWith(cityNameLower)) {
+            score += 25;
+          }
+        }
+        if (districtLower && line.includes(districtLower)) {
+          score += 30;
+        }
+        if (zoneLower && line.includes(zoneLower)) {
+          score += 20;
+        }
+      }
+
+      // PRIORITY 2: Match in any line
+      lines.forEach((line) => {
+        const lineLower = line.toLowerCase();
+        if (lineLower.includes(cityNameLower)) {
+          score += 20;
+        }
+      });
+
+      // PRIORITY 3: Match in individual words
+      words.forEach((word) => {
+        if (word === cityNameLower) {
+          score += 50; // Exact word match
+        } else if (cityNameLower.includes(word) && word.length > 3) {
+          score += 15; // Partial match
+        } else if (word.includes(cityNameLower) && cityNameLower.length > 3) {
+          score += 10; // City name contained in word
+        }
+      });
+
+      // PRIORITY 4: Postal code match
+      const postalCodeMatch = address.match(/\b(\d{5})\b/);
+      if (postalCodeMatch) {
+        const postalCode = postalCodeMatch[1];
+        // Check if this city is associated with this postal code
+        if (city.city_id) {
+          const cityIdStr = city.city_id.toString();
+          if (postalCode.startsWith(cityIdStr.substring(0, 1))) {
+            score += 25;
+          }
+          if (postalCode.substring(0, 2) === cityIdStr.substring(0, 2)) {
+            score += 15;
+          }
+        }
+      }
+
+      // PRIORITY 5: District/Region match
+      if (districtLower) {
+        words.forEach((word) => {
+          if (word.includes(districtLower) || districtLower.includes(word)) {
+            score += 10;
+          }
+        });
+        // Check if district name appears in address
+        if (addressLower.includes(districtLower)) {
+          score += 15;
+        }
+      }
+
+      // PRIORITY 6: Zone match
+      if (zoneLower) {
+        if (addressLower.includes(zoneLower)) {
+          score += 10;
+        }
+      }
+
+      // PRIORITY 7: City appears in first line (sometimes it's the company/customer name)
+      if (lines.length > 0) {
+        const firstLine = lines[0].toLowerCase();
+        if (firstLine.includes(cityNameLower)) {
+          score += 5;
+        }
+      }
+
+      if (score > 0) {
+        cityScores.set(city, score);
+      }
+    });
+
+    // Sort by score and get best match
+    const sortedCities = Array.from(cityScores.entries()).sort(
+      (a, b) => b[1] - a[1],
+    );
+
+    if (sortedCities.length > 0) {
+      const bestMatch = sortedCities[0][0];
+      const bestScore = sortedCities[0][1];
+      const secondScore = sortedCities.length > 1 ? sortedCities[1][1] : 0;
+
+      // Only return if score is significant and better than second by a margin
+      if (
+        bestScore > 40 &&
+        (bestScore - secondScore > 10 || sortedCities.length === 1)
+      ) {
+        console.log(
+          `🏆 Best city match: ${bestMatch.name} (score: ${bestScore})`,
+        );
+        return { success: true, data: bestMatch };
+      } else if (bestScore > 60) {
+        // High confidence match
+        console.log(
+          `🏆 High confidence city match: ${bestMatch.name} (score: ${bestScore})`,
+        );
+        return { success: true, data: bestMatch };
+      } else {
+        console.log(
+          `🤔 Low confidence city match: ${bestMatch.name} (score: ${bestScore})`,
+        );
+        return { success: true, data: null };
+      }
+    }
+
+    console.log("❌ No matching city found in database");
+    return { success: true, data: null };
+  } catch (error) {
+    console.error("❌ Error detecting city from address:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
  * Get unique districts
  */
 export async function getDistricts(): Promise<ApiResponse<string[]>> {
@@ -425,6 +593,33 @@ export async function getZones(): Promise<ApiResponse<string[]>> {
 }
 
 /**
+ * Get city by name
+ */
+export async function getCityByName(
+  name: string,
+): Promise<ApiResponse<City | null>> {
+  try {
+    const result = await getCitiesFromSheet();
+
+    if (!result.success || !result.data) {
+      return { success: false, error: "Failed to load cities" };
+    }
+
+    const city = result.data.find(
+      (c: City) => c.name.toLowerCase() === name.toLowerCase(),
+    );
+
+    return { success: true, data: city || null };
+  } catch (error) {
+    console.error("❌ Error getting city by name:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
  * Clear cache (useful for development)
  */
 export function clearCitiesCache(): void {
@@ -453,6 +648,11 @@ export async function testCityService(): Promise<void> {
     if (result.success && result.data) {
       console.log(`✅ Test passed! Loaded ${result.data.length} cities`);
       console.log("📋 First 3 cities:", result.data.slice(0, 3));
+
+      // Test detection
+      const testAddress = "John Doe\n123 Main Street\nColombo 01\n0771234567";
+      const detectionResult = await detectCityFromAddress(testAddress);
+      console.log("🧪 City detection test:", detectionResult);
     } else {
       console.warn("⚠️ Test warning:", result.error);
     }
@@ -512,7 +712,6 @@ function getDefaultCities(): City[] {
       district_name: "Colombo",
       region: "Colombo",
     },
-    // Additional default cities
     {
       name: "Colombo",
       zone_id: 2,
