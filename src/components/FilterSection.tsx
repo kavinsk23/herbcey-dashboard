@@ -23,7 +23,8 @@ type ProductType =
   | "Conditioner"
   | "Spray"
   | "Serum"
-  | "Premium";
+  | "Premium"
+  | "Castor";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface FilterSectionProps {
@@ -102,6 +103,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     Spray: "bg-blue-600 text-white",
     Serum: "bg-purple-700 text-white",
     Premium: "bg-amber-600 text-white",
+    Castor: "bg-yellow-800 text-white",
   };
 
   const paymentStatusColors: Record<PaymentStatusType, string> = {
@@ -167,7 +169,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     if (!startDate && endDate) return new Date(endDate).toLocaleDateString();
     if (startDate === endDate) return new Date(startDate).toLocaleDateString();
     return `${new Date(startDate).toLocaleDateString()} - ${new Date(
-      endDate
+      endDate,
     ).toLocaleDateString()}`;
   };
 
@@ -209,7 +211,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
         : [...selectedPaymentStatus.filter((p) => p !== "All"), paymentStatus];
 
       setSelectedPaymentStatus(
-        newSelection.length === 0 ? ["All"] : newSelection
+        newSelection.length === 0 ? ["All"] : newSelection,
       );
     }
   };
@@ -470,7 +472,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                             <span className="absolute w-2 h-2 rounded-full -top-1 -right-1 bg-primary"></span>
                           )}
                       </button>
-                    )
+                    ),
                   )}
                 </div>
               </div>

@@ -32,7 +32,8 @@ type ProductType =
   | "Conditioner"
   | "Spray"
   | "Serum"
-  | "Premium";
+  | "Premium"
+  | "Castor";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -158,6 +159,13 @@ const Orders: React.FC = () => {
               price: 2600,
             });
           }
+          if (sheetOrder.castorQty > 0) {
+            products.push({
+              name: "Castor",
+              quantity: sheetOrder.castorQty,
+              price: 2400,
+            });
+          }
 
           return {
             name,
@@ -226,7 +234,7 @@ const Orders: React.FC = () => {
     const matchesProduct =
       selectedProduct.includes("All") ||
       order.products.some((product) =>
-        selectedProduct.includes(product.name as ProductType)
+        selectedProduct.includes(product.name as ProductType),
       );
 
     const matchesPaymentStatus =
@@ -316,27 +324,27 @@ const Orders: React.FC = () => {
               orderData.products.map((product) => ({
                 name: product.name,
                 quantity: product.quantity,
-              }))
+              })),
             );
 
             if (stockReductionResult.success) {
               console.log("Stock reduced successfully for new order");
               alert(
-                `Order created successfully! Tracking ID: ${result.trackingId}\nStock has been updated automatically.`
+                `Order created successfully! Tracking ID: ${result.trackingId}\nStock has been updated automatically.`,
               );
             } else {
               console.error(
                 "Failed to reduce stock:",
-                stockReductionResult.error
+                stockReductionResult.error,
               );
               alert(
-                `Order created successfully! Tracking ID: ${result.trackingId}\nWarning: Failed to update stock - ${stockReductionResult.error}`
+                `Order created successfully! Tracking ID: ${result.trackingId}\nWarning: Failed to update stock - ${stockReductionResult.error}`,
               );
             }
           } catch (stockError) {
             console.error("Error reducing stock:", stockError);
             alert(
-              `Order created successfully! Tracking ID: ${result.trackingId}\nWarning: Failed to update stock automatically.`
+              `Order created successfully! Tracking ID: ${result.trackingId}\nWarning: Failed to update stock automatically.`,
             );
           }
 
@@ -351,7 +359,7 @@ const Orders: React.FC = () => {
             // Update the order first
             const result = await updateOrderInSheet(
               editingOrder.tracking,
-              orderData
+              orderData,
             );
 
             if (result.success) {
@@ -369,7 +377,7 @@ const Orders: React.FC = () => {
 
                 const stockAdjustmentResult = await adjustStockForUpdatedOrder(
                   oldProducts,
-                  newProducts
+                  newProducts,
                 );
 
                 if (stockAdjustmentResult.success) {
@@ -378,16 +386,16 @@ const Orders: React.FC = () => {
                 } else {
                   console.error(
                     "Failed to adjust stock:",
-                    stockAdjustmentResult.error
+                    stockAdjustmentResult.error,
                   );
                   alert(
-                    `Order updated successfully!\nWarning: Failed to adjust stock - ${stockAdjustmentResult.error}`
+                    `Order updated successfully!\nWarning: Failed to adjust stock - ${stockAdjustmentResult.error}`,
                   );
                 }
               } catch (stockError) {
                 console.error("Error adjusting stock:", stockError);
                 alert(
-                  "Order updated successfully!\nWarning: Failed to adjust stock automatically."
+                  "Order updated successfully!\nWarning: Failed to adjust stock automatically.",
                 );
               }
 
@@ -417,7 +425,7 @@ const Orders: React.FC = () => {
 
     if (
       !window.confirm(
-        `Are you sure you want to delete order ${editingOrder.tracking}?`
+        `Are you sure you want to delete order ${editingOrder.tracking}?`,
       )
     ) {
       return;
@@ -434,7 +442,7 @@ const Orders: React.FC = () => {
             editingOrder.products.map((product) => ({
               name: product.name,
               quantity: product.quantity,
-            }))
+            })),
           );
 
           if (stockRestorationResult.success) {
@@ -443,16 +451,16 @@ const Orders: React.FC = () => {
           } else {
             console.error(
               "Failed to restore stock:",
-              stockRestorationResult.error
+              stockRestorationResult.error,
             );
             alert(
-              `Order deleted successfully!\nWarning: Failed to restore stock - ${stockRestorationResult.error}`
+              `Order deleted successfully!\nWarning: Failed to restore stock - ${stockRestorationResult.error}`,
             );
           }
         } catch (stockError) {
           console.error("Error restoring stock:", stockError);
           alert(
-            "Order deleted successfully!\nWarning: Failed to restore stock automatically."
+            "Order deleted successfully!\nWarning: Failed to restore stock automatically.",
           );
         }
 
@@ -474,7 +482,7 @@ const Orders: React.FC = () => {
 
     if (
       !window.confirm(
-        `Are you sure you want to delete order ${order.tracking}?`
+        `Are you sure you want to delete order ${order.tracking}?`,
       )
     ) {
       return;
@@ -490,7 +498,7 @@ const Orders: React.FC = () => {
             order.products.map((product) => ({
               name: product.name,
               quantity: product.quantity,
-            }))
+            })),
           );
 
           if (stockRestorationResult.success) {
@@ -499,16 +507,16 @@ const Orders: React.FC = () => {
           } else {
             console.error(
               "Failed to restore stock:",
-              stockRestorationResult.error
+              stockRestorationResult.error,
             );
             alert(
-              `Order deleted successfully!\nWarning: Failed to restore stock - ${stockRestorationResult.error}`
+              `Order deleted successfully!\nWarning: Failed to restore stock - ${stockRestorationResult.error}`,
             );
           }
         } catch (stockError) {
           console.error("Error restoring stock:", stockError);
           alert(
-            "Order deleted successfully!\nWarning: Failed to restore stock automatically."
+            "Order deleted successfully!\nWarning: Failed to restore stock automatically.",
           );
         }
 

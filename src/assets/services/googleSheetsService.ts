@@ -41,6 +41,7 @@ interface SheetOrder {
   sprayQty: number;
   serumQty: number;
   premiumQty: number;
+  castorQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -76,6 +77,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Spray: 980,
   Serum: 1600,
   Premium: 2600,
+  Castor: 2400,
 };
 
 const SHIPPING_COST: number = 350;
@@ -83,7 +85,7 @@ const SHIPPING_COST: number = 350;
 // Function to calculate total amount
 function calculateTotal(
   products: Product[],
-  freeShipping: boolean = false
+  freeShipping: boolean = false,
 ): number {
   const subtotal = products.reduce((sum: number, product: Product) => {
     return sum + PRODUCT_PRICES[product.name] * product.quantity;
@@ -118,6 +120,8 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Serum")?.quantity || 0;
   const premiumQty =
     order.products.find((p) => p.name === "Premium")?.quantity || 0;
+  const castorQty =
+    order.products.find((p) => p.name === "Castor")?.quantity || 0;
 
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
@@ -137,6 +141,7 @@ function orderToSheetRow(order: Order): (string | number)[] {
     sprayQty,
     serumQty,
     premiumQty,
+    castorQty,
   ];
 }
 
@@ -154,7 +159,7 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!metaRes.ok) {
@@ -176,7 +181,7 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
         body: JSON.stringify({
           values: [rowData],
         }),
-      }
+      },
     );
 
     if (!appendRes.ok) {
@@ -200,7 +205,7 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
 // Function to update an existing order - FIXED VERSION
 export async function updateOrderInSheet(
   trackingId: string,
-  updatedOrder: Order
+  updatedOrder: Order,
 ): Promise<ApiResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
@@ -215,7 +220,7 @@ export async function updateOrderInSheet(
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -227,7 +232,7 @@ export async function updateOrderInSheet(
 
     // Find the row index (skip header row)
     const rowIndex = rows.findIndex(
-      (row: any[], index: number) => index > 0 && row[0] === trackingId
+      (row: any[], index: number) => index > 0 && row[0] === trackingId,
     );
 
     if (rowIndex === -1) {
@@ -250,13 +255,13 @@ export async function updateOrderInSheet(
         body: JSON.stringify({
           values: [updatedRowData],
         }),
-      }
+      },
     );
 
     if (!updateResponse.ok) {
       const errorText = await updateResponse.text();
       throw new Error(
-        `Failed to update order: ${updateResponse.status} - ${errorText}`
+        `Failed to update order: ${updateResponse.status} - ${errorText}`,
       );
     }
 
@@ -273,7 +278,7 @@ export async function updateOrderInSheet(
 
 // Function to delete an order from Google Sheets
 export async function deleteOrderFromSheet(
-  trackingId: string
+  trackingId: string,
 ): Promise<ApiResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
@@ -288,18 +293,18 @@ export async function deleteOrderFromSheet(
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!metadataResponse.ok) {
       throw new Error(
-        `Failed to get spreadsheet metadata: ${metadataResponse.status}`
+        `Failed to get spreadsheet metadata: ${metadataResponse.status}`,
       );
     }
 
     const metadata = await metadataResponse.json();
     const sheet = metadata.sheets.find(
-      (s: any) => s.properties.title === SHEET_NAME
+      (s: any) => s.properties.title === SHEET_NAME,
     );
 
     if (!sheet) {
@@ -315,7 +320,7 @@ export async function deleteOrderFromSheet(
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -327,7 +332,7 @@ export async function deleteOrderFromSheet(
 
     // Find the row index (skip header row)
     const rowIndex = rows.findIndex(
-      (row: any[], index: number) => index > 0 && row[0] === trackingId
+      (row: any[], index: number) => index > 0 && row[0] === trackingId,
     );
 
     if (rowIndex === -1) {
@@ -359,13 +364,13 @@ export async function deleteOrderFromSheet(
             },
           ],
         }),
-      }
+      },
     );
 
     if (!deleteResponse.ok) {
       const errorText = await deleteResponse.text();
       throw new Error(
-        `Failed to delete order: ${deleteResponse.status} - ${errorText}`
+        `Failed to delete order: ${deleteResponse.status} - ${errorText}`,
       );
     }
 
@@ -394,12 +399,12 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       );
     } else {
       // Fallback to API key if no access token
       response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`
+        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`,
       );
     }
 
@@ -420,6 +425,7 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       sprayQty: parseInt(row[12]) || 0,
       serumQty: parseInt(row[13]) || 0,
       premiumQty: parseInt(row[14]) || 0,
+      castorQty: parseInt(row[15]) || 0,
 
       totalAmount: parseFloat(row[5]) || 0,
       orderStatus: row[6] || "",
