@@ -614,6 +614,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
       }
     }
 
+    if (!formData.mainCity.trim()) {
+      newErrors.mainCity = "Main City is required";
+    }
+
     if (!formData.trackingId.trim()) {
       newErrors.trackingId = "Tracking ID is required";
     } else if (!/^\d{8}$/.test(formData.trackingId.trim())) {
@@ -1149,7 +1153,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                     <div className="relative">
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-sm font-medium text-gray-700">
-                          Main City
+                          Main City *
                           {isDetectingCity && (
                             <span className="ml-2 text-xs text-blue-500 animate-pulse">
                               ⏳ Detecting...
@@ -1205,6 +1209,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
                               mainCity: value,
                             }));
                             handleCitySearch(value);
+                            if (errors.mainCity) {
+                              setErrors((prev) => ({ ...prev, mainCity: "" }));
+                            }
                           }}
                           onFocus={() => {
                             if (
@@ -1215,11 +1222,13 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             }
                           }}
                           className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            formData.mainCity && !isDetectingCity
-                              ? "border-green-300 bg-green-50"
-                              : isDetectingCity
-                                ? "border-blue-300 bg-blue-50"
-                                : "border-gray-300"
+                            errors.mainCity
+                              ? "border-red-500"
+                              : formData.mainCity && !isDetectingCity
+                                ? "border-green-300 bg-green-50"
+                                : isDetectingCity
+                                  ? "border-blue-300 bg-blue-50"
+                                  : "border-gray-300"
                           }`}
                           placeholder={
                             isDetectingCity
@@ -1254,6 +1263,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
                           </div>
                         )}
                       </div>
+
+                      {errors.mainCity && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.mainCity}
+                        </p>
+                      )}
 
                       {/* Loading indicator for city search */}
                       {isLoadingCities && !isDetectingCity && (
