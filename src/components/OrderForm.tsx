@@ -11,12 +11,25 @@ import {
   isValidPhoneNumber,
   sendOrderConfirmationSMS,
 } from "../assets/services/smsService";
+import {
+  searchCities,
+  City,
+  detectCityFromAddress,
+} from "../assets/services/cityService";
+
+// Add this to declare the timeout property on window
+declare global {
+  interface Window {
+    cityDetectionTimeout?: NodeJS.Timeout;
+  }
+}
 
 interface Order {
   name: string;
   addressLine1: string;
   addressLine2?: string;
   addressLine3?: string;
+  mainCity?: string;
   contact: string;
   products: {
     name: string;
@@ -76,6 +89,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   const [formData, setFormData] = useState({
     customerInfo: "",
+    mainCity: "",
     trackingId: "",
     status: "Preparing" as
       | "Preparing"
@@ -108,6 +122,15 @@ const OrderForm: React.FC<OrderFormProps> = ({
     { trackingId: string; customerInfo: string; orderStatus: string }[]
   >([]);
 
+  // City services
+  const [citySuggestions, setCitySuggestions] = useState<City[]>([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [isDetectingCity, setIsDetectingCity] = useState(false);
+  const [cityQuery, setCityQuery] = useState("");
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   // Confirmation dialog states
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -119,21 +142,180 @@ const OrderForm: React.FC<OrderFormProps> = ({
     onConfirm: () => {},
   });
 
+  // Click outside detection for city suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        cityInputRef.current &&
+        !cityInputRef.current.contains(event.target as Node)
+      ) {
+        setShowCitySuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (window.cityDetectionTimeout) {
+        clearTimeout(window.cityDetectionTimeout);
+      }
+    };
+  }, []);
+
+  // City search function
+  const handleCitySearch = async (query: string) => {
+    setCityQuery(query);
+
+    if (query.trim().length < 2) {
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+      return;
+    }
+
+    setIsLoadingCities(true);
+    try {
+      const result = await searchCities(query);
+
+      if (result.success && result.data) {
+        setCitySuggestions(result.data);
+        setShowCitySuggestions(result.data.length > 0);
+      } else {
+        setCitySuggestions([]);
+        setShowCitySuggestions(false);
+      }
+    } catch (error) {
+      console.error("Error searching cities:", error);
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+    } finally {
+      setIsLoadingCities(false);
+    }
+  };
+
+  // City selection function
+  const handleCitySelect = (city: City) => {
+    setFormData((prev) => ({ ...prev, mainCity: city.name }));
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+    setCityQuery("");
+
+    if (cityInputRef.current) {
+      cityInputRef.current.focus();
+    }
+  };
+
+  /**
+   * Auto-detect city from address using Google Sheets data
+   */
+  const handleAutoDetectCity = async (address: string) => {
+    if (
+      !address.trim() ||
+      formData.mainCity.trim() ||
+      isDetectingCity ||
+      mode !== "create"
+    ) {
+      return;
+    }
+
+    setIsDetectingCity(true);
+    try {
+      console.log("🔍 Auto-detecting city from address...");
+      const result = await detectCityFromAddress(address);
+
+      if (result.success && result.data) {
+        const detectedCity = result.data;
+        console.log(`✅ Auto-detected city: ${detectedCity.name}`);
+
+        setFormData((prev) => ({ ...prev, mainCity: detectedCity.name }));
+        setCitySuggestions([detectedCity]);
+        setShowCitySuggestions(false);
+      } else {
+        console.log("❌ Could not auto-detect city");
+      }
+    } catch (error) {
+      console.error("Error in auto city detection:", error);
+    } finally {
+      setIsDetectingCity(false);
+    }
+  };
+
+  /**
+   * Manual detection button handler
+   */
+  const handleManualDetectCity = async () => {
+    if (!formData.customerInfo.trim()) {
+      alert("Please enter customer address first");
+      return;
+    }
+
+    setIsDetectingCity(true);
+    try {
+      const result = await detectCityFromAddress(formData.customerInfo);
+
+      if (result.success && result.data) {
+        const detectedCity = result.data;
+        setFormData((prev) => ({ ...prev, mainCity: detectedCity.name }));
+
+        const searchResult = await searchCities(detectedCity.name);
+        if (searchResult.success && searchResult.data) {
+          setCitySuggestions(searchResult.data);
+          setShowCitySuggestions(true);
+        }
+
+        if (cityInputRef.current) {
+          cityInputRef.current.focus();
+        }
+
+        console.log(`✅ Manually detected city: ${detectedCity.name}`);
+      } else {
+        alert(
+          "Could not detect a city from this address. Please type manually.",
+        );
+      }
+    } catch (error) {
+      console.error("Error detecting city:", error);
+      alert("Error detecting city. Please try again or type manually.");
+    } finally {
+      setIsDetectingCity(false);
+    }
+  };
+
+  /**
+   * Handle customer info change with debounced city detection
+   */
+  const handleCustomerInfoChange = (value: string) => {
+    handleInputChange("customerInfo", value);
+
+    if (mode === "create" && !formData.mainCity) {
+      if (window.cityDetectionTimeout) {
+        clearTimeout(window.cityDetectionTimeout);
+      }
+
+      window.cityDetectionTimeout = setTimeout(() => {
+        handleAutoDetectCity(value);
+      }, 800);
+    }
+  };
+
   // Load product prices from ProductManager
   useEffect(() => {
     const loadProductPrices = async () => {
       setLoadingProducts(true);
       try {
-        // Get products from ProductManager
         const productResult = await getAllProductsFromSheet();
-
-        // Get dynamic product columns from Orders sheet
         const sheetStructure = await getSheetStructure();
 
         const prices: ProductPrices = {};
         const products: string[] = [];
 
-        // Add products from ProductManager
         if (
           productResult.success &&
           productResult.data &&
@@ -145,7 +327,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           });
         }
 
-        // Add products from dynamic columns (products that exist in orders)
         if (
           sheetStructure.success &&
           sheetStructure.data &&
@@ -159,7 +340,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           });
         }
 
-        // Fallbacks
         if (products.length === 0) {
           const defaults = ["Oil", "Shampoo", "Conditioner"];
           const defaultPrices: ProductPrices = {
@@ -196,19 +376,15 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setLoadingProducts(false);
     };
 
-    // Generate suggested tracking ID for new orders
     const generateSuggestedTrackingId = () => {
       if (mode === "create") {
-        // Get the last used tracking ID from localStorage or generate a default
         const lastTrackingId = localStorage.getItem("lastTrackingId");
         if (lastTrackingId && /^\d{8}$/.test(lastTrackingId)) {
-          // Increment the last tracking ID by 1
           const nextId = (parseInt(lastTrackingId) + 1)
             .toString()
             .padStart(8, "0");
           setSuggestedTrackingId(nextId);
         } else {
-          // Default starting tracking ID if none exists
           setSuggestedTrackingId("10000001");
         }
       }
@@ -238,7 +414,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   }, [isOpen, mode]);
 
-  // Initialize product state when prices are loaded or when initialOrder changes
+  // Initialize product state
   useEffect(() => {
     if (availableProducts.length > 0) {
       const productState: Record<
@@ -246,7 +422,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         { selected: boolean; quantity: number; price: number }
       > = {};
 
-      // Initialize all available products
       availableProducts.forEach((productName) => {
         productState[productName] = {
           selected: false,
@@ -255,7 +430,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         };
       });
 
-      // If we're updating an existing order, set the selected products
       if (initialOrder && mode === "update") {
         initialOrder.products.forEach((product) => {
           if (product.name in productState) {
@@ -265,13 +439,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
               price: product.price,
             };
           } else {
-            // Handle case where product exists in order but not in available products
             productState[product.name] = {
               selected: true,
               quantity: product.quantity,
               price: product.price,
             };
-            // Add to available products
             setAvailableProducts((prev) => [...prev, product.name]);
             setProductPrices((prev) => ({
               ...prev,
@@ -288,7 +460,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
     }
   }, [availableProducts, productPrices, initialOrder, mode]);
 
-  // Set form data when initialOrder changes or when mode changes
+  // Set form data for update mode
   useEffect(() => {
     if (
       initialOrder &&
@@ -303,13 +475,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
       if (initialOrder.addressLine3)
         addressParts.push(initialOrder.addressLine3);
 
-      const customerInfo = `${initialOrder.name}\n${addressParts.join("\n")}\n${
-        initialOrder.contact
-      }`;
-
+      const customerInfo = `${initialOrder.name}\n${addressParts.join("\n")}\n${initialOrder.contact}`;
       setFormData((prev) => ({
         ...prev,
         customerInfo,
+        mainCity: initialOrder.mainCity || "",
         trackingId: initialOrder.tracking || "",
         status: initialOrder.status,
         paymentMethod: initialOrder.paymentMethod,
@@ -323,14 +493,21 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setFormData((prev) => ({
         ...prev,
         customerInfo: "",
-        trackingId: suggestedTrackingId, // Use suggested tracking ID
+        mainCity: "",
+        trackingId: suggestedTrackingId,
         status: "Preparing",
         paymentMethod: "COD",
         paymentReceived: false,
         freeShipping: false,
       }));
     }
-  }, [initialOrder, mode, isOpen, suggestedTrackingId]);
+  }, [
+    initialOrder,
+    mode,
+    isOpen,
+    suggestedTrackingId,
+    formData.products.length,
+  ]);
 
   // Check contact number against orders with return statuses
   useEffect(() => {
@@ -342,7 +519,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
     const lines = formData.customerInfo.split("\n").filter((l) => l.trim());
     if (lines.length < 2) return;
 
-    // Contact is the last line; extract all phone numbers from it
     const contactLine = lines[lines.length - 1];
     const contacts = contactLine
       .split(/[,\s\n]+/)
@@ -353,17 +529,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setReturnWarning({ show: false, orders: [] });
       return;
     }
-
-    // DEBUG: Log to help troubleshoot
-    const uniqueStatuses = Array.from(
-      new Set(cachedOrdersRef.current.map((o) => o.orderStatus)),
-    );
-    console.log(
-      "[Return Check] Cached orders:",
-      cachedOrdersRef.current.length,
-    );
-    console.log("[Return Check] Unique statuses in sheet:", uniqueStatuses);
-    console.log("[Return Check] Contacts extracted:", contacts);
 
     const matchingOrders = cachedOrdersRef.current
       .filter((order) => {
@@ -378,7 +543,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
         )
           return false;
 
-        // Check if any entered contact appears in this order's customerInfo
         return contacts.some((contact) => order.customerInfo.includes(contact));
       })
       .map((order) => {
@@ -450,6 +614,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
       }
     }
 
+    if (!formData.mainCity.trim()) {
+      newErrors.mainCity = "Main City is required";
+    }
+
     if (!formData.trackingId.trim()) {
       newErrors.trackingId = "Tracking ID is required";
     } else if (!/^\d{8}$/.test(formData.trackingId.trim())) {
@@ -467,7 +635,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Confirmation dialog handlers
   const handleCloseConfirmation = () => {
     setConfirmDialog({
       isOpen: true,
@@ -533,12 +700,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
       const currentTimestamp = createOrderTimestamp();
 
-      // Localized date and time string
       const orderData: Order = {
         name,
         addressLine1,
         addressLine2,
         addressLine3,
+        mainCity: formData.mainCity.trim(),
         contact: contact,
         products: selectedProducts,
         status: formData.status,
@@ -553,16 +720,13 @@ const OrderForm: React.FC<OrderFormProps> = ({
             : formData.paymentReceived,
         freeShipping: formData.freeShipping,
         tracking: formData.trackingId,
-        lastUpdated: currentTimestamp, // Always update this to current time
+        lastUpdated: currentTimestamp,
       };
 
-      // Submit the order
       await onSubmit(orderData);
 
-      // ====== SEND SMS FOR NEW ORDERS ======
       if (mode === "create") {
         try {
-          // Extract first phone number
           const contacts = contact
             .split(/[,\s\n]+/)
             .map((c) => c.trim())
@@ -571,7 +735,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           const primaryContact = contacts[0];
 
           if (primaryContact && isValidPhoneNumber(primaryContact)) {
-            // Calculate total
             const subtotal = selectedProducts.reduce(
               (sum, product) => sum + product.price * product.quantity,
               0,
@@ -581,7 +744,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
               ? subtotal
               : subtotal + 350;
 
-            // Send SMS
             sendOrderConfirmationSMS({
               customerName: name,
               phoneNumber: primaryContact,
@@ -600,18 +762,12 @@ const OrderForm: React.FC<OrderFormProps> = ({
               .catch((error) => {
                 console.error("⚠️ SMS error:", error);
               });
-
-            console.log(`📱 SMS queued for ${primaryContact}`);
-          } else {
-            console.warn("⚠️ Invalid phone number, SMS not sent");
           }
         } catch (smsError) {
           console.error("Error in SMS process:", smsError);
         }
       }
-      // ====== END SMS CODE ======
 
-      // Save the tracking ID as the last used one for future suggestions
       if (mode === "create") {
         localStorage.setItem("lastTrackingId", formData.trackingId);
       }
@@ -625,12 +781,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
   };
 
   const handleInputChange = (field: string, value: any) => {
-    // For tracking ID, only allow digits and limit to 8 characters
     if (field === "trackingId") {
-      value = value.replace(/\D/g, "").slice(0, 8); // Remove non-digits and limit to 8 chars
+      value = value.replace(/\D/g, "").slice(0, 8);
     }
 
-    // Automatically set paymentReceived to true if payment method is Bank Transfer
     if (field === "paymentMethod" && value === "Bank Transfer") {
       setFormData((prev) => ({
         ...prev,
@@ -685,7 +839,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   const totalAmount = calculateTotal();
 
-  // Print function with empty lines using non-breaking spaces
   const handlePrint = () => {
     if (!formData.trackingId.trim()) {
       alert("Please enter a tracking ID before printing");
@@ -708,9 +861,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
       alert("Please select at least one product before printing");
       return;
     }
-    const currentTimestamp = createOrderTimestamp();
 
-    // Create print content with non-breaking space lines for gaps
     const printContent = `
   <!DOCTYPE html>
   <html>
@@ -795,6 +946,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
           addressLine2 ? `<br/>${addressLine2}` : ""
         }</div>
         ${addressLine3 ? `<div>${addressLine3}</div>` : ""}
+        ${
+          formData.mainCity.trim()
+            ? `<div class="bold">${formData.mainCity.trim()}</div>`
+            : ""
+        }
         <div class="bold">${contact}</div>
       </div>
       <div class="gap">&nbsp;</div>
@@ -856,20 +1012,18 @@ const OrderForm: React.FC<OrderFormProps> = ({
       <div class="gap">&nbsp;</div>
       <div class="gap">&nbsp;</div>
       
-      <!-- 0.5 inch bottom margin before cut -->
       <div class="bottom-margin">&nbsp;</div>
       
     </body>
   </html>
 `;
-    // Open print window
+
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
       printWindow.focus();
 
-      // Auto print after content loads
       printWindow.addEventListener("load", () => {
         setTimeout(() => {
           printWindow.print();
@@ -924,25 +1078,60 @@ const OrderForm: React.FC<OrderFormProps> = ({
             <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 gap-6 p-5">
                 {/* Left Column */}
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {/* Customer Information */}
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Customer Information
-                    </h3>
+                    {returnWarning.show && (
+                      <div className="p-3 border border-red-300 rounded-lg bg-red-50">
+                        <div className="flex items-start space-x-2">
+                          <svg
+                            className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <div>
+                            <p className="text-sm font-semibold text-red-800">
+                              Return - Previous Order Found
+                            </p>
+                            <p className="mt-1 text-xs text-red-700">
+                              This contact has{" "}
+                              {returnWarning.orders.length === 1
+                                ? "a previous order"
+                                : `${returnWarning.orders.length} previous orders`}{" "}
+                              with a return status:
+                            </p>
+                            <ul className="mt-1 space-y-0.5">
+                              {returnWarning.orders.map((order) => (
+                                <li
+                                  key={order.trackingId}
+                                  className="text-xs text-red-700"
+                                >
+                                  Tracking: {order.trackingId} ({order.name})
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
+                    {/* Customer Details Textarea */}
                     <div>
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Customer Details *
                       </label>
-                      <div className="mb-1 text-xs text-gray-500">
-                        Format: Name, Address Line 1, Address Line 2 (optional),
-                        Contact(s)
-                      </div>
                       <textarea
                         value={formData.customerInfo}
                         onChange={(e) =>
-                          handleInputChange("customerInfo", e.target.value)
+                          handleCustomerInfoChange(e.target.value)
                         }
                         className={`w-full px-3 py-2 border rounded-lg min-h-36 text-sm ${
                           errors.customerInfo
@@ -958,11 +1147,34 @@ const OrderForm: React.FC<OrderFormProps> = ({
                           {errors.customerInfo}
                         </p>
                       )}
-                      {returnWarning.show && (
-                        <div className="p-3 mt-2 border border-red-300 rounded-lg bg-red-50">
-                          <div className="flex items-start space-x-2">
+                    </div>
+
+                    {/* Main City Input with Auto-Detection */}
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-gray-700">
+                          Main City *
+                          {isDetectingCity && (
+                            <span className="ml-2 text-xs text-blue-500 animate-pulse">
+                              ⏳ Detecting...
+                            </span>
+                          )}
+                        </label>
+                        {mode === "create" && (
+                          <button
+                            type="button"
+                            onClick={handleManualDetectCity}
+                            disabled={
+                              isDetectingCity || !formData.customerInfo.trim()
+                            }
+                            className={`text-xs flex items-center ${
+                              isDetectingCity || !formData.customerInfo.trim()
+                                ? "text-gray-400 cursor-not-allowed"
+                                : "text-blue-600 hover:text-blue-800"
+                            }`}
+                          >
                             <svg
-                              className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-600"
+                              className={`w-3 h-3 mr-1 ${isDetectingCity ? "animate-spin" : ""}`}
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -971,32 +1183,138 @@ const OrderForm: React.FC<OrderFormProps> = ({
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                               />
                             </svg>
-                            <div>
-                              <p className="text-sm font-semibold text-red-800">
-                                Return - Previous Order Found
-                              </p>
-                              <p className="mt-1 text-xs text-red-700">
-                                This contact has{" "}
-                                {returnWarning.orders.length === 1
-                                  ? "a previous order"
-                                  : `${returnWarning.orders.length} previous orders`}{" "}
-                                with a return status:
-                              </p>
-                              <ul className="mt-1 space-y-0.5">
-                                {returnWarning.orders.map((order) => (
-                                  <li
-                                    key={order.trackingId}
-                                    className="text-xs text-red-700"
-                                  >
-                                    Tracking: {order.trackingId} ({order.name})
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
+                            {isDetectingCity ? "Detecting..." : "Detect City"}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          ref={cityInputRef}
+                          type="text"
+                          value={formData.mainCity}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setFormData((prev) => ({
+                              ...prev,
+                              mainCity: value,
+                            }));
+                            handleCitySearch(value);
+                            if (errors.mainCity) {
+                              setErrors((prev) => ({ ...prev, mainCity: "" }));
+                            }
+                          }}
+                          onFocus={() => {
+                            if (
+                              formData.mainCity.length >= 2 &&
+                              citySuggestions.length > 0
+                            ) {
+                              setShowCitySuggestions(true);
+                            }
+                          }}
+                          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                            errors.mainCity
+                              ? "border-red-500"
+                              : formData.mainCity && !isDetectingCity
+                                ? "border-green-300 bg-green-50"
+                                : isDetectingCity
+                                  ? "border-blue-300 bg-blue-50"
+                                  : "border-gray-300"
+                          }`}
+                          placeholder={
+                            isDetectingCity
+                              ? "Detecting city from address..."
+                              : "City will auto-detect from address"
+                          }
+                          disabled={isSubmitting || isDetectingCity}
+                          autoComplete="off"
+                        />
+
+                        {formData.mainCity && !isDetectingCity && (
+                          <div className="absolute right-3 top-2.5">
+                            <svg
+                              className="w-4 h-4 text-green-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
                           </div>
+                        )}
+
+                        {isDetectingCity && (
+                          <div className="absolute right-3 top-2.5">
+                            <div className="w-4 h-4 border-2 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+
+                      {errors.mainCity && (
+                        <p className="mt-1 text-xs text-red-500">
+                          {errors.mainCity}
+                        </p>
+                      )}
+
+                      {/* Loading indicator for city search */}
+                      {isLoadingCities && !isDetectingCity && (
+                        <div className="absolute right-3 top-8">
+                          <div className="w-4 h-4 border-b-2 rounded-full animate-spin border-primary"></div>
+                        </div>
+                      )}
+
+                      {/* City Suggestions Dropdown */}
+                      {showCitySuggestions && citySuggestions.length > 0 && (
+                        <div
+                          ref={suggestionsRef}
+                          className="absolute z-50 w-full mt-1 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg max-h-80"
+                        >
+                          {citySuggestions.map((city, index) => (
+                            <div
+                              key={city.city_id || `${city.name}-${index}`}
+                              onClick={() => handleCitySelect(city)}
+                              className="px-3 py-2 border-b border-gray-100 cursor-pointer hover:bg-blue-50 last:border-b-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-gray-900">
+                                    {city.name}
+                                  </div>
+                                  <div className="text-xs text-gray-600">
+                                    {city.district_name && (
+                                      <span className="mr-2">
+                                        📍 {city.district_name}
+                                      </span>
+                                    )}
+                                    {city.zone_name && (
+                                      <span className="text-blue-600">
+                                        🏷️ {city.zone_name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {city.city_id && (
+                                  <div className="text-xs text-gray-400">
+                                    ID: {city.city_id}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -1004,10 +1322,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
                   {/* Tracking Information */}
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Tracking Information
-                    </h3>
-
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-sm font-medium text-gray-700">
@@ -1061,10 +1375,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
                   {/* Status */}
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Order Status
-                    </h3>
-
                     <div>
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Status
@@ -1091,10 +1401,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
                   {/* Payment Information */}
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      Payment Information
-                    </h3>
-
                     <div>
                       <label className="block mb-1 text-sm font-medium text-gray-700">
                         Payment Method

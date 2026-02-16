@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   formatDisplayDateTime,
   extractDateFromDateTime,
@@ -7,12 +7,14 @@ import {
   isToday,
   isYesterday,
 } from "../utils/dateUtils";
+import { updateFdeStatus } from "../assets/services/googleSheetsService";
 
 interface Order {
   name: string;
   addressLine1: string;
   addressLine2?: string;
   addressLine3?: string;
+  mainCity?: string;
   contact: string;
   products: {
     name: string;
@@ -29,11 +31,12 @@ interface Order {
     | "Return"
     | "Transfer"
     | "Damaged";
-  orderDate: string; // Now in YYYY-MM-DD HH:mm:ss format
+  orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
+  fdeStatus?: string; // R (17): waybill number — empty if not yet sent to FDE
 }
 
 interface OrderCardProps {
@@ -42,6 +45,19 @@ interface OrderCardProps {
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
+  // If column R already has a waybill number, start the button in done state
+  const alreadyProcessed = !!(order.fdeStatus && order.fdeStatus.trim() !== "");
+
+  const [fdeState, setFdeState] = useState<{
+    loading: boolean;
+    success?: boolean;
+    message?: string;
+  }>({
+    loading: false,
+    success: alreadyProcessed ? true : undefined,
+    message: alreadyProcessed ? "Done" : undefined,
+  });
+
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
   };
@@ -53,31 +69,26 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     }).format(amount);
   };
 
-  // Parse multiple contact numbers
   const parseContacts = (contactString: string) => {
     return contactString
-      .split(/[,\s\n]+/) // Split by comma, space, or newline
+      .split(/[,\s\n]+/)
       .map((c) => c.trim())
-      .filter((c) => c && /^\d+$/.test(c)); // Filter out empty strings and non-numeric
+      .filter((c) => c && /^\d+$/.test(c));
   };
 
-  // Format order date/time for display
   const formatOrderDateTime = (dateTime: string) => {
     if (!dateTime) return "No date";
-
     try {
       if (isToday(dateTime)) {
         return `Today ${extractDisplayTime(dateTime)}`;
       } else if (isYesterday(dateTime)) {
         return `Yesterday ${extractDisplayTime(dateTime)}`;
       } else {
-        // Show date and time for older orders
         const date = extractDateFromDateTime(dateTime);
         const time = extractDisplayTime(dateTime);
         return `${date} ${time}`;
       }
-    } catch (error) {
-      // Fallback for any parsing errors
+    } catch {
       return dateTime.split(" ")[0] || dateTime;
     }
   };
@@ -109,7 +120,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Castor: "bg-yellow-800 text-white",
   };
 
-  // Calculate total the same way as OrderForm - with delivery charges
   const calculateTotal = () => {
     const subtotal = order.products.reduce(
       (sum, product) => sum + product.price * product.quantity,
@@ -126,7 +136,79 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const contacts = parseContacts(order.contact);
 
-  // Print function
+  const handleFDE = async () => {
+    // Block only if already succeeded — allow retry on failure
+    if (!order.tracking || (alreadyProcessed && fdeState.success === true))
+      return;
+
+    setFdeState({ loading: true });
+
+    try {
+      const response = await fetch(
+        `https://herbcey-v2.vercel.app/api/process-order/${order.tracking}`,
+      );
+
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        setFdeState({
+          loading: false,
+          success: false,
+          message: "Invalid response",
+        });
+        return;
+      }
+
+      if (data.success) {
+        // Only use the real waybill returned by FDE — never fall back to tracking ID
+        const waybillNo: string = data.waybillNo || data.trackingId || "";
+
+        // Persist to column R only if FDE returned an actual waybill number
+        if (waybillNo && order.tracking) {
+          updateFdeStatus(order.tracking, waybillNo).catch((err) =>
+            console.error("Failed to save FDE status to sheet:", err),
+          );
+        }
+
+        // Keep green permanently — successful FDE is a done state
+        setFdeState({ loading: false, success: true, message: "Done" });
+      } else {
+        setFdeState({
+          loading: false,
+          success: false,
+          message: data.message || "Failed",
+        });
+      }
+    } catch (error) {
+      console.error("FDE API error:", error);
+      setFdeState({ loading: false, success: false, message: "Network error" });
+    }
+  };
+
+  const getFDEButtonText = () => {
+    if (fdeState.loading) return "Sending...";
+    if (fdeState.success === true) return "✓ Success";
+    if (fdeState.success === false) return "↺ Retry";
+    return "FDE";
+  };
+
+  const getFDEButtonStyle = () => {
+    if (fdeState.loading) return "bg-gray-400 text-white border-gray-400";
+    if (fdeState.success === true)
+      return "bg-green-600 text-white border-green-600";
+    if (fdeState.success === false)
+      return "bg-red-600 text-white border-red-600";
+    return "bg-blue-600 text-white border-blue-600 hover:bg-blue-700";
+  };
+
+  // Disabled only when loading, no tracking, or already succeeded
+  // Failed state stays clickable so user can retry
+  const fdeDisabled =
+    fdeState.loading ||
+    !order.tracking ||
+    (alreadyProcessed && fdeState.success === true);
+
   const handlePrint = () => {
     const printContent = `
   <!DOCTYPE html>
@@ -134,13 +216,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     <head>
       <title>Order Receipt - ${order.tracking}</title>
       <style>
-        @page {
-          size: 80mm auto;
-          margin: 0;
-        }
-        @media print {
-          body { margin: 0; padding: 0; margin-bottom: 0.5in; }
-        }
+        @page { size: 80mm auto; margin: 0; }
+        @media print { body { margin: 0; padding: 0; margin-bottom: 0.5in; } }
         body {
           font-family: 'Arial', sans-serif;
           font-size: 12px;
@@ -152,75 +229,35 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           box-sizing: border-box;
           color: #000000;
         }
-        .center {
-          text-align: center;
-        }
-        .bold {
-          font-weight: bold;
-        }
-        .flex-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin: 1px 0;
-        }
-        .gap {
-          height: 0.6em;
-          line-height: 0.6em;
-        }
-        .product-line {
-          border-bottom: 1px dotted #ccc;
-          padding-bottom: 1px;
-          margin-bottom: 1px;
-        }
-        .total-section {
-          border-top: 1px solid #000;
-          padding-top: 3px;
-          margin-top: 3px;
-        }
-        .tracking {
-          font-size: 13px;
-          text-align: center;
-          border: 1px solid #000;
-          padding: 2px;
-          margin: 2px 0;
-        }
-        .customer-info {
-          background-color: #f9f9f9;
-          padding: 3px;
-          margin: 3px 0;
-          border-left: 2px solid #000;
-        }
-        .total-amount {
-          font-size: 12px;
-        }
-        .bottom-margin {
-          height: 0.5in;
-          width: 100%;
-        }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .flex-row { display: flex; justify-content: space-between; align-items: center; margin: 1px 0; }
+        .gap { height: 0.6em; line-height: 0.6em; }
+        .product-line { border-bottom: 1px dotted #ccc; padding-bottom: 1px; margin-bottom: 1px; }
+        .total-section { border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; }
+        .tracking { font-size: 13px; text-align: center; border: 1px solid #000; padding: 2px; margin: 2px 0; }
+        .customer-info { background-color: #f9f9f9; padding: 3px; margin: 3px 0; border-left: 2px solid #000; }
+        .total-amount { font-size: 12px; }
+        .bottom-margin { height: 0.5in; width: 100%; }
       </style>
     </head>
     <body>
       <div class="gap">&nbsp;</div>
-      
       <div class="tracking bold">TRACKING: ${order.tracking || "N/A"}</div>
       <div class="gap">&nbsp;</div>
-      
       <div class="customer-info">
         <div class="bold">${order.name}</div>
-        <div class="bold">${order.addressLine1}${
-          order.addressLine2 ? `<br/>${order.addressLine2}` : ""
-        }</div>
+        <div class="bold">${order.addressLine1}${order.addressLine2 ? `<br/>${order.addressLine2}` : ""}</div>
         ${order.addressLine3 ? `<div>${order.addressLine3}</div>` : ""}
+        ${order.mainCity ? `<div>${order.mainCity}</div>` : ""}
         <div class="bold">${contacts.join(", ")}</div>
       </div>
       <div class="gap">&nbsp;</div>
-     
       <div style="border-top: 1px solid #000; padding-top: 2px;">
         ${order.products
           .map(
             (product) => `
-          <div class="flex-row product-line">                
+          <div class="flex-row product-line">
             <span>${product.quantity} x ${product.name}</span>
             <span>${formatCurrency(product.price * product.quantity)}</span>
           </div>`,
@@ -228,57 +265,32 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           .join("")}
       </div>
       <div class="gap">&nbsp;</div>
-      
       <div class="total-section">
         ${
           !order.freeShipping
-            ? `
-            <div class="flex-row">
-              <span>Subtotal:</span>
-              <span>${formatCurrency(subtotal)}</span>
-            </div>
-            <div class="flex-row">
-              <span>Delivery:</span>
-              <span>${formatCurrency(350)}</span>
-            </div>`
-            : `
-            <div class="flex-row">
-              <span>Subtotal:</span>
-              <span>${formatCurrency(subtotal)}</span>
-            </div>
-            <div class="flex-row">
-              <span>Delivery:</span>
-              <span>FREE</span>
-            </div>`
+            ? `<div class="flex-row"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
+             <div class="flex-row"><span>Delivery:</span><span>${formatCurrency(350)}</span></div>`
+            : `<div class="flex-row"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
+             <div class="flex-row"><span>Delivery:</span><span>FREE</span></div>`
         }
-        
         <div class="flex-row bold total-amount" style="border-top: 1px solid #000; padding-top: 3px; margin-top: 3px;">
           <span>TOTAL:</span>
-          <span>${
-            order.paymentMethod === "Bank Transfer"
-              ? "0 (PAID)"
-              : formatCurrency(totalAmount)
-          }</span>
+          <span>${order.paymentMethod === "Bank Transfer" ? "0 (PAID)" : formatCurrency(totalAmount)}</span>
         </div>
         <div class="gap">&nbsp;</div>
         <div class="gap">&nbsp;</div>
         <div class="gap">&nbsp;</div>
         <div class="gap">&nbsp;</div>
       </div>
-      
       <div class="bottom-margin">&nbsp;</div>
-      
     </body>
-  </html>
-`;
-    // Open print window
+  </html>`;
+
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
       printWindow.focus();
-
-      // Auto print after content loads
       printWindow.addEventListener("load", () => {
         setTimeout(() => {
           printWindow.print();
@@ -290,15 +302,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   return (
     <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
-      {/* Header with status and payment */}
+      {/* Header */}
       <div className="flex items-center justify-between border-b">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
           <span className="text-sm font-medium">{order.status}</span>
         </div>
         <div
-          className={`${
-            paymentColors[order.paymentMethod]
-          } px-3 py-2 flex-1 text-center flex items-center justify-center space-x-2`}
+          className={`${paymentColors[order.paymentMethod]} px-3 py-2 flex-1 text-center flex items-center justify-center space-x-2`}
         >
           <span className="text-sm font-medium">{order.paymentMethod}</span>
           {order.paymentMethod === "COD" && (
@@ -342,10 +352,10 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         <div className="flex justify-between flex-1 px-3 py-2 text-right bg-gray-100">
           <div className="flex flex-row items-center space-y-0.5">
             <span className="flex mr-2 text-sm font-medium text-gray-900">
-              {order.orderDate.split(" ")[0]} {/* Shows only YYYY-MM-DD */}
+              {order.orderDate.split(" ")[0]}
             </span>
             <span className="pb-0.5 text-xs text-gray-500">
-              {order.orderDate.split(" ")[1]} {/* Shows only HH:mm:ss */}
+              {order.orderDate.split(" ")[1]}
             </span>
           </div>
           {order.freeShipping && (
@@ -365,7 +375,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               <h3 className="font-semibold text-gray-900">{order.name}</h3>
             </div>
           </div>
-
           <div className="mt-1 space-y-1">
             <p className="text-sm text-gray-700">
               {order.addressLine1}
@@ -379,7 +388,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
             {order.addressLine3 && (
               <p className="text-sm text-gray-700">{order.addressLine3}</p>
             )}
-
+            {order.mainCity && (
+              <p className="text-xs font-medium text-gray-500">
+                📍 {order.mainCity}
+              </p>
+            )}
             <div className="space-y-0.5">
               {contacts.map((contact, index) => (
                 <p key={index} className="text-sm font-medium text-indigo-600">
@@ -411,7 +424,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                 </tr>
               </thead>
               <tbody>
-                {order.products.map((product, index) => (
+                {order.products.map((product) => (
                   <tr key={product.name} className="border-b border-gray-100">
                     <td className="px-3 py-1">
                       <span
@@ -437,29 +450,14 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                 ))}
               </tbody>
               <tfoot>
-                {!order.freeShipping ? (
-                  <>
-                    <tr className="font-medium bg-gray-100 border-t border-gray-300">
-                      <td colSpan={3} className="px-3 py-1 text-sm text-right">
-                        Total:
-                      </td>
-                      <td className="px-3 py-1 text-sm font-bold text-right">
-                        {formatCurrency(totalAmount)}
-                      </td>
-                    </tr>
-                  </>
-                ) : (
-                  <>
-                    <tr className="font-medium bg-gray-100 border-t border-gray-300">
-                      <td colSpan={3} className="px-3 py-1 text-sm text-right">
-                        Total:
-                      </td>
-                      <td className="px-3 py-1 text-sm font-bold text-right">
-                        {formatCurrency(totalAmount)}
-                      </td>
-                    </tr>
-                  </>
-                )}
+                <tr className="font-medium bg-gray-100 border-t border-gray-300">
+                  <td colSpan={3} className="px-3 py-1 text-sm text-right">
+                    Total:
+                  </td>
+                  <td className="px-3 py-1 text-sm font-bold text-right">
+                    {formatCurrency(totalAmount)}
+                  </td>
+                </tr>
               </tfoot>
             </table>
           </div>
@@ -467,6 +465,22 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
         {/* Action Buttons */}
         <div className="flex flex-col items-center justify-center flex-shrink-0 gap-2">
+          <button
+            onClick={handleFDE}
+            disabled={fdeDisabled}
+            title={
+              fdeState.success === true
+                ? `Waybill: ${order.fdeStatus || "saved"}`
+                : fdeState.success === false
+                  ? fdeState.message || "Failed — click to retry"
+                  : "Send to FDE"
+            }
+            className={`w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${getFDEButtonStyle()} ${
+              fdeDisabled ? "opacity-60 cursor-not-allowed" : ""
+            }`}
+          >
+            {getFDEButtonText()}
+          </button>
           <button
             onClick={handlePrint}
             className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
