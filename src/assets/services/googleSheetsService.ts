@@ -13,7 +13,7 @@ interface Order {
   addressLine1: string;
   addressLine2?: string;
   addressLine3?: string;
-  mainCity?: string; // ADDED: Main City field
+  mainCity?: string;
   contact: string;
   products: Product[];
   status:
@@ -36,7 +36,7 @@ interface Order {
 interface SheetOrder {
   trackingId: string;
   customerInfo: string;
-  mainCity: string; // ADDED: Main City field
+  mainCity: string;
   oilQty: number;
   shampooQty: number;
   conditionerQty: number;
@@ -51,6 +51,7 @@ interface SheetOrder {
   freeShipping: boolean;
   orderDate: string;
   lastUpdated: string;
+  fdeStatus: string; // R (17): FDE waybill number — empty if not yet processed
   [key: string]: any;
 }
 
@@ -64,14 +65,14 @@ interface AddOrderResponse extends ApiResponse {
   trackingId?: string;
 }
 
-// Configuration - You'll need to get an API key from Google Cloud Console
+// Configuration
 const GOOGLE_API_KEY =
   process.env.REACT_APP_GOOGLE_API_KEY || "YOUR_GOOGLE_API_KEY";
 const SPREADSHEET_ID =
   process.env.REACT_APP_GOOGLE_SHEET_ID || "YOUR_GOOGLE_SHEET_ID";
-const SHEET_NAME = "Orders"; // Change this to your sheet name
+const SHEET_NAME = "Orders";
 
-// Product prices (UPDATED to include Spray and Serum)
+// Product prices
 const PRODUCT_PRICES: Record<string, number> = {
   Oil: 950,
   Shampoo: 1350,
@@ -84,7 +85,6 @@ const PRODUCT_PRICES: Record<string, number> = {
 
 const SHIPPING_COST: number = 350;
 
-// Function to calculate total amount
 function calculateTotal(
   products: Product[],
   freeShipping: boolean = false,
@@ -92,11 +92,9 @@ function calculateTotal(
   const subtotal = products.reduce((sum: number, product: Product) => {
     return sum + PRODUCT_PRICES[product.name] * product.quantity;
   }, 0);
-
   return freeShipping ? subtotal : subtotal + SHIPPING_COST;
 }
 
-// Function to format customer info for the sheet
 function formatCustomerInfo(order: Order): string {
   const addressParts = [
     order.addressLine1,
@@ -105,16 +103,34 @@ function formatCustomerInfo(order: Order): string {
   ]
     .filter((part): part is string => part !== undefined && part.trim() !== "")
     .join(", ");
-
   return `${order.name}\n${addressParts}\n${order.contact}`;
 }
 
-// Function to convert order to sheet row format - UPDATED to include Main City at Column Q (index 16)
+// Column layout:
+// A(0)  Tracking ID
+// B(1)  Customer Info
+// C(2)  Oil Qty
+// D(3)  Shampoo Qty
+// E(4)  Conditioner Qty
+// F(5)  Total Amount
+// G(6)  Order Status
+// H(7)  Payment Method
+// I(8)  Payment Received
+// J(9)  Free Shipping
+// K(10) Order Date
+// L(11) Last Updated
+// M(12) Spray Qty
+// N(13) Serum Qty
+// O(14) Premium Qty
+// P(15) Castor Qty
+// Q(16) Main City
+// R(17) FDE Status (waybill number — written by updateFdeStatus only)
+
 function orderToSheetRow(order: Order): (string | number)[] {
   const oilQty = order.products.find((p) => p.name === "Oil")?.quantity || 0;
   const shampooQty =
     order.products.find((p) => p.name === "Shampoo")?.quantity || 0;
-  const conditionerQty =
+  const condQty =
     order.products.find((p) => p.name === "Conditioner")?.quantity || 0;
   const sprayQty =
     order.products.find((p) => p.name === "Spray")?.quantity || 0;
@@ -124,60 +140,46 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Premium")?.quantity || 0;
   const castorQty =
     order.products.find((p) => p.name === "Castor")?.quantity || 0;
-
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
-  // Base row data (columns A through P)
-  const rowData = [
-    order.tracking || `LK${Date.now()}`, // A (0): Tracking ID
-    formatCustomerInfo(order), // B (1): Customer Info
-    oilQty, // C (2): Oil Qty
-    shampooQty, // D (3): Shampoo Qty
-    conditionerQty, // E (4): Conditioner Qty
-    totalAmount, // F (5): Total Amount
-    order.status, // G (6): Order Status
-    order.paymentMethod, // H (7): Payment Method
-    order.paymentReceived ? "Yes" : "No", // I (8): Payment Received
-    order.freeShipping ? "Yes" : "No", // J (9): Free Shipping
-    order.orderDate, // K (10): Order Date
-    new Date().toISOString().split("T")[0], // L (11): Last Updated
-    sprayQty, // M (12): Spray Qty
-    serumQty, // N (13): Serum Qty
-    premiumQty, // O (14): Premium Qty
-    castorQty, // P (15): Castor Qty
+  return [
+    order.tracking || `LK${Date.now()}`, // A (0)
+    formatCustomerInfo(order), // B (1)
+    oilQty, // C (2)
+    shampooQty, // D (3)
+    condQty, // E (4)
+    totalAmount, // F (5)
+    order.status, // G (6)
+    order.paymentMethod, // H (7)
+    order.paymentReceived ? "Yes" : "No", // I (8)
+    order.freeShipping ? "Yes" : "No", // J (9)
+    order.orderDate, // K (10)
+    new Date().toISOString().split("T")[0], // L (11)
+    sprayQty, // M (12)
+    serumQty, // N (13)
+    premiumQty, // O (14)
+    castorQty, // P (15)
+    order.mainCity || "", // Q (16)
+    // R (17) fdeStatus intentionally NOT written here — managed by updateFdeStatus()
   ];
-
-  // Add Main City at Column Q (index 16)
-  rowData.push(order.mainCity || ""); // Q (16): Main City
-
-  return rowData;
 }
 
-// Function to add a new order to Google Sheets
+// Add a new order
 export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
-    if (!accessToken) {
+    if (!accessToken)
       throw new Error("No access token found. Please sign in first.");
-    }
 
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-
-    if (!metaRes.ok) {
-      throw new Error(`Failed to read sheet: ${metaRes.status}`);
-    }
+    if (!metaRes.ok) throw new Error(`Failed to read sheet: ${metaRes.status}`);
 
     const rowData = orderToSheetRow(order);
     const trackingId = rowData[0] as string;
 
-    // Append new order row
     const appendRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}:append?valueInputOption=RAW`,
       {
@@ -186,21 +188,13 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          values: [rowData],
-        }),
+        body: JSON.stringify({ values: [rowData] }),
       },
     );
-
-    if (!appendRes.ok) {
+    if (!appendRes.ok)
       throw new Error(`Failed to add order: ${appendRes.status}`);
-    }
 
-    return {
-      success: true,
-      trackingId,
-      data: rowData,
-    };
+    return { success: true, trackingId, data: rowData };
   } catch (error) {
     console.error("Error adding order:", error);
     return {
@@ -210,48 +204,34 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
   }
 }
 
-// Function to update an existing order - UPDATED to include Main City
+// Update an existing order — writes A:Q only, never touches R (fdeStatus)
 export async function updateOrderInSheet(
   trackingId: string,
   updatedOrder: Order,
 ): Promise<ApiResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
-    if (!accessToken) {
+    if (!accessToken)
       throw new Error("No access token found. Please sign in first.");
-    }
 
-    // Get all data to find the row with the tracking ID
     const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
     const data = await response.json();
     const rows = data.values || [];
 
-    // Find the row index (skip header row)
     const rowIndex = rows.findIndex(
       (row: any[], index: number) => index > 0 && row[0] === trackingId,
     );
+    if (rowIndex === -1) throw new Error("Order not found");
 
-    if (rowIndex === -1) {
-      throw new Error("Order not found");
-    }
-
-    // Prepare updated row data
     const updatedRowData = orderToSheetRow(updatedOrder);
-    const actualRowNumber = rowIndex + 1; // Convert to 1-based indexing
+    const actualRowNumber = rowIndex + 1;
 
-    // Update the row - NOW INCLUDES COLUMN Q
+    // Update A:Q only — column R (fdeStatus) is never overwritten here
     const updateResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:Q${actualRowNumber}?valueInputOption=RAW`,
       {
@@ -260,9 +240,7 @@ export async function updateOrderInSheet(
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({
-          values: [updatedRowData],
-        }),
+        body: JSON.stringify({ values: [updatedRowData] }),
       },
     );
 
@@ -284,72 +262,109 @@ export async function updateOrderInSheet(
   }
 }
 
-// Function to delete an order from Google Sheets
+/**
+ * Write the FDE waybill number to column R for a given tracking ID.
+ * Called automatically by OrderCard after a successful FDE API response.
+ */
+export async function updateFdeStatus(
+  trackingId: string,
+  waybillNo: string,
+): Promise<ApiResponse> {
+  try {
+    const accessToken = localStorage.getItem("google_access_token");
+    if (!accessToken)
+      throw new Error("No access token found. Please sign in first.");
+
+    // Fetch column A to find the row number
+    const response = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A:A`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const data = await response.json();
+    const rows = data.values || [];
+
+    const rowIndex = rows.findIndex(
+      (row: any[], index: number) => index > 0 && row[0] === trackingId,
+    );
+    if (rowIndex === -1) throw new Error(`Order ${trackingId} not found`);
+
+    const actualRowNumber = rowIndex + 1; // 1-based
+
+    // Write waybill number to column R only
+    const updateResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!R${actualRowNumber}?valueInputOption=RAW`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ values: [[waybillNo]] }),
+      },
+    );
+
+    if (!updateResponse.ok) {
+      const errorText = await updateResponse.text();
+      throw new Error(
+        `Failed to update FDE status: ${updateResponse.status} - ${errorText}`,
+      );
+    }
+
+    console.log(`✅ FDE status saved for ${trackingId}: ${waybillNo}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating FDE status:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Delete an order
 export async function deleteOrderFromSheet(
   trackingId: string,
 ): Promise<ApiResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
-    if (!accessToken) {
+    if (!accessToken)
       throw new Error("No access token found. Please sign in first.");
-    }
 
-    // First, get the spreadsheet metadata to find the sheet ID
     const metadataResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-
-    if (!metadataResponse.ok) {
+    if (!metadataResponse.ok)
       throw new Error(
         `Failed to get spreadsheet metadata: ${metadataResponse.status}`,
       );
-    }
 
     const metadata = await metadataResponse.json();
     const sheet = metadata.sheets.find(
       (s: any) => s.properties.title === SHEET_NAME,
     );
-
-    if (!sheet) {
-      throw new Error(`Sheet "${SHEET_NAME}" not found`);
-    }
+    if (!sheet) throw new Error(`Sheet "${SHEET_NAME}" not found`);
 
     const sheetId = sheet.properties.sheetId;
 
-    // Get all data to find the row with the tracking ID
     const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
+      { headers: { Authorization: `Bearer ${accessToken}` } },
     );
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
     const data = await response.json();
     const rows = data.values || [];
 
-    // Find the row index (skip header row)
     const rowIndex = rows.findIndex(
       (row: any[], index: number) => index > 0 && row[0] === trackingId,
     );
+    if (rowIndex === -1) throw new Error("Order not found");
 
-    if (rowIndex === -1) {
-      throw new Error("Order not found");
-    }
+    const actualRowNumber = rowIndex; // 0-based for batchUpdate
 
-    const actualRowNumber = rowIndex; // This is already 0-based for batchUpdate
-
-    // Delete the row using the batchUpdate method
     const deleteResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
       {
@@ -393,48 +408,34 @@ export async function deleteOrderFromSheet(
   }
 }
 
-// Function to get all orders from the sheet - UPDATED to include Main City
+// Get all orders — includes fdeStatus from column R
 export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
   try {
-    // First try with access token (for authenticated requests)
     const accessToken = localStorage.getItem("google_access_token");
 
     let response;
     if (accessToken) {
       response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
     } else {
-      // Fallback to API key if no access token
       response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${GOOGLE_API_KEY}`,
       );
     }
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
     const data = await response.json();
     const rows = data.values || [];
 
-    // Skip header row and convert to SheetOrder format - INCLUDING MAIN CITY
     const orders: SheetOrder[] = rows.slice(1).map((row: any[]) => ({
       trackingId: row[0] || "",
       customerInfo: row[1] || "",
-      mainCity: row[16] || "", // Q (16): Main City
       oilQty: parseInt(row[2]) || 0,
       shampooQty: parseInt(row[3]) || 0,
       conditionerQty: parseInt(row[4]) || 0,
-      sprayQty: parseInt(row[12]) || 0,
-      serumQty: parseInt(row[13]) || 0,
-      premiumQty: parseInt(row[14]) || 0,
-      castorQty: parseInt(row[15]) || 0,
       totalAmount: parseFloat(row[5]) || 0,
       orderStatus: row[6] || "",
       paymentMethod: row[7] || "",
@@ -442,6 +443,12 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       freeShipping: row[9] === "Yes",
       orderDate: row[10] || "",
       lastUpdated: row[11] || "",
+      sprayQty: parseInt(row[12]) || 0,
+      serumQty: parseInt(row[13]) || 0,
+      premiumQty: parseInt(row[14]) || 0,
+      castorQty: parseInt(row[15]) || 0,
+      mainCity: row[16] || "", // Q (16)
+      fdeStatus: row[17] || "", // R (17): FDE waybill number
     }));
 
     return { success: true, data: orders };
