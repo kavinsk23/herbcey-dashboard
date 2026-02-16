@@ -150,9 +150,25 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         `https://herbcey-v2.vercel.app/api/process-order/${order.tracking}`,
       );
 
-      const data = await response.json();
+      // Always parse JSON regardless of HTTP status code.
+      // The API returns { success: true/false } in the body for both success and failure.
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        // JSON parse failed — truly a bad/empty response
+        setFdeStatus({
+          loading: false,
+          success: false,
+          message: "Invalid response",
+        });
+        setTimeout(() => setFdeStatus({ loading: false }), 3000);
+        return;
+      }
 
-      if (response.ok && data.success) {
+      // Trust data.success only — do NOT use response.ok
+      // The API may return non-2xx HTTP status even with a valid JSON body
+      if (data.success) {
         setFdeStatus({
           loading: false,
           success: true,
@@ -162,10 +178,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         setFdeStatus({
           loading: false,
           success: false,
-          message: data.error || data.message || "Failed",
+          message: data.message || "Failed",
         });
       }
     } catch (error) {
+      // Only reaches here on a true network failure (no internet, DNS, CORS, etc.)
       console.error("FDE API error:", error);
       setFdeStatus({
         loading: false,
