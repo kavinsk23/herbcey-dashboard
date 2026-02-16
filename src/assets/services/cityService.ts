@@ -358,7 +358,25 @@ export async function searchCities(
 }
 
 /**
- * Detect city from address by matching against database
+ * Returns true if a line looks like a phone/contact line.
+ * Matches Sri Lankan formats: 10-digit numbers, multiple numbers separated by spaces/commas.
+ */
+function isContactLine(line: string): boolean {
+  const stripped = line.trim().replace(/[\s,\/]+/g, " ");
+  // All tokens must look like phone numbers (7-12 digits, optional + prefix)
+  const tokens = stripped.split(" ").filter((t) => t.length > 0);
+  if (tokens.length === 0) return false;
+  return tokens.every(
+    (token) =>
+      /^\+?\d{7,12}$/.test(token.replace(/\D/g, "")) && /\d{7,}/.test(token),
+  );
+}
+
+/**
+ * Detect city from address by matching against database.
+ * Address format: Name / Address lines / City line / Contact line(s)
+ * Strips contact lines from the end so city line becomes the true last line,
+ * then scans from end to start with highest priority on the last content line.
  */
 export async function detectCityFromAddress(
   address: string,
@@ -377,7 +395,20 @@ export async function detectCityFromAddress(
 
     const cities = result.data;
     const addressLower = address.toLowerCase();
-    const lines = address.split("\n").filter((line) => line.trim());
+    const allLines = address.split("\n").filter((line) => line.trim());
+
+    // Strip trailing contact/phone lines so city line becomes the last line
+    // e.g. ["John Doe", "123 Main St", "Colombo 01", "0771234567"] → strip last
+    const lines = [...allLines];
+    while (lines.length > 1 && isContactLine(lines[lines.length - 1])) {
+      lines.pop();
+    }
+
+    console.log("📍 Lines after stripping contacts:", lines);
+
+    // Reversed lines: index 0 = city line (last non-contact line), index 1 = address line above it
+    const reversedLines = [...lines].reverse();
+
     const words = address
       .split(/[\s,\n]+/)
       .filter((word) => word.trim().length > 2)
@@ -392,33 +423,44 @@ export async function detectCityFromAddress(
       const districtLower = (city.district_name || "").toLowerCase();
       const zoneLower = (city.zone_name || "").toLowerCase();
 
-      // PRIORITY 1: Exact match in last 2 lines (most likely to be city)
-      for (let i = lines.length - 1; i >= Math.max(0, lines.length - 2); i--) {
-        const line = lines[i].toLowerCase();
+      // PRIORITY 1: reversedLines[0] is the true city line (contacts already stripped).
+      // Score decays strongly as we move up the address.
+      for (let i = 0; i < Math.min(3, reversedLines.length); i++) {
+        const line = reversedLines[i].toLowerCase();
+
         if (line.includes(cityNameLower)) {
-          score += 100;
-          // Bonus if it's the exact line or standalone
+          // City line (i=0) = 150, one above (i=1) = 80, two above (i=2) = 40
+          const baseScore = i === 0 ? 150 : i === 1 ? 80 : 40;
+          score += baseScore;
+
+          // Bonus: line is exactly the city name
           if (line.trim() === cityNameLower) {
-            score += 50;
+            score += 80;
           }
-          // Bonus if it's at the end of the line
+          // Bonus: city name is at the end of the line (e.g. "Colombo 03")
           if (line.trim().endsWith(cityNameLower)) {
-            score += 25;
+            score += 40;
+          }
+          // Bonus: city name is at the start of the line
+          if (line.trim().startsWith(cityNameLower)) {
+            score += 20;
           }
         }
+
         if (districtLower && line.includes(districtLower)) {
-          score += 30;
+          score += i === 0 ? 40 : i === 1 ? 20 : 10;
         }
+
         if (zoneLower && line.includes(zoneLower)) {
-          score += 20;
+          score += i === 0 ? 30 : i === 1 ? 15 : 5;
         }
       }
 
-      // PRIORITY 2: Match in any line
-      lines.forEach((line) => {
+      // PRIORITY 2: Match in any line — scanned end to start with decaying score
+      reversedLines.forEach((line, i) => {
         const lineLower = line.toLowerCase();
         if (lineLower.includes(cityNameLower)) {
-          score += 20;
+          score += Math.max(3, 15 - i * 5);
         }
       });
 
@@ -469,7 +511,7 @@ export async function detectCityFromAddress(
         }
       }
 
-      // PRIORITY 7: City appears in first line (sometimes it's the company/customer name)
+      // PRIORITY 7: City appears in first line (lowest priority — likely a name, not city)
       if (lines.length > 0) {
         const firstLine = lines[0].toLowerCase();
         if (firstLine.includes(cityNameLower)) {
@@ -649,7 +691,7 @@ export async function testCityService(): Promise<void> {
       console.log(`✅ Test passed! Loaded ${result.data.length} cities`);
       console.log("📋 First 3 cities:", result.data.slice(0, 3));
 
-      // Test detection
+      // Test detection — city is at the end of the address
       const testAddress = "John Doe\n123 Main Street\nColombo 01\n0771234567";
       const detectionResult = await detectCityFromAddress(testAddress);
       console.log("🧪 City detection test:", detectionResult);
