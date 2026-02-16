@@ -41,6 +41,7 @@ interface Order {
   addressLine1: string;
   addressLine2?: string;
   addressLine3?: string;
+  mainCity?: string; // Q (16)
   contact: string;
   products: {
     name: string;
@@ -63,6 +64,7 @@ interface Order {
   tracking?: string;
   freeShipping?: boolean;
   lastUpdated?: string;
+  fdeStatus?: string; // R (17): FDE waybill number
 }
 
 const Orders: React.FC = () => {
@@ -79,11 +81,9 @@ const Orders: React.FC = () => {
   const [endDate, setEndDate] = useState<string>("");
   const [showDateFilter, setShowDateFilter] = useState(false);
 
-  // Pagination state - moved inside the component
   const [itemsPerPage, setItemsPerPage] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // OrderForm state
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [formMode, setFormMode] = useState<"create" | "update">("create");
@@ -94,7 +94,6 @@ const Orders: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load orders from Google Sheets on component mount
   useEffect(() => {
     loadOrdersFromSheets();
   }, []);
@@ -107,15 +106,12 @@ const Orders: React.FC = () => {
       const result = await getAllOrders();
 
       if (result.success && result.data) {
-        // Convert sheet data back to Order format
         const convertedOrders: Order[] = result.data.map((sheetOrder) => {
-          // Parse customer info back to separate fields
           const customerLines = sheetOrder.customerInfo.split("\n");
           const name = customerLines[0] || "";
           const address = customerLines.slice(1, -1).join(", ") || "";
           const contact = customerLines[customerLines.length - 1] || "";
 
-          // Reconstruct products array
           const products = [];
           if (sheetOrder.oilQty > 0) {
             products.push({
@@ -172,6 +168,7 @@ const Orders: React.FC = () => {
             addressLine1: address,
             addressLine2: "",
             addressLine3: "",
+            mainCity: sheetOrder.mainCity || "", // Q (16)
             contact,
             products,
             status: sheetOrder.orderStatus as Order["status"],
@@ -181,6 +178,7 @@ const Orders: React.FC = () => {
             tracking: sheetOrder.trackingId,
             freeShipping: sheetOrder.freeShipping,
             lastUpdated: sheetOrder.lastUpdated,
+            fdeStatus: sheetOrder.fdeStatus || "", // R (17): makes FDE button persistent
           };
         });
 
@@ -196,22 +194,14 @@ const Orders: React.FC = () => {
     }
   };
 
-  // Utility function to parse date strings into comparable timestamps
   const parseOrderDate = (dateString: string): number => {
     if (!dateString) return 0;
-
-    // Handle different date formats
     let parsedDate: Date;
-
-    // If it's already a valid ISO string or standard format
     if (dateString.includes("T") || dateString.includes("-")) {
       parsedDate = new Date(dateString);
     } else {
-      // Handle locale-specific formats like "1/8/2025, 10:30:45 AM"
       parsedDate = new Date(dateString);
     }
-
-    // Return timestamp, or 0 if invalid
     return isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
   };
 
@@ -263,21 +253,15 @@ const Orders: React.FC = () => {
     );
   });
 
-  // Get paginated orders sorted by creation date - LATEST FIRST
   const sortedOrders = filteredOrders.sort((a, b) => {
-    // Sort by orderDate only (most recent first)
     const aOrderTime = parseOrderDate(a.orderDate);
     const bOrderTime = parseOrderDate(b.orderDate);
     if (aOrderTime !== bOrderTime) {
-      return bOrderTime - aOrderTime; // Most recent first
+      return bOrderTime - aOrderTime;
     }
-
-    // If dates are same, sort by tracking ID (descending for newer tracking numbers)
     if (a.tracking && b.tracking) {
       return b.tracking.localeCompare(a.tracking);
     }
-
-    // Final fallback: sort by name
     return a.name.localeCompare(b.name);
   });
 
@@ -294,31 +278,27 @@ const Orders: React.FC = () => {
     setStartDate("");
     setEndDate("");
     setShowDateFilter(false);
-    setCurrentPage(1); // Reset to first page when clearing filters
+    setCurrentPage(1);
   };
 
-  // Handle creating new order
   const handleCreateOrder = () => {
     setFormMode("create");
     setEditingOrder(null);
     setShowOrderForm(true);
   };
 
-  // Handle updating existing order
   const handleUpdateOrder = (order: Order) => {
     setFormMode("update");
     setEditingOrder(order);
     setShowOrderForm(true);
   };
 
-  // ENHANCED Handle form submission with full stock management
   const handleOrderSubmit = async (orderData: Order) => {
     try {
       if (formMode === "create") {
         const result = await addOrderToSheet(orderData);
 
         if (result.success) {
-          // Automatically reduce stock for the new order
           try {
             const stockReductionResult = await reduceStockForOrder(
               orderData.products.map((product) => ({
@@ -353,17 +333,14 @@ const Orders: React.FC = () => {
           alert(`Error creating order: ${result.error}`);
         }
       } else {
-        // Handle order updates with stock adjustments
         if (editingOrder?.tracking) {
           try {
-            // Update the order first
             const result = await updateOrderInSheet(
               editingOrder.tracking,
               orderData,
             );
 
             if (result.success) {
-              // Adjust stock based on changes between old and new order
               try {
                 const oldProducts = editingOrder.products.map((product) => ({
                   name: product.name,
@@ -414,12 +391,10 @@ const Orders: React.FC = () => {
       alert("An unexpected error occurred. Please try again.");
     }
 
-    // Close the form
     setShowOrderForm(false);
     setEditingOrder(null);
   };
 
-  // ENHANCED Handle order deletion with stock restoration
   const handleOrderDelete = async () => {
     if (!editingOrder?.tracking) return;
 
@@ -432,11 +407,9 @@ const Orders: React.FC = () => {
     }
 
     try {
-      // Delete the order from the sheet
       const result = await deleteOrderFromSheet(editingOrder.tracking);
 
       if (result.success) {
-        // Restore stock for the deleted order
         try {
           const stockRestorationResult = await restoreStockForDeletedOrder(
             editingOrder.products.map((product) => ({
@@ -476,7 +449,6 @@ const Orders: React.FC = () => {
     }
   };
 
-  // NEW: Enhanced function for direct delete from order cards (if needed)
   const handleDeleteOrderFromCard = async (order: Order) => {
     if (!order.tracking) return;
 
@@ -492,7 +464,6 @@ const Orders: React.FC = () => {
       const result = await deleteOrderFromSheet(order.tracking);
 
       if (result.success) {
-        // Restore stock for the deleted order
         try {
           const stockRestorationResult = await restoreStockForDeletedOrder(
             order.products.map((product) => ({
@@ -622,7 +593,7 @@ const Orders: React.FC = () => {
         setCurrentPage={setCurrentPage}
       />
 
-      {/* Orders List with Scroll */}
+      {/* Orders List */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="h-[600px] overflow-y-auto p-4 space-y-4">
           {paginatedOrders.map((order, index) => (
@@ -650,7 +621,7 @@ const Orders: React.FC = () => {
           </div>
         )}
 
-      {/* Empty state for no orders */}
+      {/* Empty state */}
       {orders.length === 0 && !loading && !error && (
         <div className="py-8 text-center">
           <div className="mb-4 text-6xl text-gray-400">📦</div>

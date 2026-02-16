@@ -188,7 +188,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   const getFDEButtonText = () => {
     if (fdeState.loading) return "Sending...";
-    if (fdeState.success === true) return "✓ Success";
+    if (fdeState.success === true) return "Added";
     if (fdeState.success === false) return "↺ Retry";
     return "FDE";
   };
