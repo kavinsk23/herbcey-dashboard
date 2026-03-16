@@ -42,7 +42,9 @@ interface Order {
     | "Return"
     | "Return Complete"
     | "Damaged"
-    | "Transfer";
+    | "Transfer"
+    | "No Answer";
+
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -610,7 +612,9 @@ const AnalyticsPage: React.FC = () => {
       const endDate = new Date(dateRange.endDate);
 
       const dateMatch = orderDate >= startDate && orderDate <= endDate;
-      const statusMatch = !["Damaged", "Return"].includes(order.status);
+      const statusMatch = !["Damaged", "Return Complete", "No Answer"].includes(
+        order.status,
+      );
       const productMatch =
         selectedProduct === "all" ||
         order.products.some((p) => p.name === selectedProduct);
