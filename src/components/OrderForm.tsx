@@ -45,7 +45,8 @@ interface Order {
     | "Reschedule"
     | "Return"
     | "Damaged"
-    | "Transfer";
+    | "Transfer"
+    | "No Answer";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -100,7 +101,8 @@ const OrderForm: React.FC<OrderFormProps> = ({
       | "Reschedule"
       | "Return"
       | "Transfer"
-      | "Damaged",
+      | "Damaged"
+      | "No Answer",
     paymentMethod: "COD" as "COD" | "Bank Transfer",
     paymentReceived: false,
     freeShipping: false,
@@ -1395,6 +1397,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                         <option value="Reschedule">Reschedule</option>
                         <option value="Return">Return</option>
                         <option value="Damaged">Damaged</option>
+                        <option value="No Answer">No Answer</option>
                       </select>
                     </div>
                   </div>

@@ -30,12 +30,14 @@ interface Order {
     | "Reschedule"
     | "Return"
     | "Transfer"
-    | "Damaged";
+    | "Damaged"
+    | "No Answer";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
+  lastUpdated?: string;
   fdeStatus?: string; // R (17): waybill number — empty if not yet sent to FDE
 }
 
@@ -103,6 +105,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Damaged: "bg-red-100 text-red-800 border-red-200",
     Reschedule: "bg-orange-100 text-orange-800 border-orange-200",
     Transfer: "bg-pink-100 text-pink-800 border-pink-200",
+    "No Answer": "bg-yellow-200 text-yellow-900 border-yellow-400",
   };
 
   const paymentColors = {
