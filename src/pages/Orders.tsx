@@ -24,7 +24,8 @@ type StatusType =
   | "Reschedule"
   | "Return"
   | "Transfer"
-  | "Damaged";
+  | "Damaged"
+  | "No Answer";
 type ProductType =
   | "All"
   | "Oil"
@@ -57,7 +58,8 @@ interface Order {
     | "Reschedule"
     | "Return"
     | "Transfer"
-    | "Damaged";
+    | "Damaged"
+    | "No Answer";
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
@@ -540,7 +542,6 @@ const Orders: React.FC = () => {
 
   return (
     <div className="container px-4 py-8 pt-0 mx-auto">
-      {/* Header with New Order Button */}
       <div className="flex items-center justify-between mb-4 sticky z-10 top-20 py-4 bg-[#F9FAFB]">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Orders Dashboard</h1>
@@ -566,7 +567,6 @@ const Orders: React.FC = () => {
         </button>
       </div>
 
-      {/* Filter Section */}
       <FilterSection
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -606,7 +606,6 @@ const Orders: React.FC = () => {
         </div>
       </div>
 
-      {/* No Results Message */}
       {filteredOrders.length === 0 &&
         (searchTerm ||
           trackingSearch ||
@@ -640,7 +639,6 @@ const Orders: React.FC = () => {
         </div>
       )}
 
-      {/* Order Form Modal */}
       <OrderForm
         isOpen={showOrderForm}
         onClose={() => setShowOrderForm(false)}

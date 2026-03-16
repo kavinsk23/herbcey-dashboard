@@ -15,7 +15,8 @@ type StatusType =
   | "Reschedule"
   | "Return"
   | "Transfer"
-  | "Damaged";
+  | "Damaged"
+  | "No Answer";
 type ProductType =
   | "All"
   | "Oil"
@@ -93,6 +94,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     Damaged: "bg-red-100 text-red-800 border-red-200",
     Reschedule: "bg-orange-100 text-orange-800 border-orange-200",
     Transfer: "bg-pink-100 text-pink-800 border-pink-200",
+    "No Answer": "bg-yellow-200 text-yellow-900 border-yellow-400",
   };
 
   const productColors: Record<ProductType, string> = {

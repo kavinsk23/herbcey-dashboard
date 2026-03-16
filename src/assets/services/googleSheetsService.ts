@@ -25,7 +25,9 @@ interface Order {
     | "Reschedule"
     | "Return"
     | "Transfer"
-    | "Damaged";
+    | "Damaged"
+    | "No Answer";
+
   orderDate: string;
   paymentMethod: "COD" | "Bank Transfer";
   paymentReceived?: boolean;
