@@ -47,7 +47,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Conditioner: 1350,
 };
 
-const SHIPPING_COST: number = 350;
+const SHIPPING_COST: number = 450;
 
 // Get column letter from index (0=A, 1=B, etc.)
 function getColumnLetter(index: number): string {
@@ -76,7 +76,7 @@ export async function getSheetStructure(): Promise<
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -88,7 +88,7 @@ export async function getSheetStructure(): Promise<
 
     // Find product columns (anything after "Last Updated" that ends with " Qty")
     const lastUpdatedIndex = headers.findIndex(
-      (h: string) => h === "Last Updated"
+      (h: string) => h === "Last Updated",
     );
     const productColumns: ProductColumn[] = [];
 
@@ -123,7 +123,7 @@ export async function getSheetStructure(): Promise<
 
 // Add a new product column to the orders sheet
 export async function addProductColumn(
-  productName: string
+  productName: string,
 ): Promise<ApiResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
@@ -141,7 +141,7 @@ export async function addProductColumn(
 
     // Check if column already exists
     const existingColumn = productColumns.find(
-      (col) => col.name === productName
+      (col) => col.name === productName,
     );
     if (existingColumn) {
       return {
@@ -170,13 +170,13 @@ export async function addProductColumn(
         body: JSON.stringify({
           values: [[newHeaderName]],
         }),
-      }
+      },
     );
 
     if (!updateResponse.ok) {
       const errorText = await updateResponse.text();
       throw new Error(
-        `Failed to add column: ${updateResponse.status} - ${errorText}`
+        `Failed to add column: ${updateResponse.status} - ${errorText}`,
       );
     }
 
@@ -186,7 +186,7 @@ export async function addProductColumn(
     }
 
     console.log(
-      `Successfully added column "${newHeaderName}" at position ${newColumnLetter}`
+      `Successfully added column "${newHeaderName}" at position ${newColumnLetter}`,
     );
     return {
       success: true,
@@ -221,7 +221,7 @@ async function initializeNewColumn(columnLetter: string): Promise<void> {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -248,7 +248,7 @@ async function initializeNewColumn(columnLetter: string): Promise<void> {
           body: JSON.stringify({
             values: initValues,
           }),
-        }
+        },
       );
     }
   } catch (error) {
@@ -258,7 +258,7 @@ async function initializeNewColumn(columnLetter: string): Promise<void> {
 
 // Remove a product column from the orders sheet
 export async function removeProductColumn(
-  productName: string
+  productName: string,
 ): Promise<ApiResponse> {
   try {
     const accessToken = localStorage.getItem("google_access_token");
@@ -274,7 +274,7 @@ export async function removeProductColumn(
 
     const { productColumns } = structureResult.data;
     const columnToRemove = productColumns.find(
-      (col) => col.name === productName
+      (col) => col.name === productName,
     );
 
     if (!columnToRemove) {
@@ -291,18 +291,18 @@ export async function removeProductColumn(
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     if (!metadataResponse.ok) {
       throw new Error(
-        `Failed to get spreadsheet metadata: ${metadataResponse.status}`
+        `Failed to get spreadsheet metadata: ${metadataResponse.status}`,
       );
     }
 
     const metadata = await metadataResponse.json();
     const sheet = metadata.sheets.find(
-      (s: any) => s.properties.title === SHEET_NAME
+      (s: any) => s.properties.title === SHEET_NAME,
     );
 
     if (!sheet) {
@@ -334,13 +334,13 @@ export async function removeProductColumn(
             },
           ],
         }),
-      }
+      },
     );
 
     if (!deleteResponse.ok) {
       const errorText = await deleteResponse.text();
       throw new Error(
-        `Failed to delete column: ${deleteResponse.status} - ${errorText}`
+        `Failed to delete column: ${deleteResponse.status} - ${errorText}`,
       );
     }
 
@@ -373,7 +373,7 @@ function formatCustomerInfo(order: any): string {
 
 function calculateTotal(
   products: any[],
-  freeShipping: boolean = false
+  freeShipping: boolean = false,
 ): number {
   const subtotal = products.reduce((sum: number, product: any) => {
     const price = PRODUCT_PRICES[product.name] || product.price || 0;
@@ -385,7 +385,7 @@ function calculateTotal(
 
 // Enhanced function to convert order to sheet row with dynamic columns
 export async function orderToSheetRowDynamic(
-  order: any
+  order: any,
 ): Promise<(string | number)[]> {
   try {
     // Get current sheet structure

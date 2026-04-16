@@ -744,7 +744,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
             const totalAmount = formData.freeShipping
               ? subtotal
-              : subtotal + 350;
+              : subtotal + 450;
 
             sendOrderConfirmationSMS({
               customerName: name,
@@ -836,7 +836,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         return sum + product.price * product.quantity;
       }, 0);
 
-    return formData.freeShipping ? subtotal : subtotal + 350;
+    return formData.freeShipping ? subtotal : subtotal + 450;
   };
 
   const totalAmount = calculateTotal();
@@ -977,11 +977,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
             ? `
           <div class="flex-row">
             <span>Subtotal:</span>
-            <span>${formatCurrency(totalAmount - 350)}</span>
+            <span>${formatCurrency(totalAmount - 450)}</span>
           </div>
           <div class="flex-row">
             <span>Delivery:</span>
-            <span>${formatCurrency(350)}</span>
+            <span>${formatCurrency(450)}</span>
           </div>
         `
             : `
@@ -1591,7 +1591,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             : "text-sm"
                         }
                       >
-                        {formatCurrency(350)}
+                        {formatCurrency(450)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">

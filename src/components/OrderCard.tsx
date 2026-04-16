@@ -128,7 +128,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       (sum, product) => sum + product.price * product.quantity,
       0,
     );
-    return order.freeShipping ? subtotal : subtotal + 350;
+    return order.freeShipping ? subtotal : subtotal + 450;
   };
 
   const totalAmount = calculateTotal();
@@ -272,7 +272,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         ${
           !order.freeShipping
             ? `<div class="flex-row"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
-             <div class="flex-row"><span>Delivery:</span><span>${formatCurrency(350)}</span></div>`
+             <div class="flex-row"><span>Delivery:</span><span>${formatCurrency(450)}</span></div>`
             : `<div class="flex-row"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
              <div class="flex-row"><span>Delivery:</span><span>FREE</span></div>`
         }

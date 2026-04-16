@@ -183,7 +183,7 @@ const AnalyticsPage: React.FC = () => {
     {},
   );
 
-  const SHIPPING_COST = 350;
+  const SHIPPING_COST = 450;
 
   // Auto-refresh interval (every 30 seconds)
   const REFRESH_INTERVAL = 30000;

@@ -85,7 +85,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Castor: 2400,
 };
 
-const SHIPPING_COST: number = 350;
+const SHIPPING_COST: number = 450;
 
 function calculateTotal(
   products: Product[],
