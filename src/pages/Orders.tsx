@@ -13,6 +13,11 @@ import {
   restoreStockForDeletedOrder,
   adjustStockForUpdatedOrder,
 } from "../assets/services/stockService";
+import {
+  getPriceForDate,
+  getPriceHistory,
+  PriceHistoryRow,
+} from "../assets/services/priceHistoryService";
 
 type StatusType =
   | "All"
@@ -95,9 +100,11 @@ const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[]>([]);
 
   useEffect(() => {
     loadOrdersFromSheets();
+    getPriceHistory().then(setPriceHistory);
   }, []);
 
   const loadOrdersFromSheets = async () => {
@@ -115,53 +122,58 @@ const Orders: React.FC = () => {
           const contact = customerLines[customerLines.length - 1] || "";
 
           const products = [];
+          const orderDate = sheetOrder.orderDate;
+
           if (sheetOrder.oilQty > 0) {
             products.push({
               name: "Oil",
               quantity: sheetOrder.oilQty,
-              price: 950,
+              price: getPriceForDate(priceHistory, "Oil", orderDate) || 950,
             });
           }
           if (sheetOrder.shampooQty > 0) {
             products.push({
               name: "Shampoo",
               quantity: sheetOrder.shampooQty,
-              price: 1350,
+              price:
+                getPriceForDate(priceHistory, "Shampoo", orderDate) || 1350,
             });
           }
           if (sheetOrder.conditionerQty > 0) {
             products.push({
               name: "Conditioner",
               quantity: sheetOrder.conditionerQty,
-              price: 1350,
+              price:
+                getPriceForDate(priceHistory, "Conditioner", orderDate) || 1350,
             });
           }
           if (sheetOrder.sprayQty > 0) {
             products.push({
               name: "Spray",
               quantity: sheetOrder.sprayQty,
-              price: 980,
+              price: getPriceForDate(priceHistory, "Spray", orderDate) || 980,
             });
           }
           if (sheetOrder.serumQty > 0) {
             products.push({
               name: "Serum",
               quantity: sheetOrder.serumQty,
-              price: 1600,
+              price: getPriceForDate(priceHistory, "Serum", orderDate) || 1600,
             });
           }
           if (sheetOrder.premiumQty > 0) {
             products.push({
               name: "Premium",
               quantity: sheetOrder.premiumQty,
-              price: 2600,
+              price:
+                getPriceForDate(priceHistory, "Premium", orderDate) || 2600,
             });
           }
           if (sheetOrder.castorQty > 0) {
             products.push({
               name: "Castor",
               quantity: sheetOrder.castorQty,
-              price: 2400,
+              price: getPriceForDate(priceHistory, "Castor", orderDate) || 2400,
             });
           }
 

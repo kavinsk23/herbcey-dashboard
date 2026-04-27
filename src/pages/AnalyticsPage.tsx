@@ -23,6 +23,12 @@ import {
 } from "../assets/services/expenseService";
 import AnalyticsFilters from "../components/AnalyticsFilters";
 import ExpenseManager from "../components/ExpenseManager";
+import {
+  getCostForDate,
+  getPriceForDate,
+  getPriceHistory,
+  PriceHistoryRow,
+} from "../assets/services/priceHistoryService";
 
 interface Order {
   name: string;
@@ -182,6 +188,7 @@ const AnalyticsPage: React.FC = () => {
   const [productColors, setProductColors] = useState<Record<string, string>>(
     {},
   );
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[]>([]);
 
   const SHIPPING_COST = 450;
 
@@ -312,6 +319,10 @@ const AnalyticsPage: React.FC = () => {
     loadProducts();
   }, []);
 
+  useEffect(() => {
+    getPriceHistory().then(setPriceHistory);
+  }, []);
+
   // Load real orders from Google Sheets Orders sheet
   useEffect(() => {
     const loadRealOrders = async () => {
@@ -351,7 +362,14 @@ const AnalyticsPage: React.FC = () => {
                 products.push({
                   name: productName,
                   quantity: quantity,
-                  price: productPrices[productName] || 0,
+                  price:
+                    getPriceForDate(
+                      priceHistory,
+                      productName,
+                      sheetOrder.orderDate,
+                    ) ||
+                    productPrices[productName] ||
+                    0,
                 });
               }
             });
@@ -389,8 +407,7 @@ const AnalyticsPage: React.FC = () => {
     if (Object.keys(productPrices).length > 0) {
       loadRealOrders();
     }
-  }, [productPrices]);
-
+  }, [productPrices, priceHistory]);
   // Load expenses from Google Sheets Expenses sheet
   useEffect(() => {
     const loadExpenses = async () => {
@@ -520,7 +537,14 @@ const AnalyticsPage: React.FC = () => {
                   products.push({
                     name: productName,
                     quantity: quantity,
-                    price: productPrices[productName] || 0,
+                    price:
+                      getPriceForDate(
+                        priceHistory,
+                        productName,
+                        sheetOrder.orderDate,
+                      ) ||
+                      productPrices[productName] ||
+                      0,
                   });
                 }
               });
@@ -691,7 +715,10 @@ const AnalyticsPage: React.FC = () => {
             };
           }
 
-          const productCost = productCosts[product.name] || 0;
+          const productCost =
+            getCostForDate(priceHistory, product.name, order.orderDate) ||
+            productCosts[product.name] ||
+            0;
           const productRevenue = product.price * product.quantity;
           const productTotalCost = productCost * product.quantity;
           const productProfit = productRevenue - productTotalCost;
@@ -885,6 +912,7 @@ const AnalyticsPage: React.FC = () => {
     realOrders,
     dateRange,
     productCosts,
+    priceHistory,
     filteredExpenses,
   ]);
 

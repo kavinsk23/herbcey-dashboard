@@ -10,6 +10,7 @@ import {
   addProductColumn,
   removeProductColumn,
 } from "../assets/services/dynamicColumnsService";
+import { recordPriceChange } from "../assets/services/priceHistoryService";
 
 interface ProductCost {
   id: string;
@@ -72,10 +73,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
   // Update parent component when products change
   useEffect(() => {
     if (products.length > 0) {
-      const costMap = products.reduce((acc, product) => {
-        acc[product.name] = product.cost;
-        return acc;
-      }, {} as Record<string, number>);
+      const costMap = products.reduce(
+        (acc, product) => {
+          acc[product.name] = product.cost;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
       onCostsUpdate?.(costMap);
     }
   }, [products, onCostsUpdate]);
@@ -156,7 +160,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
 
       if (result.success) {
         console.log(
-          `Successfully removed ${productName} column from orders sheet`
+          `Successfully removed ${productName} column from orders sheet`,
         );
         return true;
       } else {
@@ -175,7 +179,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
       setSyncStatus("Syncing...");
       const result = await updateProductInSheet(
         updatedProduct.id,
-        updatedProduct
+        updatedProduct,
       );
 
       if (result.success) {
@@ -225,7 +229,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
   // Delete product from Google Sheets and orders sheet
   const deleteProductFromSheets = async (
     productId: string,
-    productName: string
+    productName: string,
   ) => {
     try {
       setSyncStatus("Deleting product...");
@@ -318,11 +322,16 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     const success = await updateProductInSheets(newProduct);
 
     if (success) {
-      // Update local state only if Google Sheets update was successful
+      await recordPriceChange(
+        productId,
+        updatedProduct.name,
+        tempCost,
+        updatedProduct.price,
+      );
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
-          product.id === productId ? newProduct : product
-        )
+          product.id === productId ? newProduct : product,
+        ),
       );
     } else {
       alert("Failed to update cost in Google Sheets");
@@ -362,11 +371,16 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
     const success = await updateProductInSheets(newProduct);
 
     if (success) {
-      // Update local state only if Google Sheets update was successful
+      await recordPriceChange(
+        productId,
+        updatedProduct.name,
+        updatedProduct.cost,
+        tempPrice,
+      );
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
-          product.id === productId ? newProduct : product
-        )
+          product.id === productId ? newProduct : product,
+        ),
       );
     } else {
       alert("Failed to update price in Google Sheets");
@@ -390,7 +404,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
 
     if (
       products.some(
-        (p) => p.name.toLowerCase() === newProduct.name.toLowerCase()
+        (p) => p.name.toLowerCase() === newProduct.name.toLowerCase(),
       )
     ) {
       alert("Product with this name already exists");
@@ -417,14 +431,14 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
       // Show success message with column info
       if (needsOrdersColumn(productToAdd.name)) {
         alert(
-          `Product "${productToAdd.name}" added successfully!\nA new "${productToAdd.name} Qty" column has been added to your orders sheet.`
+          `Product "${productToAdd.name}" added successfully!\nA new "${productToAdd.name} Qty" column has been added to your orders sheet.`,
         );
       } else {
         alert(`Product "${productToAdd.name}" added successfully!`);
       }
     } else {
       alert(
-        "Failed to add product. Please check your connection and try again."
+        "Failed to add product. Please check your connection and try again.",
       );
     }
   };
@@ -435,7 +449,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
 
     if (
       !window.confirm(
-        `Are you sure you want to delete "${product.name}"?\n\nThis will also remove the "${product.name} Qty" column from your orders sheet if it exists.`
+        `Are you sure you want to delete "${product.name}"?\n\nThis will also remove the "${product.name} Qty" column from your orders sheet if it exists.`,
       )
     ) {
       return;
@@ -451,14 +465,14 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
       // Show success message
       if (needsOrdersColumn(product.name)) {
         alert(
-          `Product "${product.name}" deleted successfully!\nThe "${product.name} Qty" column has been removed from your orders sheet.`
+          `Product "${product.name}" deleted successfully!\nThe "${product.name} Qty" column has been removed from your orders sheet.`,
         );
       } else {
         alert(`Product "${product.name}" deleted successfully!`);
       }
     } else {
       alert(
-        "Failed to delete product. Please check your connection and try again."
+        "Failed to delete product. Please check your connection and try again.",
       );
     }
   };
@@ -502,13 +516,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                 syncStatus === "Synced"
                   ? "text-green-700 bg-green-100"
                   : syncStatus === "Syncing..." ||
-                    syncStatus.includes("Adding") ||
-                    syncStatus.includes("Removing")
-                  ? "text-blue-700 bg-blue-100"
-                  : syncStatus === "Sync failed" ||
-                    syncStatus.includes("failed")
-                  ? "text-red-700 bg-red-100"
-                  : "text-gray-700 bg-gray-100"
+                      syncStatus.includes("Adding") ||
+                      syncStatus.includes("Removing")
+                    ? "text-blue-700 bg-blue-100"
+                    : syncStatus === "Sync failed" ||
+                        syncStatus.includes("failed")
+                      ? "text-red-700 bg-red-100"
+                      : "text-gray-700 bg-gray-100"
               }`}
             >
               {loading ? "Loading..." : syncStatus}
@@ -610,7 +624,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                     <div
                       className={`w-3 h-3 rounded-full ${getProductColor(
                         product.name,
-                        index
+                        index,
                       )}`}
                     ></div>
                     <h4 className="font-semibold text-gray-900">
@@ -625,7 +639,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                   <div className="flex items-center space-x-2">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${getColorByMargin(
-                        margin
+                        margin,
                       )}`}
                     >
                       {margin.toFixed(1)}% margin
@@ -840,8 +854,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({ onCostsUpdate }) => {
                         profit > 0
                           ? "text-green-600"
                           : profit < 0
-                          ? "text-red-600"
-                          : "text-gray-600"
+                            ? "text-red-600"
+                            : "text-gray-600"
                       }`}
                     >
                       {formatCurrency(profit)}
