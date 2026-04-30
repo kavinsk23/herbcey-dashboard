@@ -8,6 +8,7 @@ import {
   isYesterday,
 } from "../utils/dateUtils";
 import { updateFdeStatus } from "../assets/services/googleSheetsService";
+import { updateOrderNote } from "../assets/services/notesService";
 
 interface Order {
   name: string;
@@ -39,6 +40,7 @@ interface Order {
   freeShipping?: boolean;
   lastUpdated?: string;
   fdeStatus?: string; // R (17): waybill number — empty if not yet sent to FDE
+  notes?: string; // S (18): order notes
 }
 
 interface OrderCardProps {
@@ -59,6 +61,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     success: alreadyProcessed ? true : undefined,
     message: alreadyProcessed ? "Done" : undefined,
   });
+
+  const [showNotes, setShowNotes] = useState(false);
+  const [noteText, setNoteText] = useState(order.notes || "");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
 
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
@@ -205,6 +212,17 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     return "bg-blue-600 text-white border-blue-600 hover:bg-blue-700";
   };
 
+  const handleSaveNote = async () => {
+    if (!order.tracking) return;
+    setNoteSaving(true);
+    const result = await updateOrderNote(order.tracking, noteText);
+    setNoteSaving(false);
+    if (result.success) {
+      setNoteSaved(true);
+      setTimeout(() => setNoteSaved(false), 2000);
+    }
+  };
+
   // Disabled only when loading, no tracking, or already succeeded
   // Failed state stays clickable so user can retry
   const fdeDisabled =
@@ -304,7 +322,27 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   };
 
   return (
-    <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
+    <div className="relative transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
+      {/* note button */}
+      <button
+        onClick={() => setShowNotes(true)}
+        title={noteText ? "View/edit note" : "Add note"}
+        className={`absolute z-10 -top-2 -right-2 p-1 text-sm transition-colors border rounded-full flex items-center justify-center gap-1.5 ${noteText ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100" : "border-gray-300 text-gray-700 bg-gray-50"}`}
+      >
+        <svg
+          className="w-3.5 h-3.5 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+          />
+        </svg>
+      </button>
       {/* ── MOBILE HEADER (2-row layout, hidden on md+) ── */}
       <div className="border-b md:hidden">
         {/* Row 1: Status | Payment */}
@@ -380,7 +418,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </div>
         </div>
       </div>
-
       {/* ── DESKTOP HEADER (original 3-column layout, hidden on mobile) ── */}
       <div className="items-center justify-between hidden border-b md:flex">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
@@ -445,7 +482,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
         </div>
       </div>
-
       {/* ── MOBILE BODY (customer+buttons side-by-side, products below, hidden on md+) ── */}
       <div className="p-3 md:hidden">
         <div className="flex items-start gap-3 mb-3">
@@ -505,6 +541,26 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               Print
             </button>
             <button
+              onClick={() => setShowNotes(true)}
+              title={noteText ? "View/edit note" : "Add note"}
+              className={`w-16 px-2 py-1 text-xs transition-colors border rounded-lg flex items-center justify-center gap-1 ${noteText ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+            >
+              <svg
+                className="flex-shrink-0 w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Note
+            </button>
+            <button
               onClick={() => onUpdateClick && onUpdateClick(order)}
               className="w-16 px-2 py-1 text-xs text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
             >
@@ -560,7 +616,6 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </table>
         </div>
       </div>
-
       {/* ── DESKTOP BODY (original layout, hidden on mobile) ── */}
       <div className="flex-row justify-between hidden w-full px-3 py-2 md:flex">
         {/* Customer Info */}
@@ -676,6 +731,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           >
             Print
           </button>
+
           <button
             onClick={() => onUpdateClick && onUpdateClick(order)}
             className="w-20 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
@@ -684,6 +740,80 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </button>
         </div>
       </div>
+      {/* Notes Modal */}
+      {showNotes && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowNotes(false);
+          }}
+        >
+          <div className="flex flex-col w-full max-w-sm bg-white shadow-xl rounded-xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-4 h-4 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                <span className="text-sm font-semibold text-gray-800">
+                  Notes - {order.tracking || order.name}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowNotes(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <textarea
+                className="w-full h-40 p-3 text-sm border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-bg-blue-600 focus:border-transparent"
+                placeholder="Add a note for this order..."
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-2 px-4 pb-4">
+              <button
+                onClick={() => setShowNotes(false)}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveNote}
+                disabled={noteSaving}
+                className={`px-4 py-1.5 text-sm text-white rounded-lg transition-colors ${noteSaved ? "bg-green-600" : "bg-blue-600 hover:bg-blue-700"} ${noteSaving ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                {noteSaving ? "Saving..." : noteSaved ? "Saved!" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

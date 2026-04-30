@@ -18,6 +18,7 @@ import {
   getPriceHistory,
   PriceHistoryRow,
 } from "../assets/services/priceHistoryService";
+import { getAllOrderNotes } from "../assets/services/notesService";
 
 type StatusType =
   | "All"
@@ -72,6 +73,7 @@ interface Order {
   freeShipping?: boolean;
   lastUpdated?: string;
   fdeStatus?: string; // R (17): FDE waybill number
+  notes?: string; // S (18): order notes
 }
 
 const Orders: React.FC = () => {
@@ -112,7 +114,10 @@ const Orders: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const result = await getAllOrders();
+      const [result, noteMap] = await Promise.all([
+        getAllOrders(),
+        getAllOrderNotes(),
+      ]);
 
       if (result.success && result.data) {
         const convertedOrders: Order[] = result.data.map((sheetOrder) => {
@@ -193,6 +198,7 @@ const Orders: React.FC = () => {
             freeShipping: sheetOrder.freeShipping,
             lastUpdated: sheetOrder.lastUpdated,
             fdeStatus: sheetOrder.fdeStatus || "", // R (17): makes FDE button persistent
+            notes: noteMap[sheetOrder.trackingId] || "", // S (18): order notes
           };
         });
 
