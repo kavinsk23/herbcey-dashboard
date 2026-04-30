@@ -305,78 +305,166 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
 
   return (
     <div className="overflow-hidden transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b">
+
+      {/* ── MOBILE HEADER (2-row layout, hidden on md+) ── */}
+      <div className="border-b md:hidden">
+        {/* Row 1: Status | Payment */}
+        <div className="flex items-stretch">
+          <div className={`${statusColors[order.status]} px-3 py-1.5 flex-1 min-w-0`}>
+            <span className="text-xs font-semibold block truncate">{order.status}</span>
+          </div>
+          <div className={`${paymentColors[order.paymentMethod]} px-3 py-1.5 flex-1 flex items-center justify-center gap-1.5 min-w-0`}>
+            <span className="text-xs font-semibold">
+              {order.paymentMethod === "Bank Transfer" ? "Bank" : "COD"}
+            </span>
+            {order.paymentMethod === "COD" && (
+              order.paymentReceived ? (
+                <div className="flex items-center justify-center flex-shrink-0 w-4 h-4 bg-green-500 rounded-full">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center flex-shrink-0 w-4 h-4 bg-red-500 rounded-full">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+        {/* Row 2: Date + Tracking */}
+        <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs font-medium text-gray-900 whitespace-nowrap">{order.orderDate.split(" ")[0]}</span>
+            <span className="text-xs text-gray-500 whitespace-nowrap">{order.orderDate.split(" ")[1]}</span>
+          </div>
+          <div className="flex items-center gap-2 min-w-0">
+            {order.freeShipping && (
+              <span className="flex-shrink-0 px-1.5 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">Free</span>
+            )}
+            <span className="text-xs font-semibold text-gray-800 truncate">{order.tracking || "N/A"}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── DESKTOP HEADER (original 3-column layout, hidden on mobile) ── */}
+      <div className="hidden md:flex items-center justify-between border-b">
         <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
           <span className="text-sm font-medium">{order.status}</span>
         </div>
-        <div
-          className={`${paymentColors[order.paymentMethod]} px-3 py-2 flex-1 text-center flex items-center justify-center space-x-2`}
-        >
+        <div className={`${paymentColors[order.paymentMethod]} px-3 py-2 flex-1 text-center flex items-center justify-center space-x-2`}>
           <span className="text-sm font-medium">{order.paymentMethod}</span>
           {order.paymentMethod === "COD" && (
             <>
               {order.paymentReceived ? (
                 <div className="flex items-center justify-center w-4 h-4 bg-green-500 rounded-full">
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
               ) : (
                 <div className="flex items-center justify-center w-4 h-4 bg-red-500 rounded-full">
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
               )}
             </>
           )}
         </div>
-        {/* date/tracking — gets more space on mobile via flex-[2] */}
-        <div className="flex justify-between flex-[2] md:flex-1 px-3 py-2 text-right bg-gray-100">
-          <div className="flex flex-col md:flex-row md:items-center md:space-y-0.5">
-            <span className="flex text-xs font-medium text-gray-900 md:mr-2 md:text-sm">
-              {order.orderDate.split(" ")[0]}
-            </span>
-            <span className="pb-0.5 text-xs text-gray-500">
-              {order.orderDate.split(" ")[1]}
-            </span>
+        <div className="flex justify-between flex-1 px-3 py-2 text-right bg-gray-100">
+          <div className="flex flex-row items-center">
+            <span className="text-sm font-medium text-gray-900 mr-2">{order.orderDate.split(" ")[0]}</span>
+            <span className="pb-0.5 text-xs text-gray-500">{order.orderDate.split(" ")[1]}</span>
           </div>
           {order.freeShipping && (
-            <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium hidden md:inline">
-              Free Delivery
-            </span>
+            <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">Free Delivery</span>
           )}
-          <span className="text-xs font-medium md:text-sm">
-            {order.tracking || "N/A"}
-          </span>
+          <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
         </div>
       </div>
 
-      {/* Body — stacks on mobile, side by side on desktop */}
-      <div className="flex flex-col w-full px-3 py-2 md:flex-row md:justify-between">
+      {/* ── MOBILE BODY (customer+buttons side-by-side, products below, hidden on md+) ── */}
+      <div className="p-3 md:hidden">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-gray-900 truncate">{order.name}</h3>
+            <div className="mt-0.5 space-y-0.5">
+              <p className="text-xs leading-snug text-gray-600">
+                {order.addressLine1}
+                {order.addressLine2 && <><br />{order.addressLine2}</>}
+              </p>
+              {order.addressLine3 && <p className="text-xs text-gray-600">{order.addressLine3}</p>}
+              {order.mainCity && <p className="text-xs font-medium text-gray-500">📍 {order.mainCity}</p>}
+              <div>
+                {contacts.map((contact, index) => (
+                  <p key={index} className="text-xs font-semibold text-indigo-600">{formatPhone(contact)}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <button
+              onClick={handleFDE}
+              disabled={fdeDisabled}
+              title={
+                fdeState.success === true
+                  ? `Waybill: ${order.fdeStatus || "saved"}`
+                  : fdeState.success === false
+                    ? fdeState.message || "Failed — click to retry"
+                    : "Send to FDE"
+              }
+              className={`w-16 px-2 py-1 text-xs transition-colors border rounded-lg ${getFDEButtonStyle()} ${fdeDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              {getFDEButtonText()}
+            </button>
+            <button onClick={handlePrint} className="w-16 px-2 py-1 text-xs text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50">
+              Print
+            </button>
+            <button onClick={() => onUpdateClick && onUpdateClick(order)} className="w-16 px-2 py-1 text-xs text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700">
+              Edit
+            </button>
+          </div>
+        </div>
+        {/* Products — 3 columns (no Price) */}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="px-2 py-1 text-xs font-medium text-left text-gray-500">Product</th>
+                <th className="px-2 py-1 text-xs font-medium text-center text-gray-500">Qty</th>
+                <th className="px-2 py-1 text-xs font-medium text-right text-gray-500">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.products.map((product) => (
+                <tr key={product.name} className="border-b border-gray-100">
+                  <td className="px-2 py-1">
+                    <span className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${productColors[product.name as keyof typeof productColors] || "bg-gray-100"}`}>
+                      {product.name}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1 text-xs font-medium text-center">x{product.quantity}</td>
+                  <td className="px-2 py-1 text-xs font-medium text-right whitespace-nowrap">{formatCurrency(product.price * product.quantity)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="font-medium bg-gray-100 border-t border-gray-300">
+                <td colSpan={2} className="px-2 py-1 text-xs text-right">Total:</td>
+                <td className="px-2 py-1 text-xs font-bold text-right whitespace-nowrap">{formatCurrency(totalAmount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* ── DESKTOP BODY (original layout, hidden on mobile) ── */}
+      <div className="hidden md:flex flex-row justify-between w-full px-3 py-2">
         {/* Customer Info */}
-        <div className="w-full mb-3 md:w-80 md:flex-shrink-0">
+        <div className="w-80 flex-shrink-0 mb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-2">
               <h3 className="font-semibold text-gray-900">{order.name}</h3>
@@ -385,93 +473,56 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           <div className="mt-1 space-y-1">
             <p className="text-sm text-gray-700">
               {order.addressLine1}
-              {order.addressLine2 && (
-                <>
-                  <br />
-                  {order.addressLine2}
-                </>
-              )}
+              {order.addressLine2 && <><br />{order.addressLine2}</>}
             </p>
-            {order.addressLine3 && (
-              <p className="text-sm text-gray-700">{order.addressLine3}</p>
-            )}
-            {order.mainCity && (
-              <p className="text-xs font-medium text-gray-500">
-                📍 {order.mainCity}
-              </p>
-            )}
+            {order.addressLine3 && <p className="text-sm text-gray-700">{order.addressLine3}</p>}
+            {order.mainCity && <p className="text-xs font-medium text-gray-500">📍 {order.mainCity}</p>}
             <div className="space-y-0.5">
               {contacts.map((contact, index) => (
-                <p key={index} className="text-sm font-medium text-indigo-600">
-                  {formatPhone(contact)}
-                </p>
+                <p key={index} className="text-sm font-medium text-indigo-600">{formatPhone(contact)}</p>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Products Table */}
-        <div className="w-full mb-3 md:flex-1 md:mx-4">
+        {/* Products Table — 4 columns */}
+        <div className="flex-1 mx-4 mb-3">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="w-1/4 px-3 py-1 text-xs font-medium text-left text-gray-500">
-                    Product
-                  </th>
-                  <th className="w-1/6 px-3 py-1 text-xs font-medium text-center text-gray-500">
-                    Qty
-                  </th>
-                  <th className="w-1/4 px-3 py-1 text-xs font-medium text-right text-gray-500">
-                    Price
-                  </th>
-                  <th className="w-1/3 px-3 py-1 text-xs font-medium text-right text-gray-500">
-                    Amount
-                  </th>
+                  <th className="w-1/4 px-3 py-1 text-xs font-medium text-left text-gray-500">Product</th>
+                  <th className="w-1/6 px-3 py-1 text-xs font-medium text-center text-gray-500">Qty</th>
+                  <th className="w-1/4 px-3 py-1 text-xs font-medium text-right text-gray-500">Price</th>
+                  <th className="w-1/3 px-3 py-1 text-xs font-medium text-right text-gray-500">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {order.products.map((product) => (
                   <tr key={product.name} className="border-b border-gray-100">
                     <td className="px-3 py-1">
-                      <span
-                        className={`px-2 py-0.5 text-xs rounded-full ${
-                          productColors[
-                            product.name as keyof typeof productColors
-                          ] || "bg-gray-100"
-                        }`}
-                      >
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${productColors[product.name as keyof typeof productColors] || "bg-gray-100"}`}>
                         {product.name}
                       </span>
                     </td>
-                    <td className="px-3 py-1 text-sm font-medium text-center">
-                      x{product.quantity}
-                    </td>
-                    <td className="px-3 py-1 text-sm text-right">
-                      {formatCurrency(product.price)}
-                    </td>
-                    <td className="px-3 py-1 text-sm font-medium text-right">
-                      {formatCurrency(product.price * product.quantity)}
-                    </td>
+                    <td className="px-3 py-1 text-sm font-medium text-center">x{product.quantity}</td>
+                    <td className="px-3 py-1 text-sm text-right">{formatCurrency(product.price)}</td>
+                    <td className="px-3 py-1 text-sm font-medium text-right">{formatCurrency(product.price * product.quantity)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="font-medium bg-gray-100 border-t border-gray-300">
-                  <td colSpan={3} className="px-3 py-1 text-sm text-right">
-                    Total:
-                  </td>
-                  <td className="px-3 py-1 text-sm font-bold text-right">
-                    {formatCurrency(totalAmount)}
-                  </td>
+                  <td colSpan={3} className="px-3 py-1 text-sm text-right">Total:</td>
+                  <td className="px-3 py-1 text-sm font-bold text-right">{formatCurrency(totalAmount)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
 
-        {/* Action Buttons — row on mobile, column on desktop */}
-        <div className="flex flex-row items-center justify-start gap-2 md:flex-col md:justify-center md:flex-shrink-0">
+        {/* Action Buttons */}
+        <div className="flex flex-col justify-center flex-shrink-0 gap-2">
           <button
             onClick={handleFDE}
             disabled={fdeDisabled}
@@ -482,26 +533,19 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                   ? fdeState.message || "Failed — click to retry"
                   : "Send to FDE"
             }
-            className={`flex-1 md:flex-none md:w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${getFDEButtonStyle()} ${
-              fdeDisabled ? "opacity-60 cursor-not-allowed" : ""
-            }`}
+            className={`w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${getFDEButtonStyle()} ${fdeDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             {getFDEButtonText()}
           </button>
-          <button
-            onClick={handlePrint}
-            className="flex-1 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg md:flex-none md:w-20 hover:bg-gray-50"
-          >
+          <button onClick={handlePrint} className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50">
             Print
           </button>
-          <button
-            onClick={() => onUpdateClick && onUpdateClick(order)}
-            className="flex-1 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg md:flex-none md:w-20 hover:bg-indigo-700"
-          >
+          <button onClick={() => onUpdateClick && onUpdateClick(order)} className="w-20 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700">
             Edit
           </button>
         </div>
       </div>
+
     </div>
   );
 };
