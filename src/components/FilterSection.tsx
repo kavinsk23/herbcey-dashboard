@@ -283,7 +283,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   : "0"}{" "}
                 orders
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="hidden text-xs text-gray-500 sm:block">
                 Updated: {getCurrentISODateTime()}
               </p>
             </div>
@@ -309,7 +309,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
         <div className="p-4 space-y-4">
           {/* Search and Date Filter - Single Line */}
           <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-64">
+            <div className="flex-1 min-w-0">
               <input
                 type="text"
                 placeholder="Search by name, address, or contact..."
@@ -319,7 +319,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               />
             </div>
 
-            <div className="flex-1 min-w-48">
+            <div className="flex-1 min-w-0">
               <input
                 type="text"
                 placeholder="Search by tracking number..."
@@ -329,7 +329,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               />
             </div>
 
-            <div className="relative w-56">
+            <div className="relative w-full sm:w-56">
               <button
                 onClick={() => setShowDateFilter(!showDateFilter)}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm text-left ${
@@ -342,7 +342,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               </button>
 
               {showDateFilter && (
-                <div className="absolute z-50 p-4 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg top-full w-96">
+                <div className="absolute z-50 p-4 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg top-full left-0 right-0 sm:right-auto sm:w-96">
                   <div className="space-y-4">
                     {/* Filter timestamp */}
                     <div className="text-xs text-center text-gray-500">
@@ -512,8 +512,8 @@ const FilterSection: React.FC<FilterSectionProps> = ({
           </div>
 
           {/* Pagination Controls */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 pt-4 border-t border-gray-200 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
               <p className="text-sm text-gray-600">
                 Showing {filteredOrdersLength > 0 ? startItem : 0}-{endItem} of{" "}
                 {filteredOrdersLength} orders

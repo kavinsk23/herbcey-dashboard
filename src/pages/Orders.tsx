@@ -554,9 +554,11 @@ const Orders: React.FC = () => {
 
   return (
     <div className="container pt-0 mx-auto">
-      <div className="flex items-center justify-between sticky z-10 top-16 md:top-20 pb-4 bg-[#F9FAFB]">
+      <div className="flex items-center justify-between sticky z-10 top-16 md:top-20 pb-4 bg-[#F9FAFB] gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Orders Dashboard</h1>
+          <h1 className="text-xl font-bold text-gray-800 md:text-2xl">
+            Orders Dashboard
+          </h1>
         </div>
         <button
           onClick={handleCreateOrder}
