@@ -1294,13 +1294,13 @@ const AnalyticsPage: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             Sales Analytics Dashboard
           </h1>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center space-x-1 text-sm text-gray-500">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>Live sync enabled</span>
@@ -1325,7 +1325,7 @@ const AnalyticsPage: React.FC = () => {
       />
 
       {/* Enhanced KPI Cards with Profit Metrics */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {kpiCards.map((card) => (
           <div
             key={card.id}
@@ -1334,7 +1334,7 @@ const AnalyticsPage: React.FC = () => {
             <div className="flex items-center justify-between h-full">
               <div>
                 <p className="text-sm text-gray-600">{card.title}</p>
-                <p className={`text-xl font-bold ${card.textColor}`}>
+                <p className={`text-lg font-bold sm:text-xl ${card.textColor}`}>
                   {card.value}
                 </p>
                 {card.subtitle && (
@@ -1403,7 +1403,7 @@ const AnalyticsPage: React.FC = () => {
         <p className="mb-6 text-sm text-gray-500">
           Detailed breakdown of all costs affecting your profitability
         </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
           <div className="p-4 text-center border-l-4 border-gray-400 rounded-lg bg-gray-50">
             <div className="text-2xl font-bold text-gray-900">
               {formatCurrency(analyticsData.totalProductCosts)}

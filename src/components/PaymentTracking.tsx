@@ -334,13 +334,13 @@ const PaymentTracking = () => {
           {/* Failed Trackings Section */}
           <div className="bg-white border border-gray-200 rounded-lg">
             <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">
                     Failed Tracking Numbers
                   </h2>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-2">
                   {/* CSV Upload Button */}
                   <div className="flex flex-col items-end space-y-2">
                     <button
@@ -424,7 +424,7 @@ const PaymentTracking = () => {
               </div>
 
               {/* Filters */}
-              <div className="flex items-center mt-4 space-x-4">
+              <div className="flex flex-col gap-3 mt-4 sm:flex-row sm:items-end">
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">
                     Status Filter
