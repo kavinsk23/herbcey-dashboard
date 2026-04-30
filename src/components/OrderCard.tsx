@@ -352,9 +352,10 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
             </>
           )}
         </div>
-        <div className="flex justify-between flex-1 px-3 py-2 text-right bg-gray-100">
-          <div className="flex flex-row items-center space-y-0.5">
-            <span className="flex mr-2 text-sm font-medium text-gray-900">
+        {/* date/tracking — gets more space on mobile via flex-[2] */}
+        <div className="flex justify-between flex-[2] md:flex-1 px-3 py-2 text-right bg-gray-100">
+          <div className="flex flex-col md:flex-row md:items-center md:space-y-0.5">
+            <span className="flex text-xs font-medium text-gray-900 md:mr-2 md:text-sm">
               {order.orderDate.split(" ")[0]}
             </span>
             <span className="pb-0.5 text-xs text-gray-500">
@@ -362,17 +363,20 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
             </span>
           </div>
           {order.freeShipping && (
-            <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
+            <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium hidden md:inline">
               Free Delivery
             </span>
           )}
-          <span className="text-sm font-medium">{order.tracking || "N/A"}</span>
+          <span className="text-xs font-medium md:text-sm">
+            {order.tracking || "N/A"}
+          </span>
         </div>
       </div>
 
-      <div className="flex justify-between w-full px-3 py-2">
+      {/* Body — stacks on mobile, side by side on desktop */}
+      <div className="flex flex-col w-full px-3 py-2 md:flex-row md:justify-between">
         {/* Customer Info */}
-        <div className="flex-shrink-0 mb-3 w-80">
+        <div className="w-full mb-3 md:w-80 md:flex-shrink-0">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-2">
               <h3 className="font-semibold text-gray-900">{order.name}</h3>
@@ -407,7 +411,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
         </div>
 
         {/* Products Table */}
-        <div className="flex-1 mx-4 mb-3">
+        <div className="w-full mb-3 md:flex-1 md:mx-4">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed">
               <thead>
@@ -466,8 +470,8 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col items-center justify-center flex-shrink-0 gap-2">
+        {/* Action Buttons — row on mobile, column on desktop */}
+        <div className="flex flex-row items-center justify-start gap-2 md:flex-col md:justify-center md:flex-shrink-0">
           <button
             onClick={handleFDE}
             disabled={fdeDisabled}
@@ -478,7 +482,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                   ? fdeState.message || "Failed — click to retry"
                   : "Send to FDE"
             }
-            className={`w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${getFDEButtonStyle()} ${
+            className={`flex-1 md:flex-none md:w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${getFDEButtonStyle()} ${
               fdeDisabled ? "opacity-60 cursor-not-allowed" : ""
             }`}
           >
@@ -486,13 +490,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </button>
           <button
             onClick={handlePrint}
-            className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex-1 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg md:flex-none md:w-20 hover:bg-gray-50"
           >
             Print
           </button>
           <button
             onClick={() => onUpdateClick && onUpdateClick(order)}
-            className="w-20 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
+            className="flex-1 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg md:flex-none md:w-20 hover:bg-indigo-700"
           >
             Edit
           </button>

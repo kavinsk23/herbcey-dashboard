@@ -333,7 +333,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <div className="flex flex-col gap-3 px-6 py-4 border-b border-gray-200 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">
             Expenses Management
@@ -343,7 +343,7 @@ const ExpenseManager: React.FC<ExpenseManagerProps> = ({
             expenses)
           </p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-2">
           {expenseSummary && (
             <div className="text-sm text-gray-600">
               Total:{" "}

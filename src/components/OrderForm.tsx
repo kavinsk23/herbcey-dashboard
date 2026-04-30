@@ -1039,11 +1039,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-        <div className="bg-white rounded-xl w-full max-w-5xl max-h-[95vh] flex flex-col">
+      <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4 bg-black bg-opacity-50">
+        <div className="bg-white sm:rounded-xl w-full sm:max-w-5xl h-full sm:h-auto max-h-screen sm:max-h-[95vh] flex flex-col">
           {/* Fixed Header */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">
               {mode === "create" ? "Create New Order" : "Update Order"}
             </h2>
             <button
@@ -1078,7 +1078,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           {/* Scrollable Content */}
           {!loadingProducts && (
             <div className="flex-1 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-6 p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-5">
                 {/* Left Column */}
                 <div className="space-y-4">
                   {/* Customer Information */}
@@ -1609,7 +1609,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           )}
 
           {/* Fixed Footer with Action Buttons */}
-          <div className="flex items-center justify-end px-6 py-3 space-x-3 border-t border-gray-200 bg-gray-50">
+          <div className="flex flex-wrap items-center justify-end px-4 sm:px-6 py-3 gap-2 sm:gap-3 border-t border-gray-200 bg-gray-50">
             {mode === "update" && onDelete && (
               <button
                 type="button"

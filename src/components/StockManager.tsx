@@ -284,7 +284,7 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
       <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               Stock Management - Empty/Filled System
@@ -293,7 +293,7 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
               Track empty bottles (raw) and filled bottles (ready to sell)
             </p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -334,7 +334,7 @@ const StockManager: React.FC<StockManagerProps> = ({ onStockUpdate }) => {
       </div>
 
       <div className="p-6">
-        <div className="overflow-hidden border border-gray-200 rounded-lg">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

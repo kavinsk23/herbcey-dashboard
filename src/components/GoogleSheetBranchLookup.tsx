@@ -159,7 +159,7 @@ const GoogleSheetBranchLookup = () => {
 
   return (
     <div className="mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold text-gray-900">
           Branch Contact Finder
         </h2>

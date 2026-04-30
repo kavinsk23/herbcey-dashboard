@@ -1,5 +1,5 @@
 // AnalyticsFilters.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   formatToISODate,
   createOrderTimestamp,
@@ -36,6 +36,7 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
   onMetricChange,
   onDateRangeChange,
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
   const handleStartDateChange = (value: string) => {
     onDateRangeChange({
       ...dateRange,
@@ -107,9 +108,12 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
-      <div className="p-6">
-        {/* Header with current datetime */}
-        <div className="flex items-center justify-between mb-4">
+      {/* Header — always visible, toggle button only on mobile */}
+      <div
+        className="flex items-center justify-between p-6 cursor-pointer md:cursor-default md:pb-0"
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <h3 className="text-lg font-semibold text-gray-900">
             Analytics Filters
           </h3>
@@ -117,10 +121,24 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
             Last updated: {getCurrentDateTime()}
           </div>
         </div>
+        <svg
+          className={`w-5 h-5 text-gray-500 transition-transform md:hidden ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+
+      <div className={`p-6 pt-4 ${isOpen ? "block" : "hidden"} md:block`}>
 
         {/* Quick Date Range Buttons */}
-        <div className="relative mb-6">
-          <div className="absolute right-0 flex items-center space-x-2 top-1">
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">
+              Quick Date Ranges
+            </label>
             <button
               onClick={() => {
                 onTimePeriodChange("monthly");
@@ -133,9 +151,6 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
               Reset Filters
             </button>
           </div>
-          <label className="block mb-2 text-sm font-medium text-gray-700">
-            Quick Date Ranges
-          </label>
           <div className="flex flex-wrap gap-2">
             {[
               { label: "Today", value: "today" },
@@ -159,7 +174,7 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
         </div>
 
         {/* Main Filters Grid */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {/* Time Period Filter */}
           <div>
             <label className="block mb-1 text-sm font-medium text-gray-700">
