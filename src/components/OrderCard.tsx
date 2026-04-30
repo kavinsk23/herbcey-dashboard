@@ -540,26 +540,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
             >
               Print
             </button>
-            <button
-              onClick={() => setShowNotes(true)}
-              title={noteText ? "View/edit note" : "Add note"}
-              className={`w-16 px-2 py-1 text-xs transition-colors border rounded-lg flex items-center justify-center gap-1 ${noteText ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}
-            >
-              <svg
-                className="flex-shrink-0 w-3 h-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-              Note
-            </button>
+
             <button
               onClick={() => onUpdateClick && onUpdateClick(order)}
               className="w-16 px-2 py-1 text-xs text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
