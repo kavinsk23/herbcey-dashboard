@@ -26,6 +26,7 @@ export function getPriceHistory(): Promise<PriceHistoryRow[]> {
 
   // Cache hit: data is still fresh — return a copy so callers can't mutate the cache
   if (cachedHistory !== null && now - cacheTimestamp < CACHE_TTL_MS) {
+    console.log("📊 Price history cache hit, returning cached data");
     return Promise.resolve([...cachedHistory]);
   }
 
@@ -35,11 +36,13 @@ export function getPriceHistory(): Promise<PriceHistoryRow[]> {
   // Error cooldown: the last fetch failed recently — serve stale data if available,
   // otherwise empty, to avoid hammering the API (e.g. during a 429 window)
   if (now - lastErrorTimestamp < ERROR_COOLDOWN_MS) {
+    console.log("📊 Price history error cooldown, returning stale data");
     return Promise.resolve(cachedHistory ? [...cachedHistory] : []);
   }
 
   const promise: Promise<PriceHistoryRow[]> = (async () => {
     try {
+      console.log("📊 Fetching price history from Google Sheets...");
       const accessToken = localStorage.getItem("google_access_token");
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${PRICE_HISTORY_SHEET}`,
@@ -50,6 +53,8 @@ export function getPriceHistory(): Promise<PriceHistoryRow[]> {
 
       const data = await response.json();
       const rows = data.values || [];
+
+      console.log(`📊 Fetched ${rows.length - 1} price history rows`);
 
       const result: PriceHistoryRow[] = rows.slice(1).map((row: any[]) => ({
         id: row[0] || "",
@@ -64,6 +69,8 @@ export function getPriceHistory(): Promise<PriceHistoryRow[]> {
       cachedHistory = result;
       cacheTimestamp = Date.now();
       lastErrorTimestamp = 0; // clear any previous error state on success
+
+      console.log("📊 Price history loaded successfully");
       return [...result];
     } catch (error) {
       console.error("Error loading price history:", error);
@@ -83,6 +90,7 @@ export function getPriceHistory(): Promise<PriceHistoryRow[]> {
 // Call this before mutating the sheet so a partial write failure always
 // forces a fresh read rather than using stale cachedHistory.
 export function invalidatePriceHistoryCache() {
+  console.log("📊 Invalidating price history cache");
   cachedHistory = null;
   cacheTimestamp = 0;
 }
@@ -93,18 +101,83 @@ export function getPriceForDate(
   productName: string,
   dateStr: string,
 ): number {
-  if (!dateStr || history.length === 0) return 0;
+  console.log(`\n🔍 ===== PRICE LOOKUP =====`);
+  console.log(`📦 Product: "${productName}"`);
+  console.log(`📅 Order date string: "${dateStr}"`);
 
-  const date = new Date(dateStr);
+  if (!dateStr || history.length === 0) {
+    console.log(`❌ No date string or empty history`);
+    return 0;
+  }
 
-  const match = history.find((row) => {
-    if (row.productName !== productName) return false;
-    const from = new Date(row.effectiveFrom);
-    const to = row.effectiveTo ? new Date(row.effectiveTo) : null;
-    return date >= from && (to === null || date <= to);
+  // Extract just the date part (YYYY-MM-DD) from the order date
+  // This handles formats like "2026-05-04 14:30:00" -> "2026-05-04"
+  const datePart = dateStr.split(" ")[0];
+  const date = new Date(datePart);
+  date.setHours(0, 0, 0, 0);
+
+  console.log(`📅 Extracted date part: "${datePart}"`);
+  console.log(`📅 Parsed date object: ${date.toISOString()}`);
+  console.log(`📊 Total history entries: ${history.length}`);
+
+  // Find all entries for this product (case-insensitive comparison)
+  const productEntries = history.filter(
+    (row) => row.productName.toLowerCase() === productName.toLowerCase(),
+  );
+  console.log(`📋 Entries for "${productName}": ${productEntries.length}`);
+  productEntries.forEach((entry, i) => {
+    console.log(`  [${i}] ID: ${entry.id}`);
+    console.log(`      From: "${entry.effectiveFrom}"`);
+    console.log(`      To: "${entry.effectiveTo || "present"}"`);
+    console.log(`      Price: ${entry.price}`);
   });
 
-  return match ? match.price : 0;
+  const match = history.find((row) => {
+    // Case-insensitive product name comparison
+    if (row.productName.toLowerCase() !== productName.toLowerCase())
+      return false;
+
+    const from = new Date(row.effectiveFrom);
+    from.setHours(0, 0, 0, 0);
+
+    let to: Date | null = null;
+    if (row.effectiveTo && row.effectiveTo.trim() !== "") {
+      to = new Date(row.effectiveTo);
+      to.setHours(0, 0, 0, 0);
+    }
+
+    const isAfterOrEqual = date >= from;
+    const isBeforeOrEqual = to === null || date <= to;
+    const matches = isAfterOrEqual && isBeforeOrEqual;
+
+    console.log(
+      `  Checking entry: ${row.effectiveFrom} to ${row.effectiveTo || "present"}`,
+    );
+    console.log(
+      `    date >= from? ${date.toISOString()} >= ${from.toISOString()} = ${isAfterOrEqual}`,
+    );
+    console.log(
+      `    date <= to? ${to ? `${date.toISOString()} <= ${to.toISOString()}` : "no end date"} = ${isBeforeOrEqual}`,
+    );
+    console.log(`    MATCHES: ${matches}`);
+
+    if (matches) {
+      console.log(`  ✅ MATCH FOUND! Price = ${row.price}`);
+    }
+
+    return matches;
+  });
+
+  const result = match ? match.price : 0;
+  if (result === 0) {
+    console.log(`❌ NO MATCH FOUND for "${productName}" on ${datePart}`);
+    console.log(`💡 This will fall back to the stored order price`);
+  } else {
+    console.log(`💰 RETURNING PRICE: ${result}`);
+  }
+  console.log(`🔍 =========================\n`);
+
+  return result;
 }
 
 // Get the cost that was active on a given date for a product
@@ -115,13 +188,29 @@ export function getCostForDate(
 ): number {
   if (!dateStr || history.length === 0) return 0;
 
-  const date = new Date(dateStr);
+  // Extract just the date part (YYYY-MM-DD) from the order date
+  const datePart = dateStr.split(" ")[0];
+  const date = new Date(datePart);
+  date.setHours(0, 0, 0, 0);
 
   const match = history.find((row) => {
-    if (row.productName !== productName) return false;
+    // Case-insensitive product name comparison
+    if (row.productName.toLowerCase() !== productName.toLowerCase())
+      return false;
+
     const from = new Date(row.effectiveFrom);
-    const to = row.effectiveTo ? new Date(row.effectiveTo) : null;
-    return date >= from && (to === null || date <= to);
+    from.setHours(0, 0, 0, 0);
+
+    let to: Date | null = null;
+    if (row.effectiveTo && row.effectiveTo.trim() !== "") {
+      to = new Date(row.effectiveTo);
+      to.setHours(0, 0, 0, 0);
+    }
+
+    const isAfterOrEqual = date >= from;
+    const isBeforeOrEqual = to === null || date <= to;
+
+    return isAfterOrEqual && isBeforeOrEqual;
   });
 
   return match ? match.cost : 0;
@@ -135,6 +224,7 @@ export async function recordPriceChange(
   newPrice: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log(`📝 Recording price change for ${productName}: ${newPrice}`);
     const accessToken = localStorage.getItem("google_access_token");
     const history = await getPriceHistory();
 
@@ -154,6 +244,9 @@ export async function recordPriceChange(
     const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
       .toISOString()
       .split("T")[0];
+
+    console.log(`  Closing active row with end date: ${lastDayPrevMonth}`);
+    console.log(`  New row starting from: ${firstDayThisMonth}`);
 
     // Invalidate before the first write so that any partial failure (PUT succeeds,
     // append fails) forces a fresh fetch rather than serving stale cachedHistory
@@ -175,6 +268,7 @@ export async function recordPriceChange(
           body: JSON.stringify({ values: [[lastDayPrevMonth]] }),
         },
       );
+      console.log(`  Closed row ${sheetRowNumber}`);
     }
 
     // Append the new active row
@@ -209,7 +303,7 @@ export async function recordPriceChange(
     }
 
     console.log(
-      `Price history recorded for ${productName}: ${newPrice} from ${firstDayThisMonth}`,
+      `✅ Price history recorded for ${productName}: ${newPrice} from ${firstDayThisMonth}`,
     );
     return { success: true };
   } catch (error) {

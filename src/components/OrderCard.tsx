@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   formatDisplayDateTime,
   extractDateFromDateTime,
@@ -9,6 +9,11 @@ import {
 } from "../utils/dateUtils";
 import { updateFdeStatus } from "../assets/services/googleSheetsService";
 import { updateOrderNote } from "../assets/services/notesService";
+import {
+  getPriceForDate,
+  getPriceHistory,
+  PriceHistoryRow,
+} from "../assets/services/priceHistoryService";
 
 interface Order {
   name: string;
@@ -66,6 +71,11 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   const [noteText, setNoteText] = useState(order.notes || "");
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
+
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[]>([]);
+  useEffect(() => {
+    getPriceHistory().then(setPriceHistory);
+  }, []);
 
   const formatPhone = (phone: string) => {
     return phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
@@ -131,18 +141,35 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
   };
 
   const calculateTotal = () => {
-    const subtotal = order.products.reduce(
-      (sum, product) => sum + product.price * product.quantity,
-      0,
-    );
+    const subtotal = order.products.reduce((sum, product) => {
+      const historicalPrice = getPriceForDate(
+        priceHistory,
+        product.name,
+        order.orderDate,
+      );
+      const priceToUse = historicalPrice > 0 ? historicalPrice : product.price;
+
+      // DEBUG LOG
+      console.log(
+        `📊 OrderCard: ${product.name} - historical=${historicalPrice}, stored=${product.price}, using=${priceToUse}`,
+      );
+
+      return sum + priceToUse * product.quantity;
+    }, 0);
     return order.freeShipping ? subtotal : subtotal + 450;
   };
 
   const totalAmount = calculateTotal();
-  const subtotal = order.products.reduce(
-    (sum, product) => sum + product.price * product.quantity,
-    0,
-  );
+  const subtotal = order.products.reduce((sum, product) => {
+    // 👇 CHANGED - Get historical price from price history
+    const historicalPrice = getPriceForDate(
+      priceHistory,
+      product.name,
+      order.orderDate,
+    );
+    const priceToUse = historicalPrice > 0 ? historicalPrice : product.price;
+    return sum + priceToUse * product.quantity;
+  }, 0);
 
   const contacts = parseContacts(order.contact);
 
@@ -275,15 +302,23 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
       </div>
       <div class="gap">&nbsp;</div>
       <div style="border-top: 1px solid #000; padding-top: 2px;">
-        ${order.products
-          .map(
-            (product) => `
+                ${order.products
+                  .map((product) => {
+                    // 👇 ADD THIS - Get historical price for print
+                    const historicalPrice = getPriceForDate(
+                      priceHistory,
+                      product.name,
+                      order.orderDate,
+                    );
+                    const priceToUse =
+                      historicalPrice > 0 ? historicalPrice : product.price;
+                    return `
           <div class="flex-row product-line">
             <span>${product.quantity} x ${product.name}</span>
-            <span>${formatCurrency(product.price * product.quantity)}</span>
-          </div>`,
-          )
-          .join("")}
+            <span>${formatCurrency(priceToUse * product.quantity)}</span>
+          </div>`;
+                  })
+                  .join("")}
       </div>
       <div class="gap">&nbsp;</div>
       <div class="total-section">
@@ -566,23 +601,34 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               </tr>
             </thead>
             <tbody>
-              {order.products.map((product) => (
-                <tr key={product.name} className="border-b border-gray-100">
-                  <td className="px-2 py-1">
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${productColors[product.name as keyof typeof productColors] || "bg-gray-100"}`}
-                    >
-                      {product.name}
-                    </span>
-                  </td>
-                  <td className="px-2 py-1 text-xs font-medium text-center">
-                    x{product.quantity}
-                  </td>
-                  <td className="px-2 py-1 text-xs font-medium text-right whitespace-nowrap">
-                    {formatCurrency(product.price * product.quantity)}
-                  </td>
-                </tr>
-              ))}
+              {order.products.map((product) => {
+                // 👇 ADD THIS - Get historical price
+                const historicalPrice = getPriceForDate(
+                  priceHistory,
+                  product.name,
+                  order.orderDate,
+                );
+                const priceToUse =
+                  historicalPrice > 0 ? historicalPrice : product.price;
+                return (
+                  <tr key={product.name} className="border-b border-gray-100">
+                    <td className="px-2 py-1">
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded-full whitespace-nowrap ${productColors[product.name as keyof typeof productColors] || "bg-gray-100"}`}
+                      >
+                        {product.name}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1 text-xs font-medium text-center">
+                      x{product.quantity}
+                    </td>
+                    {/* REMOVE the Price column - mobile only has Product, Qty, Amount */}
+                    <td className="px-2 py-1 text-xs font-medium text-right whitespace-nowrap">
+                      {formatCurrency(priceToUse * product.quantity)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="font-medium bg-gray-100 border-t border-gray-300">
@@ -655,26 +701,36 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
                 </tr>
               </thead>
               <tbody>
-                {order.products.map((product) => (
-                  <tr key={product.name} className="border-b border-gray-100">
-                    <td className="px-3 py-1">
-                      <span
-                        className={`px-2 py-0.5 text-xs rounded-full ${productColors[product.name as keyof typeof productColors] || "bg-gray-100"}`}
-                      >
-                        {product.name}
-                      </span>
-                    </td>
-                    <td className="px-3 py-1 text-sm font-medium text-center">
-                      x{product.quantity}
-                    </td>
-                    <td className="px-3 py-1 text-sm text-right">
-                      {formatCurrency(product.price)}
-                    </td>
-                    <td className="px-3 py-1 text-sm font-medium text-right">
-                      {formatCurrency(product.price * product.quantity)}
-                    </td>
-                  </tr>
-                ))}
+                {order.products.map((product) => {
+                  const historicalPrice = getPriceForDate(
+                    priceHistory,
+                    product.name,
+                    order.orderDate,
+                  );
+                  const priceToUse =
+                    historicalPrice > 0 ? historicalPrice : product.price;
+                  return (
+                    <tr key={product.name} className="border-b border-gray-100">
+                      <td className="px-3 py-1">
+                        <span
+                          className={`px-2 py-0.5 text-xs rounded-full ${productColors[product.name as keyof typeof productColors] || "bg-gray-100"}`}
+                        >
+                          {product.name}
+                        </span>
+                      </td>
+                      <td className="px-3 py-1 text-sm font-medium text-center">
+                        x{product.quantity}
+                      </td>
+                      <td className="px-3 py-1 text-sm text-right">
+                        {formatCurrency(priceToUse)} {/* ✅ FIXED */}
+                      </td>
+                      <td className="px-3 py-1 text-sm font-medium text-right">
+                        {formatCurrency(priceToUse * product.quantity)}{" "}
+                        {/* ✅ FIXED */}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot>
                 <tr className="font-medium bg-gray-100 border-t border-gray-300">
