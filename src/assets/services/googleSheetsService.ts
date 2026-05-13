@@ -46,6 +46,7 @@ interface SheetOrder {
   serumQty: number;
   premiumQty: number;
   castorQty: number;
+  rosehipQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -83,6 +84,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Serum: 1600,
   Premium: 2600,
   Castor: 2400,
+  Rosehip: 2950,
 };
 
 const SHIPPING_COST: number = 450;
@@ -127,6 +129,7 @@ function formatCustomerInfo(order: Order): string {
 // P(15) Castor Qty
 // Q(16) Main City
 // R(17) FDE Status (waybill number — written by updateFdeStatus only)
+// T(19)
 
 function orderToSheetRow(order: Order): (string | number)[] {
   const oilQty = order.products.find((p) => p.name === "Oil")?.quantity || 0;
@@ -142,6 +145,8 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Premium")?.quantity || 0;
   const castorQty =
     order.products.find((p) => p.name === "Castor")?.quantity || 0;
+  const rosehipQty =
+    order.products.find((p) => p.name === "Rosehip")?.quantity || 0;
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
   return [
@@ -162,6 +167,7 @@ function orderToSheetRow(order: Order): (string | number)[] {
     premiumQty, // O (14)
     castorQty, // P (15)
     order.mainCity || "", // Q (16)
+    rosehipQty,
     // R (17) fdeStatus intentionally NOT written here — managed by updateFdeStatus()
   ];
 }
@@ -451,6 +457,7 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       castorQty: parseInt(row[15]) || 0,
       mainCity: row[16] || "", // Q (16)
       fdeStatus: row[17] || "", // R (17): FDE waybill number
+      rosehipQty: parseInt(row[19]) || 0,
     }));
 
     return { success: true, data: orders };

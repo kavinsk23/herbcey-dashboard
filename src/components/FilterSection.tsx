@@ -25,7 +25,8 @@ type ProductType =
   | "Spray"
   | "Serum"
   | "Premium"
-  | "Castor";
+  | "Castor"
+  | "Rosehip";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface FilterSectionProps {
@@ -106,6 +107,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     Serum: "bg-purple-700 text-white",
     Premium: "bg-amber-600 text-white",
     Castor: "bg-yellow-800 text-white",
+    Rosehip: "bg-red-100 text-white",
   };
 
   const paymentStatusColors: Record<PaymentStatusType, string> = {
