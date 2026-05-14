@@ -1,6 +1,12 @@
 // Fixed Google Sheets Service - Browser Compatible
 // This uses the Google Sheets REST API directly without Node.js dependencies
 
+import {
+  orderToSheetRowDynamic,
+  getSheetStructure,
+  getColumnLetter,
+} from "./dynamicColumnsService";
+
 // Types matching your React components
 interface Product {
   name: string;
@@ -185,7 +191,7 @@ export async function addOrderToSheet(order: Order): Promise<AddOrderResponse> {
     );
     if (!metaRes.ok) throw new Error(`Failed to read sheet: ${metaRes.status}`);
 
-    const rowData = orderToSheetRow(order);
+    const rowData = await orderToSheetRowDynamic(order);
     const trackingId = rowData[0] as string;
 
     const appendRes = await fetch(
@@ -239,7 +245,7 @@ export async function updateOrderInSheet(
     const updatedRowData = orderToSheetRow(updatedOrder);
     const actualRowNumber = rowIndex + 1;
 
-    // Update A:Q only — column R (fdeStatus) is never overwritten here
+    // Update A:Q only — columns R (fdeStatus) and S (notes) are never overwritten here
     const updateResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}!A${actualRowNumber}:Q${actualRowNumber}?valueInputOption=RAW`,
       {
@@ -257,6 +263,46 @@ export async function updateOrderInSheet(
       throw new Error(
         `Failed to update order: ${updateResponse.status} - ${errorText}`,
       );
+    }
+
+    // Also update dynamic product columns beyond Q (T=19 onwards) without
+    // touching R=17 (FDE status) or S=18 (notes).
+    const structureResult = await getSheetStructure();
+    if (structureResult.success && structureResult.data) {
+      const dynamicProducts = structureResult.data.productColumns.filter(
+        (pc) => pc.columnIndex > 16,
+      );
+      if (dynamicProducts.length > 0) {
+        const dynamicRanges = dynamicProducts.map((pc) => ({
+          range: `${SHEET_NAME}!${getColumnLetter(pc.columnIndex)}${actualRowNumber}`,
+          values: [
+            [
+              updatedOrder.products.find((p) => p.name === pc.name)
+                ?.quantity || 0,
+            ],
+          ],
+        }));
+        const batchRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              valueInputOption: "RAW",
+              data: dynamicRanges,
+            }),
+          },
+        );
+        if (!batchRes.ok) {
+          const errorText = await batchRes.text();
+          throw new Error(
+            `Failed to update dynamic product columns: ${batchRes.status} - ${errorText}`,
+          );
+        }
+      }
     }
 
     console.log("Order updated successfully in Google Sheets");

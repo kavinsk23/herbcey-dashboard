@@ -50,7 +50,7 @@ const PRODUCT_PRICES: Record<string, number> = {
 const SHIPPING_COST: number = 450;
 
 // Get column letter from index (0=A, 1=B, etc.)
-function getColumnLetter(index: number): string {
+export function getColumnLetter(index: number): string {
   let letter = "";
   while (index >= 0) {
     letter = String.fromCharCode(65 + (index % 26)) + letter;
@@ -383,12 +383,14 @@ function calculateTotal(
   return freeShipping ? subtotal : subtotal + SHIPPING_COST;
 }
 
-// Enhanced function to convert order to sheet row with dynamic columns
+// Enhanced function to convert order to sheet row with dynamic columns.
+// Builds a sparse array where each value is placed at its actual sheet column
+// index, so dynamic products (Rosehip at T=19, future products at U=20, …)
+// land in the correct cell rather than being appended sequentially.
 export async function orderToSheetRowDynamic(
   order: any,
 ): Promise<(string | number)[]> {
   try {
-    // Get current sheet structure
     const structureResult = await getSheetStructure();
     if (!structureResult.success || !structureResult.data) {
       throw new Error("Failed to get sheet structure");
@@ -396,47 +398,46 @@ export async function orderToSheetRowDynamic(
 
     const { productColumns } = structureResult.data;
 
-    // Start with static columns
-    const staticValues = [
-      order.tracking || `LK${Date.now()}`,
-      formatCustomerInfo(order),
-      0, // Oil Qty (will be updated below)
-      0, // Shampoo Qty (will be updated below)
-      0, // Conditioner Qty (will be updated below)
-      calculateTotal(order.products, order.freeShipping),
-      order.status,
-      order.paymentMethod,
-      order.paymentReceived ? "Yes" : "No",
-      order.freeShipping ? "Yes" : "No",
-      order.orderDate,
-      new Date().toISOString().split("T")[0],
-    ];
+    // Size the array to cover the furthest product column.
+    const maxColIndex =
+      productColumns.length > 0
+        ? Math.max(...productColumns.map((pc) => pc.columnIndex))
+        : 16;
 
-    // Handle static product columns (Oil, Shampoo, Conditioner)
-    const oilQty =
+    const row: (string | number)[] = new Array(maxColIndex + 1).fill("");
+
+    // Fixed static columns (A–Q, indices 0–16)
+    row[0] = order.tracking || `LK${Date.now()}`;
+    row[1] = formatCustomerInfo(order);
+    row[2] =
       order.products.find((p: any) => p.name === "Oil")?.quantity || 0;
-    const shampooQty =
+    row[3] =
       order.products.find((p: any) => p.name === "Shampoo")?.quantity || 0;
-    const conditionerQty =
+    row[4] =
       order.products.find((p: any) => p.name === "Conditioner")?.quantity || 0;
+    row[5] = calculateTotal(order.products, order.freeShipping);
+    row[6] = order.status;
+    row[7] = order.paymentMethod;
+    row[8] = order.paymentReceived ? "Yes" : "No";
+    row[9] = order.freeShipping ? "Yes" : "No";
+    row[10] = order.orderDate;
+    row[11] = new Date().toISOString().split("T")[0];
+    row[16] = order.mainCity || "";
+    // row[17] = R (FDE status): intentionally left empty — managed by updateFdeStatus()
+    // row[18] = S (Notes):      intentionally left empty — managed by notesService
 
-    staticValues[2] = oilQty;
-    staticValues[3] = shampooQty;
-    staticValues[4] = conditionerQty;
-
-    // Add dynamic product columns
-    const dynamicValues: number[] = [];
+    // Dynamic product columns (Spray=12, Serum=13, Premium=14, Castor=15,
+    // Rosehip=19, and any future products) placed at their actual column index.
     for (const productCol of productColumns) {
       const qty =
-        order.products.find((p: any) => p.name === productCol.name)?.quantity ||
-        0;
-      dynamicValues.push(qty);
+        order.products.find((p: any) => p.name === productCol.name)
+          ?.quantity || 0;
+      row[productCol.columnIndex] = qty;
     }
 
-    return [...staticValues, ...dynamicValues];
+    return row;
   } catch (error) {
     console.error("Error creating dynamic sheet row:", error);
-    // Fallback to static row format
     return orderToSheetRowStatic(order);
   }
 }
