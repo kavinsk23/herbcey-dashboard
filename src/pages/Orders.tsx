@@ -40,7 +40,8 @@ type ProductType =
   | "Spray"
   | "Serum"
   | "Premium"
-  | "Castor";
+  | "Castor"
+  | "Rosehip";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -179,6 +180,14 @@ const Orders: React.FC = () => {
               name: "Castor",
               quantity: sheetOrder.castorQty,
               price: getPriceForDate(priceHistory, "Castor", orderDate) || 2400,
+            });
+          }
+          if (sheetOrder.rosehipQty > 0) {
+            products.push({
+              name: "Rosehip",
+              quantity: sheetOrder.rosehipQty,
+              price:
+                getPriceForDate(priceHistory, "Rosehip", orderDate) || 2950,
             });
           }
 

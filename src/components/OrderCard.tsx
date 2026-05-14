@@ -138,6 +138,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     Serum: "bg-purple-700 text-white",
     Premium: "bg-amber-600 text-white",
     Castor: "bg-yellow-800 text-white",
+    Rosehip: "bg-red-500 text-white",
   };
 
   const calculateTotal = () => {
