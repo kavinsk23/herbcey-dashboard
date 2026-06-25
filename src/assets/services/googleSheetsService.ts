@@ -151,8 +151,6 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Premium")?.quantity || 0;
   const castorQty =
     order.products.find((p) => p.name === "Castor")?.quantity || 0;
-  const rosehipQty =
-    order.products.find((p) => p.name === "Rosehip")?.quantity || 0;
   const totalAmount = calculateTotal(order.products, order.freeShipping);
 
   return [
@@ -173,8 +171,8 @@ function orderToSheetRow(order: Order): (string | number)[] {
     premiumQty, // O (14)
     castorQty, // P (15)
     order.mainCity || "", // Q (16)
-    rosehipQty,
     // R (17) fdeStatus intentionally NOT written here — managed by updateFdeStatus()
+    // Rosehip and any other products beyond Q are handled by the dynamic columns batch update
   ];
 }
 
@@ -277,8 +275,8 @@ export async function updateOrderInSheet(
           range: `${SHEET_NAME}!${getColumnLetter(pc.columnIndex)}${actualRowNumber}`,
           values: [
             [
-              updatedOrder.products.find((p) => p.name === pc.name)
-                ?.quantity || 0,
+              updatedOrder.products.find((p) => p.name === pc.name)?.quantity ||
+                0,
             ],
           ],
         }));
