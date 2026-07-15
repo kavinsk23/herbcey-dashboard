@@ -489,14 +489,6 @@ const Orders: React.FC = () => {
   const handleDeleteOrderFromCard = async (order: Order) => {
     if (!order.tracking) return;
 
-    if (
-      !window.confirm(
-        `Are you sure you want to delete order ${order.tracking}?`,
-      )
-    ) {
-      return;
-    }
-
     try {
       const result = await deleteOrderFromSheet(order.tracking);
 
@@ -638,6 +630,7 @@ const Orders: React.FC = () => {
               key={`${order.tracking}-${index}`}
               order={order}
               onUpdateClick={handleUpdateOrder}
+              onDeleteClick={handleDeleteOrderFromCard}
             />
           ))}
         </div>

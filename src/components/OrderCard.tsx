@@ -14,6 +14,7 @@ import {
   getPriceHistory,
   PriceHistoryRow,
 } from "../assets/services/priceHistoryService";
+import ConfirmationDialog from "./ConfirmationDialog";
 
 interface Order {
   name: string;
@@ -51,9 +52,14 @@ interface Order {
 interface OrderCardProps {
   order: Order;
   onUpdateClick?: (order: Order) => void;
+  onDeleteClick?: (order: Order) => void;
 }
 
-const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
+const OrderCard: React.FC<OrderCardProps> = ({
+  order,
+  onUpdateClick,
+  onDeleteClick,
+}) => {
   // If column R already has a waybill number, start the button in done state
   const alreadyProcessed = !!(order.fdeStatus && order.fdeStatus.trim() !== "");
 
@@ -66,6 +72,13 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
     success: alreadyProcessed ? true : undefined,
     message: alreadyProcessed ? "Done" : undefined,
   });
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    onDeleteClick && onDeleteClick(order);
+  };
 
   const [showNotes, setShowNotes] = useState(false);
   const [noteText, setNoteText] = useState(order.notes || "");
@@ -578,12 +591,21 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
               Print
             </button>
 
-            <button
-              onClick={() => onUpdateClick && onUpdateClick(order)}
-              className="w-16 px-2 py-1 text-xs text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
-            >
-              Edit
-            </button>
+            <div className="flex w-16 gap-1">
+              <button
+                onClick={() => onUpdateClick && onUpdateClick(order)}
+                className="flex-1 px-1 py-1 text-xs text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center justify-center w-6 py-1 text-xs text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+                title="Delete"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
         {/* Products — 3 columns (no Price) */}
@@ -771,12 +793,21 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
             Print
           </button>
 
-          <button
-            onClick={() => onUpdateClick && onUpdateClick(order)}
-            className="w-20 px-4 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
-          >
-            Edit
-          </button>
+          <div className="flex w-20 gap-1.5">
+            <button
+              onClick={() => onUpdateClick && onUpdateClick(order)}
+              className="flex-1 px-2 py-1 text-sm text-white transition-colors bg-indigo-600 rounded-lg hover:bg-indigo-700"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center justify-center flex-shrink-0 w-7 py-1 text-sm text-white transition-colors bg-red-600 rounded-lg hover:bg-red-700"
+              title="Delete"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       </div>
       {/* Notes Modal */}
@@ -853,6 +884,16 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onUpdateClick }) => {
           </div>
         </div>
       )}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Order"
+        message="Are you sure you want to delete this order? This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };
