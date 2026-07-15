@@ -53,6 +53,7 @@ interface SheetOrder {
   premiumQty: number;
   castorQty: number;
   rosehipQty: number;
+  beardQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -91,6 +92,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Premium: 2600,
   Castor: 2400,
   Rosehip: 2950,
+  Beard: 1200,
 };
 
 const SHIPPING_COST: number = 450;
@@ -135,7 +137,8 @@ function formatCustomerInfo(order: Order): string {
 // P(15) Castor Qty
 // Q(16) Main City
 // R(17) FDE Status (waybill number — written by updateFdeStatus only)
-// T(19)
+// T(19) Rosehip Qty
+// U(20) Beard Qty
 
 function orderToSheetRow(order: Order): (string | number)[] {
   const oilQty = order.products.find((p) => p.name === "Oil")?.quantity || 0;
@@ -502,6 +505,7 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       mainCity: row[16] || "", // Q (16)
       fdeStatus: row[17] || "", // R (17): FDE waybill number
       rosehipQty: parseInt(row[19]) || 0,
+      beardQty: parseInt(row[20]) || 0,
     }));
 
     return { success: true, data: orders };

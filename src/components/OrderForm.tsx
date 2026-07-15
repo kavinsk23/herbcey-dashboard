@@ -364,6 +364,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
           "Premium",
           "Castor",
           "Rosehip",
+          "Beard",
         ];
         products.sort((a, b) => {
           const idxA = preferredOrder.indexOf(a);
@@ -1498,6 +1499,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                             Premium: "border-amber-600 bg-amber-50",
                             Castor: "border-lime-700 bg-lime-50",
                             Rosehip: "bg-red-100 border-red-400",
+                            Beard: "bg-gray-100 border-gray-700",
                           };
                           const selectedColor =
                             productColorMap[productName] ||

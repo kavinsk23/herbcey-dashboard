@@ -245,6 +245,7 @@ const AnalyticsPage: React.FC = () => {
             "Premium",
             "Castor",
             "Rosehip",
+            "Beard",
           ]);
           setProductPrices({
             Oil: 950,
@@ -255,6 +256,7 @@ const AnalyticsPage: React.FC = () => {
             Premium: 2600,
             Castor: 2400,
             Rosehip: 2950,
+            Beard: 1200,
           });
           setProductCosts({
             Oil: 300,
@@ -265,6 +267,7 @@ const AnalyticsPage: React.FC = () => {
             Premium: 300,
             Castor: 350,
             Rosehip: 600,
+            Beard: 300,
           });
           setProductColors({
             Oil: "#10b981",
@@ -275,6 +278,7 @@ const AnalyticsPage: React.FC = () => {
             Premium: "#3b82f6",
             Castor: "#713f12",
             Rosehip: "#e11d48",
+            Beard: "#374151",
           });
         }
       } catch (error) {
@@ -290,6 +294,7 @@ const AnalyticsPage: React.FC = () => {
           "Premium",
           "Castor",
           "Rosehip",
+          "Beard",
         ]);
         setProductPrices({
           Oil: 950,
@@ -300,6 +305,7 @@ const AnalyticsPage: React.FC = () => {
           Premium: 2600,
           Castor: 2400,
           Rosehip: 2950,
+          Beard: 1200,
         });
         setProductCosts({
           Oil: 300,
@@ -310,6 +316,7 @@ const AnalyticsPage: React.FC = () => {
           Premium: 300,
           Castor: 350,
           Rosehip: 600,
+          Beard: 300,
         });
         setProductColors({
           Oil: "#10b981",
@@ -320,6 +327,7 @@ const AnalyticsPage: React.FC = () => {
           Premium: "#3b82f6",
           Castor: "#713f12",
           Rosehip: "#e11d48",
+          Beard: "#374151",
         });
       }
     };
@@ -965,6 +973,7 @@ const AnalyticsPage: React.FC = () => {
             "Premium",
             "Castor",
             "Rosehip",
+            "Beard",
           ].includes(expense.type)
         ) {
           acc[key].productionExpenses += expense.amount;
@@ -1196,6 +1205,7 @@ const AnalyticsPage: React.FC = () => {
     expense: "#ef4444",
     profit: "#10b981",
     Rosehip: "#e11d48",
+    Beard: "#374151",
   };
 
   const expenseTypeColors = {
