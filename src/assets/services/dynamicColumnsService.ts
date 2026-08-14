@@ -415,7 +415,10 @@ export async function orderToSheetRowDynamic(
       order.products.find((p: any) => p.name === "Shampoo")?.quantity || 0;
     row[4] =
       order.products.find((p: any) => p.name === "Conditioner")?.quantity || 0;
-    row[5] = calculateTotal(order.products, order.freeShipping);
+    row[5] =
+      typeof order.totalAmount === "number"
+        ? order.totalAmount
+        : calculateTotal(order.products, order.freeShipping);
     row[6] = order.status;
     row[7] = order.paymentMethod;
     row[8] = order.paymentReceived ? "Yes" : "No";
@@ -457,7 +460,9 @@ function orderToSheetRowStatic(order: any): (string | number)[] {
     oilQty,
     shampooQty,
     conditionerQty,
-    calculateTotal(order.products, order.freeShipping),
+    typeof order.totalAmount === "number"
+      ? order.totalAmount
+      : calculateTotal(order.products, order.freeShipping),
     order.status,
     order.paymentMethod,
     order.paymentReceived ? "Yes" : "No",

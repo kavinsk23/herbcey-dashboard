@@ -53,6 +53,7 @@ interface Order {
   tracking?: string;
   freeShipping?: boolean;
   lastUpdated?: string;
+  totalAmount?: number;
 }
 
 interface OrderFormProps {
@@ -111,6 +112,10 @@ const OrderForm: React.FC<OrderFormProps> = ({
       { selected: boolean; quantity: number; price: number }
     >,
   });
+
+  const [isTotalOverridden, setIsTotalOverridden] = useState(false);
+  const [overriddenTotal, setOverriddenTotal] = useState<number>(0);
+  const [isEditingTotal, setIsEditingTotal] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -493,6 +498,22 @@ const OrderForm: React.FC<OrderFormProps> = ({
             : initialOrder.paymentReceived || false,
         freeShipping: initialOrder.freeShipping || false,
       }));
+
+      if (typeof initialOrder.totalAmount === "number") {
+        const calculatedFromProducts =
+          initialOrder.products.reduce(
+            (sum, p) => sum + p.price * p.quantity,
+            0,
+          ) + (initialOrder.freeShipping ? 0 : 450);
+
+        if (Math.abs(calculatedFromProducts - initialOrder.totalAmount) > 0.5) {
+          setIsTotalOverridden(true);
+          setOverriddenTotal(initialOrder.totalAmount);
+        } else {
+          setIsTotalOverridden(false);
+        }
+        setIsEditingTotal(false);
+      }
     } else if (mode === "create" && Object.keys(formData.products).length > 0) {
       setFormData((prev) => ({
         ...prev,
@@ -504,6 +525,9 @@ const OrderForm: React.FC<OrderFormProps> = ({
         paymentReceived: false,
         freeShipping: false,
       }));
+      setIsTotalOverridden(false);
+      setOverriddenTotal(0);
+      setIsEditingTotal(false);
     }
   }, [
     initialOrder,
@@ -725,6 +749,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         freeShipping: formData.freeShipping,
         tracking: formData.trackingId,
         lastUpdated: currentTimestamp,
+        totalAmount,
       };
 
       await onSubmit(orderData);
@@ -739,15 +764,6 @@ const OrderForm: React.FC<OrderFormProps> = ({
           const primaryContact = contacts[0];
 
           if (primaryContact && isValidPhoneNumber(primaryContact)) {
-            const subtotal = selectedProducts.reduce(
-              (sum, product) => sum + product.price * product.quantity,
-              0,
-            );
-
-            const totalAmount = formData.freeShipping
-              ? subtotal
-              : subtotal + 450;
-
             sendOrderConfirmationSMS({
               customerName: name,
               phoneNumber: primaryContact,
@@ -841,7 +857,27 @@ const OrderForm: React.FC<OrderFormProps> = ({
     return formData.freeShipping ? subtotal : subtotal + 450;
   };
 
-  const totalAmount = calculateTotal();
+  const calculatedTotal = calculateTotal();
+  const totalAmount = isTotalOverridden ? overriddenTotal : calculatedTotal;
+
+  const handleStartEditTotal = () => {
+    setOverriddenTotal(isTotalOverridden ? overriddenTotal : calculatedTotal);
+    setIsEditingTotal(true);
+  };
+
+  const handleConfirmTotalEdit = () => {
+    setIsTotalOverridden(true);
+    setIsEditingTotal(false);
+  };
+
+  const handleCancelTotalEdit = () => {
+    setIsEditingTotal(false);
+  };
+
+  const handleResetTotal = () => {
+    setIsTotalOverridden(false);
+    setOverriddenTotal(0);
+  };
 
   const handlePrint = () => {
     if (!formData.trackingId.trim()) {
@@ -979,7 +1015,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             ? `
           <div class="flex-row">
             <span>Subtotal:</span>
-            <span>${formatCurrency(totalAmount - 450)}</span>
+            <span>${formatCurrency(calculatedTotal - 450)}</span>
           </div>
           <div class="flex-row">
             <span>Delivery:</span>
@@ -989,7 +1025,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
             : `
           <div class="flex-row">
             <span>Subtotal:</span>
-            <span>${formatCurrency(totalAmount)}</span>
+            <span>${formatCurrency(calculatedTotal)}</span>
           </div>
           <div class="flex-row">
             <span>Delivery:</span>
@@ -1602,10 +1638,124 @@ const OrderForm: React.FC<OrderFormProps> = ({
                       <span className="font-semibold text-gray-800">
                         Total Amount:
                       </span>
-                      <span className="text-lg font-bold text-primary">
-                        {formatCurrency(totalAmount)}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        {isEditingTotal ? (
+                          <>
+                            <input
+                              type="number"
+                              min="0"
+                              value={overriddenTotal}
+                              onChange={(e) =>
+                                setOverriddenTotal(
+                                  parseFloat(e.target.value) || 0,
+                                )
+                              }
+                              className="w-28 px-2 py-1 text-lg font-bold text-right border rounded-lg text-primary border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                              disabled={isSubmitting}
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={handleConfirmTotalEdit}
+                              disabled={isSubmitting}
+                              title="Save"
+                              className="p-1 text-green-600 rounded hover:bg-green-50 disabled:opacity-50"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelTotalEdit}
+                              disabled={isSubmitting}
+                              title="Cancel"
+                              className="p-1 text-red-500 rounded hover:bg-red-50 disabled:opacity-50"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-lg font-bold text-primary">
+                              {formatCurrency(totalAmount)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleStartEditTotal}
+                              disabled={isSubmitting}
+                              title="Edit total"
+                              className="p-1 text-gray-500 rounded hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828H9V13z M5 19h14"
+                                />
+                              </svg>
+                            </button>
+                            {isTotalOverridden && (
+                              <button
+                                type="button"
+                                onClick={handleResetTotal}
+                                disabled={isSubmitting}
+                                title="Reset to calculated total"
+                                className="p-1 text-gray-400 rounded hover:bg-gray-200 hover:text-gray-600 disabled:opacity-50"
+                              >
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
+                    {isTotalOverridden && !isEditingTotal && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        Manually set — calculated total was{" "}
+                        {formatCurrency(calculatedTotal)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

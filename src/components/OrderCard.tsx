@@ -47,6 +47,7 @@ interface Order {
   lastUpdated?: string;
   fdeStatus?: string; // R (17): waybill number — empty if not yet sent to FDE
   notes?: string; // S (18): order notes
+  totalAmount?: number; // F (5): may be a manual override set at order creation/edit
 }
 
 interface OrderCardProps {
@@ -174,7 +175,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
     return order.freeShipping ? subtotal : subtotal + 450;
   };
 
-  const totalAmount = calculateTotal();
+  const liveCalculatedTotal = calculateTotal();
+  // A manually overridden total (set in OrderForm) always wins over the
+  // live price-history recalculation, since it was an explicit choice.
+  const totalAmount =
+    typeof order.totalAmount === "number" &&
+    Math.abs(order.totalAmount - liveCalculatedTotal) > 0.5
+      ? order.totalAmount
+      : liveCalculatedTotal;
   const subtotal = order.products.reduce((sum, product) => {
     // 👇 CHANGED - Get historical price from price history
     const historicalPrice = getPriceForDate(

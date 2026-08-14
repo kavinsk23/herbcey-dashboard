@@ -39,6 +39,7 @@ interface Order {
   paymentReceived?: boolean;
   tracking?: string;
   freeShipping?: boolean;
+  totalAmount?: number;
 }
 
 interface SheetOrder {
@@ -154,7 +155,10 @@ function orderToSheetRow(order: Order): (string | number)[] {
     order.products.find((p) => p.name === "Premium")?.quantity || 0;
   const castorQty =
     order.products.find((p) => p.name === "Castor")?.quantity || 0;
-  const totalAmount = calculateTotal(order.products, order.freeShipping);
+  const totalAmount =
+    typeof order.totalAmount === "number"
+      ? order.totalAmount
+      : calculateTotal(order.products, order.freeShipping);
 
   return [
     order.tracking || `LK${Date.now()}`, // A (0)
