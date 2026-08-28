@@ -42,7 +42,8 @@ type ProductType =
   | "Premium"
   | "Castor"
   | "Rosehip"
-  | "Beard";
+  | "Beard"
+  | "Refill";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -196,6 +197,14 @@ const Orders: React.FC = () => {
               name: "Beard",
               quantity: sheetOrder.beardQty,
               price: getPriceForDate(priceHistory, "Beard", orderDate) || 1200,
+            });
+          }
+          if (sheetOrder.refillQty > 0) {
+            products.push({
+              name: "Refill",
+              quantity: sheetOrder.refillQty,
+              price:
+                getPriceForDate(priceHistory, "Refill", orderDate) || 2900,
             });
           }
 
