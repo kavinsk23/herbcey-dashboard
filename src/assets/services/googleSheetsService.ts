@@ -54,6 +54,7 @@ interface SheetOrder {
   castorQty: number;
   rosehipQty: number;
   beardQty: number;
+  refillQty: number;
   totalAmount: number;
   orderStatus: string;
   paymentMethod: string;
@@ -93,6 +94,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Castor: 2400,
   Rosehip: 2950,
   Beard: 1200,
+  Refill: 2900,
 };
 
 const SHIPPING_COST: number = 450;
@@ -139,6 +141,7 @@ function formatCustomerInfo(order: Order): string {
 // R(17) FDE Status (waybill number — written by updateFdeStatus only)
 // T(19) Rosehip Qty
 // U(20) Beard Qty
+// V(21) Refill Qty
 
 function orderToSheetRow(order: Order): (string | number)[] {
   const oilQty = order.products.find((p) => p.name === "Oil")?.quantity || 0;
@@ -484,6 +487,21 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
 
     const data = await response.json();
     const rows = data.values || [];
+    const headers: string[] = rows[0] || [];
+
+    // Columns beyond the fixed A–R layout are appended wherever the sheet
+    // happened to have free space when the product was created (see
+    // addProductColumn in dynamicColumnsService.ts), so their position isn't
+    // guaranteed — look them up by header name instead of trusting a fixed
+    // index, falling back to the historical index if the header is missing.
+    const findQtyColumn = (productName: string, fallbackIndex: number) => {
+      const idx = headers.indexOf(`${productName} Qty`);
+      return idx !== -1 ? idx : fallbackIndex;
+    };
+
+    const rosehipCol = findQtyColumn("Rosehip", 19);
+    const beardCol = findQtyColumn("Beard", 20);
+    const refillCol = findQtyColumn("Refill", 21);
 
     const orders: SheetOrder[] = rows.slice(1).map((row: any[]) => ({
       trackingId: row[0] || "",
@@ -504,8 +522,9 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
       castorQty: parseInt(row[15]) || 0,
       mainCity: row[16] || "", // Q (16)
       fdeStatus: row[17] || "", // R (17): FDE waybill number
-      rosehipQty: parseInt(row[19]) || 0,
-      beardQty: parseInt(row[20]) || 0,
+      rosehipQty: parseInt(row[rosehipCol]) || 0,
+      beardQty: parseInt(row[beardCol]) || 0,
+      refillQty: parseInt(row[refillCol]) || 0,
     }));
 
     return { success: true, data: orders };
