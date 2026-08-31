@@ -28,7 +28,7 @@ type ProductType =
   | "Castor"
   | "Rosehip"
   | "Beard"
-  | "Refill";
+  | "Oil (Refill)";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface FilterSectionProps {
@@ -111,7 +111,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
     Castor: "bg-yellow-800 text-white",
     Rosehip: "bg-red-100 text-white",
     Beard: "bg-gray-800 text-white",
-    Refill: "bg-sky-600 text-white",
+    "Oil (Refill)": "bg-sky-600 text-white",
   };
 
   const paymentStatusColors: Record<PaymentStatusType, string> = {

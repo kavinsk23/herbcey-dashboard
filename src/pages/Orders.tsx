@@ -43,7 +43,7 @@ type ProductType =
   | "Castor"
   | "Rosehip"
   | "Beard"
-  | "Refill";
+  | "Oil (Refill)";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -201,10 +201,11 @@ const Orders: React.FC = () => {
           }
           if (sheetOrder.refillQty > 0) {
             products.push({
-              name: "Refill",
+              name: "Oil (Refill)",
               quantity: sheetOrder.refillQty,
               price:
-                getPriceForDate(priceHistory, "Refill", orderDate) || 2900,
+                getPriceForDate(priceHistory, "Oil (Refill)", orderDate) ||
+                2900,
             });
           }
 
