@@ -94,7 +94,7 @@ const PRODUCT_PRICES: Record<string, number> = {
   Castor: 2400,
   Rosehip: 2950,
   Beard: 1200,
-  Refill: 2900,
+  "Oil (Refill)": 2900,
 };
 
 const SHIPPING_COST: number = 450;
@@ -141,7 +141,7 @@ function formatCustomerInfo(order: Order): string {
 // R(17) FDE Status (waybill number — written by updateFdeStatus only)
 // T(19) Rosehip Qty
 // U(20) Beard Qty
-// V(21) Refill Qty
+// V(21) Oil (Refill) Qty
 
 function orderToSheetRow(order: Order): (string | number)[] {
   const oilQty = order.products.find((p) => p.name === "Oil")?.quantity || 0;
@@ -501,7 +501,7 @@ export async function getAllOrders(): Promise<ApiResponse<SheetOrder[]>> {
 
     const rosehipCol = findQtyColumn("Rosehip", 19);
     const beardCol = findQtyColumn("Beard", 20);
-    const refillCol = findQtyColumn("Refill", 21);
+    const refillCol = findQtyColumn("Oil (Refill)", 21);
 
     const orders: SheetOrder[] = rows.slice(1).map((row: any[]) => ({
       trackingId: row[0] || "",

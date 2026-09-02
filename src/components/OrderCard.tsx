@@ -153,7 +153,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     Castor: "bg-yellow-800 text-white",
     Rosehip: "bg-red-500 text-white",
     Beard: "bg-gray-800 text-white",
-    Refill: "bg-sky-600 text-white",
+    "Oil (Refill)": "bg-sky-600 text-white",
   };
 
   const calculateTotal = () => {

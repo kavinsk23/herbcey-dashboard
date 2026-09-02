@@ -16,9 +16,9 @@ import {
 import {
   getPriceForDate,
   getPriceHistory,
-  PriceHistoryRow,
 } from "../assets/services/priceHistoryService";
 import { getAllOrderNotes } from "../assets/services/notesService";
+import { getAllProductsFromSheet } from "../assets/services/productService";
 
 type StatusType =
   | "All"
@@ -43,7 +43,7 @@ type ProductType =
   | "Castor"
   | "Rosehip"
   | "Beard"
-  | "Refill";
+  | "Oil (Refill)";
 type PaymentStatusType = "All" | "COD Paid" | "COD Unpaid" | "Bank Transfer";
 
 interface Order {
@@ -105,11 +105,9 @@ const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [priceHistory, setPriceHistory] = useState<PriceHistoryRow[]>([]);
 
   useEffect(() => {
     loadOrdersFromSheets();
-    getPriceHistory().then(setPriceHistory);
   }, []);
 
   const loadOrdersFromSheets = async () => {
@@ -117,10 +115,33 @@ const Orders: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [result, noteMap] = await Promise.all([
-        getAllOrders(),
-        getAllOrderNotes(),
-      ]);
+      const [result, noteMap, historyResult, productsResult] =
+        await Promise.all([
+          getAllOrders(),
+          getAllOrderNotes(),
+          getPriceHistory(),
+          getAllProductsFromSheet(),
+        ]);
+
+      const livePrices: Record<string, number> = {};
+      if (productsResult.success && productsResult.data) {
+        productsResult.data.forEach((p) => {
+          livePrices[p.name] = p.price;
+        });
+      }
+
+      // Resolve a product's price for this order: prefer the price that was
+      // actually active on the order's date (Price_History), then the
+      // current live price from the Products sheet, then the hardcoded
+      // constant as a last-resort safety net.
+      const resolvePrice = (
+        productName: string,
+        orderDate: string,
+        hardcodedFallback: number,
+      ) =>
+        getPriceForDate(historyResult, productName, orderDate) ||
+        livePrices[productName] ||
+        hardcodedFallback;
 
       if (result.success && result.data) {
         const convertedOrders: Order[] = result.data.map((sheetOrder) => {
@@ -136,75 +157,70 @@ const Orders: React.FC = () => {
             products.push({
               name: "Oil",
               quantity: sheetOrder.oilQty,
-              price: getPriceForDate(priceHistory, "Oil", orderDate) || 950,
+              price: resolvePrice("Oil", orderDate, 950),
             });
           }
           if (sheetOrder.shampooQty > 0) {
             products.push({
               name: "Shampoo",
               quantity: sheetOrder.shampooQty,
-              price:
-                getPriceForDate(priceHistory, "Shampoo", orderDate) || 1350,
+              price: resolvePrice("Shampoo", orderDate, 1350),
             });
           }
           if (sheetOrder.conditionerQty > 0) {
             products.push({
               name: "Conditioner",
               quantity: sheetOrder.conditionerQty,
-              price:
-                getPriceForDate(priceHistory, "Conditioner", orderDate) || 1350,
+              price: resolvePrice("Conditioner", orderDate, 1350),
             });
           }
           if (sheetOrder.sprayQty > 0) {
             products.push({
               name: "Spray",
               quantity: sheetOrder.sprayQty,
-              price: getPriceForDate(priceHistory, "Spray", orderDate) || 980,
+              price: resolvePrice("Spray", orderDate, 980),
             });
           }
           if (sheetOrder.serumQty > 0) {
             products.push({
               name: "Serum",
               quantity: sheetOrder.serumQty,
-              price: getPriceForDate(priceHistory, "Serum", orderDate) || 1600,
+              price: resolvePrice("Serum", orderDate, 1600),
             });
           }
           if (sheetOrder.premiumQty > 0) {
             products.push({
               name: "Premium",
               quantity: sheetOrder.premiumQty,
-              price:
-                getPriceForDate(priceHistory, "Premium", orderDate) || 2600,
+              price: resolvePrice("Premium", orderDate, 2600),
             });
           }
           if (sheetOrder.castorQty > 0) {
             products.push({
               name: "Castor",
               quantity: sheetOrder.castorQty,
-              price: getPriceForDate(priceHistory, "Castor", orderDate) || 2400,
+              price: resolvePrice("Castor", orderDate, 2400),
             });
           }
           if (sheetOrder.rosehipQty > 0) {
             products.push({
               name: "Rosehip",
               quantity: sheetOrder.rosehipQty,
-              price:
-                getPriceForDate(priceHistory, "Rosehip", orderDate) || 2950,
+              price: resolvePrice("Rosehip", orderDate, 2950),
             });
           }
           if (sheetOrder.beardQty > 0) {
             products.push({
               name: "Beard",
               quantity: sheetOrder.beardQty,
-              price: getPriceForDate(priceHistory, "Beard", orderDate) || 1200,
+              price: resolvePrice("Beard", orderDate, 1200),
             });
           }
           if (sheetOrder.refillQty > 0) {
             products.push({
-              name: "Refill",
+              name: "Oil (Refill)",
               quantity: sheetOrder.refillQty,
-              price:
-                getPriceForDate(priceHistory, "Refill", orderDate) || 2900,
+              price: resolvePrice("Oil (Refill)", orderDate, 2900),
             });
           }
 
