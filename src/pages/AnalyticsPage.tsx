@@ -17,6 +17,7 @@ import {
   ComposedChart,
 } from "recharts";
 import { getAllOrders } from "../assets/services/googleSheetsService";
+import { isOrderNotSent } from "../utils/dateUtils";
 import {
   getAllExpensesFromSheet,
   getExpenseSummary,
@@ -683,8 +684,33 @@ const AnalyticsPage: React.FC = () => {
 
   // ENHANCED ANALYTICS DATA WITH COMPREHENSIVE PROFIT CALCULATIONS
   const analyticsData = useMemo(() => {
+    // "Not Sent" orders (Preparing/Packed/No Answer for 10+ days — never
+    // actually sent to the customer) are computed here, not written to the
+    // sheet. "No Answer" is already excluded from filteredOrders entirely
+    // (any age), so it's picked up from realOrders directly so the count
+    // and value below are still accurate; Preparing/Packed are excluded
+    // from filteredOrders here once they cross the threshold.
+    const notSentOrders = realOrders.filter((order) => {
+      const orderDate = new Date(order.orderDate);
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      const dateMatch = orderDate >= startDate && orderDate <= endDate;
+      return dateMatch && isOrderNotSent(order.status, order.orderDate);
+    });
+    const notSentOrdersCount = notSentOrders.length;
+    const notSentOrdersValue = notSentOrders.reduce(
+      (sum, order) => sum + calculateOrderRevenue(order),
+      0,
+    );
+
+    // Orders that count toward profit, order count, and unit count —
+    // filteredOrders minus any that are Not Sent.
+    const sentOrders = filteredOrders.filter(
+      (order) => !isOrderNotSent(order.status, order.orderDate),
+    );
+
     // Basic revenue calculations
-    const totalRevenue = filteredOrders.reduce(
+    const totalRevenue = sentOrders.reduce(
       (sum, order) => sum + calculateOrderRevenue(order),
       0,
     );
@@ -702,7 +728,7 @@ const AnalyticsPage: React.FC = () => {
 
     const totalReceivedFunds = codReceivedAmount + bankTransferAmount;
 
-    const totalUnitsSold = filteredOrders.reduce((sum, order) => {
+    const totalUnitsSold = sentOrders.reduce((sum, order) => {
       return (
         sum +
         order.products.reduce((productSum, product) => {
@@ -711,7 +737,7 @@ const AnalyticsPage: React.FC = () => {
       );
     }, 0);
 
-    const totalOrders = filteredOrders.length;
+    const totalOrders = sentOrders.length;
 
     // Calculate returns data
     const returnedOrders = realOrders.filter((order) => {
@@ -726,7 +752,7 @@ const AnalyticsPage: React.FC = () => {
     const returnDeliveryLoss = totalReturns * SHIPPING_COST;
 
     // ENHANCED PRODUCT SALES WITH PROFIT CALCULATIONS
-    const productSales = filteredOrders.reduce(
+    const productSales = sentOrders.reduce(
       (acc, order) => {
         order.products.forEach((product) => {
           if (!acc[product.name]) {
@@ -822,7 +848,7 @@ const AnalyticsPage: React.FC = () => {
       totalOrders > 0 ? marketingExpenses / totalOrders : 0;
 
     // TIME-BASED PROFIT DATA
-    const timeData = filteredOrders.reduce(
+    const timeData = sentOrders.reduce(
       (acc, order) => {
         const date = new Date(order.orderDate);
         let key = "";
@@ -891,7 +917,7 @@ const AnalyticsPage: React.FC = () => {
       }
     });
 
-    const paymentMethods = filteredOrders.reduce(
+    const paymentMethods = sentOrders.reduce(
       (acc, order) => {
         if (!acc[order.paymentMethod]) {
           acc[order.paymentMethod] = { count: 0, revenue: 0 };
@@ -928,6 +954,10 @@ const AnalyticsPage: React.FC = () => {
       productSales,
       timeData: timeDataArray.sort((a, b) => a.date.localeCompare(b.date)),
       paymentMethods,
+
+      // Not Sent orders — excluded from profit/order count/unit count above
+      notSentOrdersCount,
+      notSentOrdersValue,
     };
   }, [
     filteredOrders,
@@ -1190,6 +1220,30 @@ const AnalyticsPage: React.FC = () => {
               strokeLinejoin="round"
               strokeWidth={2}
               d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+            />
+          </svg>
+        ),
+      },
+      {
+        id: "not-sent-orders",
+        title: "Not Sent",
+        value: analyticsData.notSentOrdersCount.toString(),
+        textColor: "text-red-600",
+        bgColor: "bg-red-100",
+        iconColor: "text-red-600",
+        subtitle: `${formatCurrency(analyticsData.notSentOrdersValue)} not counted in profit/orders/units`,
+        icon: (
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
             />
           </svg>
         ),
