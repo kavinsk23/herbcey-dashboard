@@ -6,6 +6,8 @@ import {
   getRelativeTimeDescription,
   isToday,
   isYesterday,
+  isOrderNotSent,
+  getDisplayStatus,
 } from "../utils/dateUtils";
 import { updateFdeStatus } from "../assets/services/googleSheetsService";
 import { updateOrderNote } from "../assets/services/notesService";
@@ -63,6 +65,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
   // If column R already has a waybill number, start the button in done state
   const alreadyProcessed = !!(order.fdeStatus && order.fdeStatus.trim() !== "");
 
+  // "Not Sent" is a computed display status — never written to the sheet.
+  // An order still Preparing/Packed/No Answer past the threshold shows as
+  // "Not Sent" (or "Not Sent (No Answer)") everywhere, without touching the
+  // real stored status.
+  const isNotSent = isOrderNotSent(order.status, order.orderDate);
+  const displayStatus = getDisplayStatus(order.status, order.orderDate);
+
   const [fdeState, setFdeState] = useState<{
     loading: boolean;
     success?: boolean;
@@ -74,6 +83,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Tracks whether the receipt has been printed this session — resets on
+  // reload, since print status isn't persisted to the sheet.
+  const [printed, setPrinted] = useState(false);
 
   const handleDeleteConfirm = () => {
     setShowDeleteConfirm(false);
@@ -367,13 +380,20 @@ const OrderCard: React.FC<OrderCardProps> = ({
         setTimeout(() => {
           printWindow.print();
           printWindow.close();
+          setPrinted(true);
         }, 250);
       });
     }
   };
 
   return (
-    <div className="relative transition-shadow duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
+    <div
+      className={`relative transition-shadow duration-200 bg-white rounded-lg shadow-sm hover:shadow-md ${
+        isNotSent
+          ? "border-2 border-red-500 ring-1 ring-red-200"
+          : "border border-gray-200"
+      }`}
+    >
       {/* note button */}
       <button
         onClick={() => setShowNotes(true)}
@@ -399,10 +419,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
         {/* Row 1: Status | Payment */}
         <div className="flex items-stretch">
           <div
-            className={`${statusColors[order.status]} px-3 py-1.5 flex-1 min-w-0`}
+            className={`${isNotSent ? "bg-red-600 text-white" : statusColors[order.status]} px-3 py-1.5 flex-1 min-w-0`}
           >
             <span className="block text-xs font-semibold truncate">
-              {order.status}
+              {displayStatus}
             </span>
           </div>
           <div
@@ -471,8 +491,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
       </div>
       {/* ── DESKTOP HEADER (original 3-column layout, hidden on mobile) ── */}
       <div className="items-center justify-between hidden border-b md:flex">
-        <div className={`${statusColors[order.status]} px-3 py-2 flex-1`}>
-          <span className="text-sm font-medium">{order.status}</span>
+        <div
+          className={`${isNotSent ? "bg-red-600 text-white" : statusColors[order.status]} px-3 py-2 flex-1`}
+        >
+          <span className="text-sm font-medium">{displayStatus}</span>
         </div>
         <div
           className={`${paymentColors[order.paymentMethod]} px-3 py-2 flex-1 text-center flex items-center justify-center space-x-2`}
@@ -587,9 +609,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </button>
             <button
               onClick={handlePrint}
-              className="w-16 px-2 py-1 text-xs text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+              className={`w-16 px-2 py-1 text-xs transition-colors border rounded-lg ${
+                printed
+                  ? "bg-green-600 text-white border-green-600"
+                  : "text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
             >
-              Print
+              {printed ? "Printed" : "Print"}
             </button>
 
             <div className="flex w-16 gap-1">
@@ -789,9 +815,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </button>
           <button
             onClick={handlePrint}
-            className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+            className={`w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${
+              printed
+                ? "bg-green-600 text-white border-green-600"
+                : "text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
           >
-            Print
+            {printed ? "Printed" : "Print"}
           </button>
 
           <div className="flex w-20 gap-1.5">

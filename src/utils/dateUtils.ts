@@ -208,6 +208,45 @@ export function getRelativeTimeDescription(isoDateTime: string): string {
 }
 
 /**
+ * Whole days elapsed between an order date and now.
+ */
+export function getDaysSince(dateString: string): number {
+  if (!dateString) return 0;
+  const orderDate = parseISODate(dateString);
+  const diffMs = Date.now() - orderDate.getTime();
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Statuses that mean an order hasn't actually been sent to the customer yet.
+ * If one of these sits unchanged for NOT_SENT_THRESHOLD_DAYS, it's treated
+ * (for display and for analytics) as "Not Sent" — see getDisplayStatus below.
+ * This never overwrites the real stored status; it's computed on read.
+ */
+export const UNSENT_TRIGGER_STATUSES = ["Preparing", "Packed", "No Answer"];
+export const NOT_SENT_THRESHOLD_DAYS = 10;
+
+/**
+ * Whether an order counts as "Not Sent": still sitting in one of the
+ * pre-dispatch statuses past the threshold.
+ */
+export function isOrderNotSent(status: string, orderDate: string): boolean {
+  if (!UNSENT_TRIGGER_STATUSES.includes(status)) return false;
+  return getDaysSince(orderDate) >= NOT_SENT_THRESHOLD_DAYS;
+}
+
+/**
+ * The status to actually display for an order. Once "Not Sent" applies,
+ * shows "Not Sent (No Answer)" if the underlying status was No Answer,
+ * otherwise plain "Not Sent" (for Preparing/Packed). Any other status is
+ * returned unchanged.
+ */
+export function getDisplayStatus(status: string, orderDate: string): string {
+  if (!isOrderNotSent(status, orderDate)) return status;
+  return status === "No Answer" ? "Not Sent (No Answer)" : "Not Sent";
+}
+
+/**
  * Test function to verify date parsing works correctly
  */
 export function testDateParsing(): void {
@@ -258,4 +297,9 @@ export default {
   isYesterday,
   getRelativeTimeDescription,
   testDateParsing,
+  getDaysSince,
+  isOrderNotSent,
+  getDisplayStatus,
+  UNSENT_TRIGGER_STATUSES,
+  NOT_SENT_THRESHOLD_DAYS,
 };
