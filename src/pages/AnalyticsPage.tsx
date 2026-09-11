@@ -144,6 +144,17 @@ const getAllProductsFromSheet = async (): Promise<{
   }
 };
 
+// Maps a product's display name to its SheetOrder quantity field. Most
+// products derive cleanly (e.g. "Beard" -> "beardQty"), but a few were
+// renamed for display after their sheet field was already fixed — those
+// need an explicit override here instead of the generic derivation.
+const QTY_KEY_OVERRIDES: Record<string, string> = {
+  "Oil (Refill)": "refillQty",
+};
+
+const getQtyKey = (productName: string): string =>
+  QTY_KEY_OVERRIDES[productName] || `${productName.toLowerCase()}Qty`;
+
 const AnalyticsPage: React.FC = () => {
   const [timePeriod, setTimePeriod] = useState<"daily" | "monthly" | "yearly">(
     "daily",
@@ -380,7 +391,7 @@ const AnalyticsPage: React.FC = () => {
               if (productName === "all") return; // Skip the "all" filter option
 
               // Check for quantity in various possible formats
-              const qtyKey = `${productName.toLowerCase()}Qty`;
+              const qtyKey = getQtyKey(productName);
               const quantity = sheetOrder[qtyKey] || 0;
 
               if (quantity > 0) {
@@ -555,7 +566,7 @@ const AnalyticsPage: React.FC = () => {
               availableProducts.forEach((productName) => {
                 if (productName === "all") return;
 
-                const qtyKey = `${productName.toLowerCase()}Qty`;
+                const qtyKey = getQtyKey(productName);
                 const quantity = sheetOrder[qtyKey] || 0;
 
                 if (quantity > 0) {
@@ -1409,7 +1420,7 @@ const AnalyticsPage: React.FC = () => {
       />
 
       {/* Enhanced KPI Cards with Profit Metrics */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         {kpiCards.map((card) => (
           <div
             key={card.id}
