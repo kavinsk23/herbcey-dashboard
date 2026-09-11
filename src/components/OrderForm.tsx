@@ -115,6 +115,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [printed, setPrinted] = useState(false);
   const [suggestedTrackingId, setSuggestedTrackingId] = useState<string>("");
   const [returnWarning, setReturnWarning] = useState<{
     show: boolean;
@@ -418,6 +419,13 @@ const OrderForm: React.FC<OrderFormProps> = ({
       setReturnWarning({ show: false, orders: [] });
     }
   }, [isOpen, mode]);
+
+  // Reset the "Printed" indicator whenever the form opens for a (possibly
+  // different) order — the component stays mounted between opens, so this
+  // would otherwise carry over from whatever order was last printed.
+  useEffect(() => {
+    if (isOpen) setPrinted(false);
+  }, [isOpen, initialOrder?.tracking]);
 
   // Initialize product state
   useEffect(() => {
@@ -1033,6 +1041,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
         setTimeout(() => {
           printWindow.print();
           printWindow.close();
+          setPrinted(true);
         }, 250);
       });
     }
@@ -1631,7 +1640,11 @@ const OrderForm: React.FC<OrderFormProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex items-center px-4 py-2 text-sm transition-colors border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                printed
+                  ? "bg-green-600 text-white border-green-600"
+                  : "text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
               disabled={isSubmitting || loadingProducts}
             >
               <svg
@@ -1647,7 +1660,7 @@ const OrderForm: React.FC<OrderFormProps> = ({
                   d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                 />
               </svg>
-              Print Receipt
+              {printed ? "Printed" : "Print Receipt"}
             </button>
 
             <button

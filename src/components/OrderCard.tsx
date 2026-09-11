@@ -84,6 +84,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Tracks whether the receipt has been printed this session — resets on
+  // reload, since print status isn't persisted to the sheet.
+  const [printed, setPrinted] = useState(false);
+
   const handleDeleteConfirm = () => {
     setShowDeleteConfirm(false);
     onDeleteClick && onDeleteClick(order);
@@ -376,6 +380,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         setTimeout(() => {
           printWindow.print();
           printWindow.close();
+          setPrinted(true);
         }, 250);
       });
     }
@@ -604,9 +609,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </button>
             <button
               onClick={handlePrint}
-              className="w-16 px-2 py-1 text-xs text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+              className={`w-16 px-2 py-1 text-xs transition-colors border rounded-lg ${
+                printed
+                  ? "bg-green-600 text-white border-green-600"
+                  : "text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
             >
-              Print
+              {printed ? "Printed" : "Print"}
             </button>
 
             <div className="flex w-16 gap-1">
@@ -806,9 +815,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </button>
           <button
             onClick={handlePrint}
-            className="w-20 px-4 py-1 text-sm text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50"
+            className={`w-20 px-4 py-1 text-sm transition-colors border rounded-lg ${
+              printed
+                ? "bg-green-600 text-white border-green-600"
+                : "text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
           >
-            Print
+            {printed ? "Printed" : "Print"}
           </button>
 
           <div className="flex w-20 gap-1.5">
